@@ -1,1 +1,1 @@
-//! Flow field navigation - placeholder
+//! Flow field navigation - stub for MVP
