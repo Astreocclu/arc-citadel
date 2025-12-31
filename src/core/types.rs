@@ -31,7 +31,7 @@ pub struct LocationId(pub u32);
 pub struct FlowFieldId(pub u32);
 
 /// Species enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Species {
     Human,
     Dwarf,
