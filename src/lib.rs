@@ -13,3 +13,4 @@ pub mod campaign;
 pub mod battle;
 pub mod ui;
 pub mod data;
+pub mod aggregate;
