@@ -1,0 +1,1 @@
+//! Thought generation - placeholder

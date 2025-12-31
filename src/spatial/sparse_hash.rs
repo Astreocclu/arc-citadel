@@ -1,0 +1,1 @@
+//! Sparse hash grid - placeholder
