@@ -1,0 +1,174 @@
+{
+  "actions": [
+    {
+      "id": "MoveTo",
+      "category": "Movement",
+      "description": "Move to a target position",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": []
+    },
+    {
+      "id": "Follow",
+      "category": "Movement",
+      "description": "Follow a target entity",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": []
+    },
+    {
+      "id": "Flee",
+      "category": "Movement",
+      "description": "Flee from perceived threat",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": [
+        {"need": "Safety", "amount": 0.3}
+      ]
+    },
+    {
+      "id": "Rest",
+      "category": "Survival",
+      "description": "Rest to recover fatigue",
+      "interruptible": true,
+      "base_duration": 600,
+      "satisfies_needs": [
+        {"need": "Rest", "amount": 0.3}
+      ]
+    },
+    {
+      "id": "Eat",
+      "category": "Survival",
+      "description": "Consume food to reduce hunger",
+      "interruptible": true,
+      "base_duration": 30,
+      "satisfies_needs": [
+        {"need": "Food", "amount": 0.5}
+      ]
+    },
+    {
+      "id": "SeekSafety",
+      "category": "Survival",
+      "description": "Move to a safe location",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": [
+        {"need": "Safety", "amount": 0.3}
+      ]
+    },
+    {
+      "id": "Build",
+      "category": "Work",
+      "description": "Construct a structure",
+      "interruptible": true,
+      "base_duration": 3600,
+      "satisfies_needs": [
+        {"need": "Purpose", "amount": 0.3}
+      ]
+    },
+    {
+      "id": "Craft",
+      "category": "Work",
+      "description": "Create an item",
+      "interruptible": true,
+      "base_duration": 1800,
+      "satisfies_needs": [
+        {"need": "Purpose", "amount": 0.3}
+      ]
+    },
+    {
+      "id": "Gather",
+      "category": "Work",
+      "description": "Collect resources from the environment",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": [
+        {"need": "Purpose", "amount": 0.3}
+      ]
+    },
+    {
+      "id": "Repair",
+      "category": "Work",
+      "description": "Repair a damaged structure or item",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": []
+    },
+    {
+      "id": "TalkTo",
+      "category": "Social",
+      "description": "Engage in conversation with another entity",
+      "interruptible": true,
+      "base_duration": 60,
+      "satisfies_needs": [
+        {"need": "Social", "amount": 0.3}
+      ]
+    },
+    {
+      "id": "Help",
+      "category": "Social",
+      "description": "Assist another entity with their task",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": [
+        {"need": "Social", "amount": 0.3}
+      ]
+    },
+    {
+      "id": "Trade",
+      "category": "Social",
+      "description": "Exchange goods with another entity",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": []
+    },
+    {
+      "id": "Attack",
+      "category": "Combat",
+      "description": "Attack a target entity",
+      "interruptible": false,
+      "base_duration": 1,
+      "satisfies_needs": []
+    },
+    {
+      "id": "Defend",
+      "category": "Combat",
+      "description": "Adopt a defensive stance",
+      "interruptible": true,
+      "base_duration": 1,
+      "satisfies_needs": []
+    },
+    {
+      "id": "Charge",
+      "category": "Combat",
+      "description": "Charge at an enemy",
+      "interruptible": false,
+      "base_duration": 0,
+      "satisfies_needs": []
+    },
+    {
+      "id": "HoldPosition",
+      "category": "Combat",
+      "description": "Hold current position",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": []
+    },
+    {
+      "id": "IdleWander",
+      "category": "Idle",
+      "description": "Wander aimlessly",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": []
+    },
+    {
+      "id": "IdleObserve",
+      "category": "Idle",
+      "description": "Observe surroundings",
+      "interruptible": true,
+      "base_duration": 0,
+      "satisfies_needs": []
+    }
+  ]
+}

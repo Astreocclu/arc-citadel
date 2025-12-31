@@ -1,0 +1,78 @@
+{
+  "body_parts": [
+    {
+      "id": "Head",
+      "description": "The head, containing the brain and sensory organs",
+      "vital": true,
+      "affects_movement": false,
+      "affects_manipulation": false,
+      "severity_multiplier": 2.0
+    },
+    {
+      "id": "Torso",
+      "description": "The main body, containing vital organs",
+      "vital": true,
+      "affects_movement": false,
+      "affects_manipulation": false,
+      "severity_multiplier": 1.5
+    },
+    {
+      "id": "LeftArm",
+      "description": "The left arm",
+      "vital": false,
+      "affects_movement": false,
+      "affects_manipulation": true,
+      "severity_multiplier": 1.0
+    },
+    {
+      "id": "RightArm",
+      "description": "The right arm",
+      "vital": false,
+      "affects_movement": false,
+      "affects_manipulation": true,
+      "severity_multiplier": 1.0
+    },
+    {
+      "id": "LeftLeg",
+      "description": "The left leg",
+      "vital": false,
+      "affects_movement": true,
+      "affects_manipulation": false,
+      "severity_multiplier": 1.0
+    },
+    {
+      "id": "RightLeg",
+      "description": "The right leg",
+      "vital": false,
+      "affects_movement": true,
+      "affects_manipulation": false,
+      "severity_multiplier": 1.0
+    }
+  ],
+  "wound_types": [
+    {
+      "id": "Cut",
+      "description": "A slashing wound",
+      "base_bleeding": 0.3,
+      "infection_chance": 0.1
+    },
+    {
+      "id": "Pierce",
+      "description": "A stabbing or piercing wound",
+      "base_bleeding": 0.4,
+      "infection_chance": 0.15
+    },
+    {
+      "id": "Blunt",
+      "description": "Blunt force trauma",
+      "base_bleeding": 0.1,
+      "infection_chance": 0.05
+    },
+    {
+      "id": "Burn",
+      "description": "Burn damage",
+      "base_bleeding": 0.0,
+      "infection_chance": 0.2
+    }
+  ]
+}

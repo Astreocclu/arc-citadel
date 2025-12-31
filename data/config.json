@@ -1,0 +1,26 @@
+{
+  "simulation": {
+    "tick_rate_ms": 100,
+    "perception_range": 50.0,
+    "spatial_grid_cell_size": 10.0
+  },
+  "perception": {
+    "visual_base_range": 50.0,
+    "audio_base_range": 20.0,
+    "fatigue_perception_penalty": 0.8
+  },
+  "needs": {
+    "critical_threshold": 0.8,
+    "moderate_threshold": 0.6
+  },
+  "action_selection": {
+    "impulse_intensity_threshold": 0.7,
+    "threat_safety_threshold": 0.5,
+    "safe_location_threshold": 0.3
+  },
+  "thoughts": {
+    "max_active_thoughts": 20,
+    "base_decay_rate": 0.01,
+    "fade_threshold": 0.1
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "species": "Human",
+  "value_vocabulary": [
+    {"name": "honor", "description": "Social standing, keeping word"},
+    {"name": "beauty", "description": "Aesthetic appreciation"},
+    {"name": "comfort", "description": "Physical ease"},
+    {"name": "ambition", "description": "Desire for advancement"},
+    {"name": "loyalty", "description": "Attachment to group"},
+    {"name": "love", "description": "Attachment to individuals"},
+    {"name": "justice", "description": "Fairness"},
+    {"name": "curiosity", "description": "Desire to know"},
+    {"name": "safety", "description": "Self-preservation"},
+    {"name": "piety", "description": "Religious devotion"}
+  ],
+  "idle_behaviors": ["socialize", "observe", "wander"],
+  "perception_filters": {
+    "high_beauty": ["aesthetic", "quality", "appearance"],
+    "high_honor": ["social_status", "reputation"],
+    "high_piety": ["sacred", "ritual"]
+  }
+}
