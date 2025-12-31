@@ -4,6 +4,8 @@
 //! perception -> thought generation -> need modification -> action selection -> action execution
 //!
 //! Each tick advances the simulation one step, processing all entities.
+//!
+//! Uses rayon for parallel processing where safe.
 
 use crate::ecs::world::World;
 use crate::spatial::sparse_hash::SparseHashGrid;
@@ -11,6 +13,8 @@ use crate::simulation::perception::{perception_system, RelationshipType};
 use crate::simulation::action_select::{select_action_human, SelectionContext};
 use crate::entity::thoughts::{Thought, Valence, CauseType};
 use crate::entity::needs::NeedType;
+use crate::entity::tasks::Task;
+use rayon::prelude::*;
 
 /// Run a single simulation tick
 ///
@@ -40,16 +44,17 @@ pub fn run_simulation_tick(world: &mut World) {
 /// - Social and purpose increase slowly
 /// - Safety decreases naturally when no threats present
 fn update_needs(world: &mut World) {
-    let dt = 1.0; // One tick = one time unit
-    // Collect indices first to avoid borrow conflicts
+    let dt = 1.0;
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
+
+    // Sequential - this is already O(n) and very fast
     for i in living_indices {
         let is_active = world.humans.task_queues[i].current().is_some();
         world.humans.needs[i].decay(dt, is_active);
     }
 }
 
-/// Run the perception system for all entities
+/// Run the perception system for all entities (PARALLEL when beneficial)
 ///
 /// Creates a spatial hash grid for efficient neighbor queries,
 /// then runs perception for each entity to determine what they can see.
@@ -63,8 +68,71 @@ fn run_perception(world: &World) -> Vec<crate::simulation::perception::Perceptio
     // Build spatial grid
     grid.rebuild(ids.iter().cloned().zip(positions.iter().cloned()));
 
-    // Run perception for all entities
-    perception_system(&grid, &positions, &ids, 50.0)
+    // Use parallel for large entity counts, sequential for small
+    if ids.len() >= PARALLEL_THRESHOLD {
+        perception_system_parallel(&grid, &positions, &ids, 50.0)
+    } else {
+        perception_system(&grid, &positions, &ids, 50.0)
+    }
+}
+
+/// Parallel perception - each entity's perception is independent
+fn perception_system_parallel(
+    spatial_grid: &SparseHashGrid,
+    positions: &[crate::core::types::Vec2],
+    entity_ids: &[crate::core::types::EntityId],
+    perception_range: f32,
+) -> Vec<crate::simulation::perception::Perception> {
+    use crate::simulation::perception::{Perception, PerceivedEntity};
+
+    // Build O(1) lookup map
+    let id_to_idx: ahash::AHashMap<_, _> = entity_ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
+    // PARALLEL: process each entity's perception independently
+    entity_ids
+        .par_iter()
+        .enumerate()
+        .map(|(i, &observer_id)| {
+            let observer_pos = positions[i];
+
+            let nearby: Vec<_> = spatial_grid
+                .query_neighbors(observer_pos)
+                .filter(|&e| e != observer_id)
+                .collect();
+
+            let perceived_entities: Vec<_> = nearby
+                .iter()
+                .filter_map(|&entity| {
+                    let entity_idx = *id_to_idx.get(&entity)?;
+                    let entity_pos = positions[entity_idx];
+                    let distance = observer_pos.distance(&entity_pos);
+
+                    if distance <= perception_range {
+                        Some(PerceivedEntity {
+                            entity,
+                            distance,
+                            relationship: crate::simulation::perception::RelationshipType::Unknown,
+                            threat_level: 0.0,
+                            notable_features: vec![],
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            Perception {
+                observer: observer_id,
+                perceived_entities,
+                perceived_objects: vec![],
+                perceived_events: vec![],
+            }
+        })
+        .collect()
 }
 
 /// Generate thoughts from perceptions
@@ -137,36 +205,67 @@ fn decay_thoughts(world: &mut World) {
     }
 }
 
-/// Select actions for entities without current tasks
+/// Threshold for parallelization (below this, sequential is faster due to thread overhead)
+const PARALLEL_THRESHOLD: usize = 1000;
+
+/// Select actions for entities without current tasks (PARALLEL when beneficial)
 ///
 /// Uses the action selection algorithm to choose appropriate actions
 /// based on needs, thoughts, and values.
 fn select_actions(world: &mut World) {
-    // Collect indices first to avoid borrow conflicts
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
-    for i in living_indices {
-        // Skip entities that already have a task
-        if world.humans.task_queues[i].current().is_some() {
-            continue;
+    let current_tick = world.current_tick;
+
+    if living_indices.len() >= PARALLEL_THRESHOLD {
+        // PARALLEL path for large entity counts
+        let selected_actions: Vec<(usize, Option<Task>)> = living_indices
+            .par_iter()
+            .filter_map(|&i| {
+                if world.humans.task_queues[i].current().is_some() {
+                    return None;
+                }
+                let ctx = SelectionContext {
+                    body: &world.humans.body_states[i],
+                    needs: &world.humans.needs[i],
+                    thoughts: &world.humans.thoughts[i],
+                    values: &world.humans.values[i],
+                    has_current_task: false,
+                    threat_nearby: world.humans.needs[i].safety > 0.5,
+                    food_available: true,
+                    safe_location: world.humans.needs[i].safety < 0.3,
+                    entity_nearby: true,
+                    current_tick,
+                };
+                Some((i, select_action_human(&ctx)))
+            })
+            .collect();
+
+        for (i, task_opt) in selected_actions {
+            if let Some(task) = task_opt {
+                world.humans.task_queues[i].push(task);
+            }
         }
-
-        // Build selection context
-        let ctx = SelectionContext {
-            body: &world.humans.body_states[i],
-            needs: &world.humans.needs[i],
-            thoughts: &world.humans.thoughts[i],
-            values: &world.humans.values[i],
-            has_current_task: false,
-            threat_nearby: world.humans.needs[i].safety > 0.5,
-            food_available: true, // TODO: check actual food availability
-            safe_location: world.humans.needs[i].safety < 0.3,
-            entity_nearby: true, // TODO: check actual entity proximity
-            current_tick: world.current_tick,
-        };
-
-        // Select and assign action
-        if let Some(task) = select_action_human(&ctx) {
-            world.humans.task_queues[i].push(task);
+    } else {
+        // Sequential path for small entity counts (avoids thread overhead)
+        for i in living_indices {
+            if world.humans.task_queues[i].current().is_some() {
+                continue;
+            }
+            let ctx = SelectionContext {
+                body: &world.humans.body_states[i],
+                needs: &world.humans.needs[i],
+                thoughts: &world.humans.thoughts[i],
+                values: &world.humans.values[i],
+                has_current_task: false,
+                threat_nearby: world.humans.needs[i].safety > 0.5,
+                food_available: true,
+                safe_location: world.humans.needs[i].safety < 0.3,
+                entity_nearby: true,
+                current_tick,
+            };
+            if let Some(task) = select_action_human(&ctx) {
+                world.humans.task_queues[i].push(task);
+            }
         }
     }
 }
