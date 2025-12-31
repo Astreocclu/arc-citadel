@@ -1,1 +1,1 @@
-//! Configuration - placeholder
+//! Configuration loading - stub for MVP
