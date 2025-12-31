@@ -140,8 +140,15 @@ fn perception_system_parallel(
 /// This is where entities react to what they perceive based on their values.
 /// Perceptions are filtered through values to generate appropriate thoughts.
 fn generate_thoughts(world: &mut World, perceptions: &[crate::simulation::perception::Perception]) {
+    // Build O(1) lookup map once, not O(n) search per perception
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world.humans.ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
     for perception in perceptions {
-        let Some(idx) = world.humans.index_of(perception.observer) else { continue };
+        let Some(&idx) = id_to_idx.get(&perception.observer) else { continue };
         let values = &world.humans.values[idx];
 
         // Process perceived entities

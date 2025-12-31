@@ -4,7 +4,7 @@ use arc_citadel::simulation::tick::run_simulation_tick;
 use arc_citadel::core::types::Vec2;
 
 fn main() {
-    let counts = [100, 1000, 2000, 5000, 10000];
+    let counts = [10000, 20000, 50000, 100000];
 
     for count in counts {
         println!("\n=== Testing {} entities ===", count);
