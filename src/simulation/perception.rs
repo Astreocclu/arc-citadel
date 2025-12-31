@@ -114,6 +114,13 @@ pub fn perception_system(
     entity_ids: &[EntityId],
     perception_range: f32,
 ) -> Vec<Perception> {
+    // Build O(1) lookup map for entity indices
+    let id_to_idx: ahash::AHashMap<EntityId, usize> = entity_ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
     entity_ids.iter().enumerate().map(|(i, &observer_id)| {
         let observer_pos = positions[i];
 
@@ -123,7 +130,7 @@ pub fn perception_system(
 
         let perceived_entities: Vec<_> = nearby.iter()
             .filter_map(|&entity| {
-                let entity_idx = entity_ids.iter().position(|&e| e == entity)?;
+                let entity_idx = *id_to_idx.get(&entity)?;
                 let entity_pos = positions[entity_idx];
                 let distance = observer_pos.distance(&entity_pos);
 
