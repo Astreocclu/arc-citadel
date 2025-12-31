@@ -1,1 +1,1 @@
-//! Entity identity - placeholder
+//! Entity identity - stub for MVP

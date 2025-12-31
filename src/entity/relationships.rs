@@ -1,1 +1,1 @@
-//! Relationships - placeholder
+//! Relationship tracking - stub for MVP
