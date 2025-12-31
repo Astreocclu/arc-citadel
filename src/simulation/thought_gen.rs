@@ -1,1 +1,1 @@
-//! Thought generation - placeholder
+//! Thought generation from perception - stub for MVP

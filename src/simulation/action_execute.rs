@@ -1,1 +1,1 @@
-//! Action execution - placeholder
+//! Action execution - stub for MVP
