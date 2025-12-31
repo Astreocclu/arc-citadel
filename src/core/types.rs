@@ -1,9 +1,10 @@
 //! Core type definitions used throughout the codebase
 
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Unique identifier for entities
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct EntityId(pub Uuid);
 
 impl EntityId {
@@ -38,7 +39,7 @@ pub enum Species {
 }
 
 /// 2D position
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
