@@ -1,0 +1,36 @@
+[package]
+name = "arc-citadel"
+version = "0.1.0"
+edition = "2021"
+authors = ["Arc Citadel Team"]
+description = "Deep simulation strategy game with natural language commands"
+
+[dependencies]
+tokio = { version = "1.35", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.8"
+rand_chacha = "0.3"
+ordered-float = "4.2"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+reqwest = { version = "0.11", features = ["json"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+crossterm = "0.27"
+ratatui = "0.25"
+ahash = "0.8"
+thiserror = "1.0"
+derive_more = "0.99"
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[[bench]]
+name = "simulation_bench"
+harness = false
