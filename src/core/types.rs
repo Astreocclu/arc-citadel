@@ -111,6 +111,24 @@ impl RulerId {
     }
 }
 
+/// Hierarchy tier for polities (political rank, not cultural type)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum PolityTier {
+    Barony = 1,
+    County = 2,
+    Duchy = 3,
+    Kingdom = 4,
+    Empire = 5,
+}
+
+impl PolityTier {
+    /// Returns true if this tier outranks the other
+    pub fn outranks(&self, other: &PolityTier) -> bool {
+        (*self as u8) > (*other as u8)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,5 +157,30 @@ mod tests {
         let c = RulerId(2);
         assert_eq!(a, b);
         assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_polity_tier_ordering() {
+        // Empire > Kingdom > Duchy > County > Barony
+        assert!(PolityTier::Empire as u8 > PolityTier::Kingdom as u8);
+        assert!(PolityTier::Kingdom as u8 > PolityTier::Duchy as u8);
+        assert!(PolityTier::Duchy as u8 > PolityTier::County as u8);
+        assert!(PolityTier::County as u8 > PolityTier::Barony as u8);
+    }
+
+    #[test]
+    fn test_polity_tier_outranks() {
+        // Test the outranks() method
+        assert!(PolityTier::Empire.outranks(&PolityTier::Kingdom));
+        assert!(PolityTier::Kingdom.outranks(&PolityTier::Duchy));
+        assert!(PolityTier::Duchy.outranks(&PolityTier::County));
+        assert!(PolityTier::County.outranks(&PolityTier::Barony));
+
+        // Test that lower tiers don't outrank higher
+        assert!(!PolityTier::Barony.outranks(&PolityTier::County));
+        assert!(!PolityTier::Kingdom.outranks(&PolityTier::Empire));
+
+        // Test that same tier doesn't outrank itself
+        assert!(!PolityTier::Kingdom.outranks(&PolityTier::Kingdom));
     }
 }
