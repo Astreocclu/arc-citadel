@@ -9,7 +9,7 @@
 
 use arc_citadel::actions::catalog::{ActionCategory, ActionId};
 use arc_citadel::core::types::Vec2;
-use arc_citadel::ecs::world::World;
+use arc_citadel::ecs::world::{Abundance, World};
 use arc_citadel::entity::tasks::{Task, TaskPriority};
 use arc_citadel::entity::thoughts::{CauseType, Thought, Valence};
 use arc_citadel::simulation::tick::run_simulation_tick;
@@ -208,6 +208,10 @@ fn test_critical_need_triggers_appropriate_action() {
 
     // Set critical food need
     world.humans.needs[0].food = 0.9;
+
+    // Add a food zone at the entity's position so food is available
+    let entity_pos = world.humans.positions[0];
+    world.add_food_zone(entity_pos, 10.0, Abundance::Unlimited);
 
     run_simulation_tick(&mut world);
 

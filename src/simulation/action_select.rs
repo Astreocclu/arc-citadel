@@ -6,7 +6,7 @@ use crate::entity::thoughts::ThoughtBuffer;
 use crate::entity::body::BodyState;
 use crate::entity::species::human::HumanValues;
 use crate::entity::tasks::{Task, TaskPriority, TaskSource};
-use crate::core::types::Tick;
+use crate::core::types::{Tick, Vec2};
 
 /// Context provided to the action selection algorithm
 pub struct SelectionContext<'a> {
@@ -20,6 +20,8 @@ pub struct SelectionContext<'a> {
     pub safe_location: bool,
     pub entity_nearby: bool,
     pub current_tick: Tick,
+    /// Nearest food zone: (zone_id, position, distance)
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
 }
 
 /// Main action selection function for humans
@@ -57,25 +59,76 @@ pub fn select_action_human(ctx: &SelectionContext) -> Option<Task> {
 
 /// Handle critical needs (> 0.8) with immediate responses
 fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Task> {
-    let action = match need {
-        NeedType::Safety if ctx.threat_nearby => ActionId::Flee,
-        NeedType::Safety => ActionId::SeekSafety,
-        NeedType::Food if ctx.food_available => ActionId::Eat,
-        NeedType::Food => ActionId::SeekSafety, // Forage/search when no food available
-        NeedType::Rest if ctx.safe_location => ActionId::Rest,
-        NeedType::Rest => ActionId::SeekSafety, // Find safe place to rest first
-        _ => return None,
-    };
-
-    Some(Task {
-        action,
-        target_position: None,
-        target_entity: None,
-        priority: TaskPriority::Critical,
-        created_tick: ctx.current_tick,
-        progress: 0.0,
-        source: TaskSource::Reaction,
-    })
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            // Move to food zone
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander, // No food known, wander to find some
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety, // Find safe place to rest first
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
 }
 
 /// Check if strong thoughts combined with values should trigger action
@@ -117,20 +170,20 @@ fn check_value_impulses(ctx: &SelectionContext) -> Option<Task> {
     None
 }
 
-/// Address moderate needs (between 0.6 and 0.8)
+/// Address moderate needs (between 0.5 and 0.8)
 fn address_moderate_need(ctx: &SelectionContext) -> Option<Task> {
     let (need_type, level) = ctx.needs.most_pressing();
 
-    // Only address if need is moderately pressing
-    if level < 0.6 {
+    // Address needs proactively at 0.5 (not waiting until 0.6)
+    if level < 0.5 {
         return None;
     }
 
     let action = match need_type {
-        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
-        NeedType::Purpose => ActionId::IdleObserve, // Look for something to do
-        NeedType::Rest if ctx.safe_location => ActionId::Rest,
         NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather, // Do productive work
         NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
         _ => return None,
     };
@@ -186,6 +239,7 @@ mod tests {
             safe_location: false,
             entity_nearby: false,
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -214,6 +268,7 @@ mod tests {
             safe_location: true,
             entity_nearby: false,
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -241,6 +296,7 @@ mod tests {
             safe_location: true,
             entity_nearby: false,
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -274,6 +330,7 @@ mod tests {
             safe_location: true,
             entity_nearby: true,
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -302,6 +359,7 @@ mod tests {
             safe_location: true,
             entity_nearby: true, // Someone to talk to
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -333,6 +391,7 @@ mod tests {
             safe_location: true,
             entity_nearby: false,
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -364,6 +423,7 @@ mod tests {
             safe_location: true,
             entity_nearby: true,
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -391,6 +451,7 @@ mod tests {
             safe_location: true,
             entity_nearby: false, // No one to talk to
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -427,6 +488,7 @@ mod tests {
             safe_location: true,
             entity_nearby: false,
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         let task = select_action_human(&ctx);
@@ -455,6 +517,7 @@ mod tests {
             safe_location: false,
             entity_nearby: false,
             current_tick: 0,
+            nearest_food_zone: None,
         };
 
         // Critical needs should still trigger even with existing task
@@ -463,5 +526,39 @@ mod tests {
         let task = task.unwrap();
         assert_eq!(task.action, ActionId::Flee);
         assert_eq!(task.priority, TaskPriority::Critical);
+    }
+
+    #[test]
+    fn test_hungry_entity_moves_to_food() {
+        use crate::core::types::Vec2;
+
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.food = 0.85; // Critical hunger
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: false, // No food at current position
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: Some((0, Vec2::new(100.0, 100.0), 50.0)), // Food zone nearby
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        assert_eq!(task.action, ActionId::MoveTo);
+        // Check target_position coordinates since Vec2 doesn't implement PartialEq
+        let target = task.target_position.expect("Expected target_position to be set");
+        assert!((target.x - 100.0).abs() < 0.001);
+        assert!((target.y - 100.0).abs() < 0.001);
     }
 }

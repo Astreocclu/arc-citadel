@@ -206,10 +206,19 @@ fn decay_thoughts(world: &mut World) {
 }
 
 fn select_actions(world: &mut World) {
+    use arc_citadel::simulation::perception::find_nearest_food_zone;
+
     let current_tick = world.current_tick;
     for i in 0..world.humans.ids.len() {
         if !world.humans.alive[i] { continue; }
         if world.humans.task_queues[i].current().is_some() { continue; }
+
+        let pos = world.humans.positions[i];
+        // Check if entity is AT a food zone
+        let food_available = world.food_zones.iter()
+            .any(|zone| zone.contains(pos));
+        // Find nearest food zone within perception range
+        let nearest_food_zone = find_nearest_food_zone(pos, 50.0, &world.food_zones);
 
         let ctx = SelectionContext {
             body: &world.humans.body_states[i],
@@ -218,10 +227,11 @@ fn select_actions(world: &mut World) {
             values: &world.humans.values[i],
             has_current_task: false,
             threat_nearby: world.humans.needs[i].safety > 0.5,
-            food_available: true,
+            food_available,
             safe_location: world.humans.needs[i].safety < 0.3,
             entity_nearby: true,
             current_tick,
+            nearest_food_zone,
         };
 
         if let Some(task) = select_action_human(&ctx) {
