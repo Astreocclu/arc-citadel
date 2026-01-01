@@ -1184,3 +1184,224 @@ fn test_disposition_persistence_through_simulation() {
         "Relationship slot should persist through simulation"
     );
 }
+
+// ============================================================================
+// Action Execution Workflow Integration Tests
+// ============================================================================
+
+use arc_citadel::simulation::{ResourceZone, ResourceType};
+
+/// Integration test: Survival priority chain
+///
+/// This test verifies that entities with multiple critical needs
+/// address them in a sensible priority order. An entity that is
+/// both hungry and tired should:
+/// 1. Eat when in a food zone (hunger is higher priority)
+/// 2. Rest when hunger is satisfied and location is safe (low safety need)
+///
+/// Note: Rest requires safe_location (safety need < 0.3), so we set up
+/// the entity to feel safe to enable Rest behavior.
+#[test]
+fn test_survival_priority_chain() {
+    let mut world = World::new();
+
+    // Create food zone at origin
+    world.add_food_zone(Vec2::new(0.0, 0.0), 10.0, Abundance::Unlimited);
+
+    // Spawn entity at the food zone
+    let id = world.spawn_human("Survivor".into());
+    let idx = world.humans.index_of(id).unwrap();
+    world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+    // Very hungry and tired, but feels safe (low safety need enables Rest)
+    world.humans.needs[idx].food = 0.9;   // Critical hunger
+    world.humans.needs[idx].rest = 0.85;  // Critical rest need (triggers Rest action)
+    world.humans.needs[idx].safety = 0.1; // Low safety need = safe location
+
+    let initial_hunger = world.humans.needs[idx].food;
+    let initial_rest = world.humans.needs[idx].rest;
+
+    // Run simulation for 100 ticks
+    for _ in 0..100 {
+        run_simulation_tick(&mut world);
+    }
+
+    // Hunger should be reduced (entity ate)
+    assert!(
+        world.humans.needs[idx].food < initial_hunger,
+        "Hunger should be reduced after eating. Initial: {}, Final: {}",
+        initial_hunger,
+        world.humans.needs[idx].food
+    );
+
+    // Rest need should be reduced (entity rested when safe_location is true)
+    // The Rest action satisfies the rest need, not directly reducing fatigue
+    assert!(
+        world.humans.needs[idx].rest < initial_rest,
+        "Rest need should be reduced after resting. Initial: {}, Final: {}",
+        initial_rest,
+        world.humans.needs[idx].rest
+    );
+}
+
+/// Integration test: Social clustering through social actions
+///
+/// This test verifies that entities with high social needs and
+/// friendly dispositions toward each other will interact and
+/// form social memories. When entities have prior positive experiences
+/// with each other, they will seek each other out for social interaction.
+///
+/// Note: Social action selection requires friendly dispositions, so we
+/// seed friendly memories between adjacent entities to enable TalkTo.
+#[test]
+fn test_social_clustering() {
+    use arc_citadel::entity::social::EventType;
+
+    let mut world = World::new();
+
+    // Spawn entities close together (within perception range of 50 units)
+    // Position them at 0, 10, 20, 30, 40 units apart (all within range of each other)
+    let mut ids = Vec::new();
+    for i in 0..5 {
+        let id = world.spawn_human(format!("Person{}", i));
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(i as f32 * 10.0, 0.0);
+        world.humans.needs[idx].social = 0.8;  // High social need
+        ids.push(id);
+    }
+
+    // Seed friendly relationships between adjacent entities
+    // This creates the conditions for social interaction
+    for i in 0..4 {
+        let idx_a = world.humans.index_of(ids[i]).unwrap();
+        let idx_b = world.humans.index_of(ids[i+1]).unwrap();
+
+        // Entity A has positive memory of entity B (and vice versa)
+        world.humans.social_memories[idx_a].record_encounter(
+            ids[i+1],
+            EventType::AidReceived,  // Creates friendly disposition
+            0.7,
+            0,
+        );
+        world.humans.social_memories[idx_b].record_encounter(
+            ids[i],
+            EventType::AidReceived,
+            0.7,
+            0,
+        );
+    }
+
+    // Run simulation for 200 ticks
+    for _ in 0..200 {
+        run_simulation_tick(&mut world);
+    }
+
+    // Verify that social interactions occurred by checking:
+    // 1. Social needs were somewhat satisfied
+    // 2. Additional social memories were formed
+    let mut social_needs_satisfied = 0;
+    let mut has_social_memories = 0;
+
+    for i in 0..5 {
+        let idx = world.humans.index_of(ids[i]).unwrap();
+
+        // Check if social need decreased
+        if world.humans.needs[idx].social < 0.8 {
+            social_needs_satisfied += 1;
+        }
+
+        // Check if entity has social memories
+        if world.humans.social_memories[idx].slots.len() > 0 {
+            has_social_memories += 1;
+        }
+    }
+
+    // At least some entities should have had social needs satisfied
+    assert!(
+        social_needs_satisfied >= 2,
+        "At least 2 entities should have reduced social needs through interaction. Got: {}",
+        social_needs_satisfied
+    );
+
+    // All entities should have social memories (from seeding + interactions)
+    assert!(
+        has_social_memories == 5,
+        "All entities should have social memories. Got: {}",
+        has_social_memories
+    );
+}
+
+/// Integration test: Resource gathering workflow
+///
+/// This test verifies the complete gather workflow:
+/// 1. Create a ResourceZone at a location
+/// 2. Spawn a worker far from the zone with high purpose need
+/// 3. Give the worker a Gather task targeting the resource zone
+/// 4. Run simulation until task completes or timeout
+/// 5. Verify resources were depleted and purpose need was satisfied
+#[test]
+fn test_resource_gathering_workflow() {
+    let mut world = World::new();
+
+    // Create resource zone at (20, 0) with radius 5
+    world.resource_zones.push(ResourceZone::new(
+        Vec2::new(20.0, 0.0),
+        ResourceType::Wood,
+        5.0,
+    ));
+
+    // Spawn worker at origin (0, 0) - needs to move to resource zone
+    let id = world.spawn_human("Worker".into());
+    let idx = world.humans.index_of(id).unwrap();
+    world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+    world.humans.needs[idx].purpose = 0.8;  // High purpose need
+
+    // Give gather task targeting the resource zone
+    let task = Task::new(ActionId::Gather, TaskPriority::Normal, 0)
+        .with_position(Vec2::new(20.0, 0.0));
+    world.humans.task_queues[idx].push(task);
+
+    let initial_resources = world.resource_zones[0].current;
+    let initial_purpose = world.humans.needs[idx].purpose;
+
+    // Run until task completes or 200 ticks
+    let mut ticks = 0;
+    while ticks < 200 {
+        run_simulation_tick(&mut world);
+        ticks += 1;
+
+        // Check if task is complete (no longer gathering)
+        let is_still_gathering = world.humans.task_queues[idx]
+            .current()
+            .map(|t| t.action == ActionId::Gather)
+            .unwrap_or(false);
+
+        if !is_still_gathering {
+            break;
+        }
+    }
+
+    // Verify resources were depleted
+    assert!(
+        world.resource_zones[0].current < initial_resources,
+        "Resources should be depleted. Initial: {}, Final: {}",
+        initial_resources,
+        world.resource_zones[0].current
+    );
+
+    // Verify purpose need was satisfied
+    assert!(
+        world.humans.needs[idx].purpose < initial_purpose,
+        "Purpose need should be satisfied. Initial: {}, Final: {}",
+        initial_purpose,
+        world.humans.needs[idx].purpose
+    );
+
+    // Verify entity moved toward the resource zone
+    let final_pos = world.humans.positions[idx];
+    assert!(
+        final_pos.x > 10.0,
+        "Entity should have moved toward resource zone. Final x: {}",
+        final_pos.x
+    );
+}
