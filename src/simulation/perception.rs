@@ -138,7 +138,7 @@ pub fn perception_system(
     positions: &[Vec2],
     entity_ids: &[EntityId],
     social_memories: &[SocialMemory],
-    perception_range: f32,
+    perception_ranges: &[f32],
 ) -> Vec<Perception> {
     // Build O(1) lookup map for entity indices
     let id_to_idx: ahash::AHashMap<EntityId, usize> = entity_ids
@@ -150,6 +150,7 @@ pub fn perception_system(
     entity_ids.iter().enumerate().map(|(i, &observer_id)| {
         let observer_pos = positions[i];
         let observer_memory = &social_memories[i];
+        let perception_range = perception_ranges[i];
 
         let nearby: Vec<_> = spatial_grid.query_neighbors(observer_pos)
             .filter(|&e| e != observer_id)
@@ -241,8 +242,9 @@ mod tests {
 
         let social_memories = vec![alice_memory, bob_memory];
 
-        // Run perception
-        let perceptions = perception_system(&grid, &positions, &ids, &social_memories, 50.0);
+        // Run perception (both entities have base range 50.0)
+        let perception_ranges = vec![50.0, 50.0];
+        let perceptions = perception_system(&grid, &positions, &ids, &social_memories, &perception_ranges);
 
         // Alice's perception of Bob should include disposition
         let alice_perception = perceptions.iter().find(|p| p.observer == alice).unwrap();
