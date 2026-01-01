@@ -90,3 +90,35 @@ impl std::ops::Mul<f32> for Vec2 {
         Self { x: self.x * rhs, y: self.y * rhs }
     }
 }
+
+/// Unique identifier for polities
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct PolityId(pub u32);
+
+impl PolityId {
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_polity_id_equality() {
+        let a = PolityId(1);
+        let b = PolityId(1);
+        let c = PolityId(2);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_polity_id_hash() {
+        use std::collections::HashMap;
+        let mut map: HashMap<PolityId, &str> = HashMap::new();
+        map.insert(PolityId(1), "empire");
+        assert_eq!(map.get(&PolityId(1)), Some(&"empire"));
+    }
+}
