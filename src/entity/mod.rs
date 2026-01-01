@@ -5,3 +5,4 @@ pub mod thoughts;
 pub mod relationships;
 pub mod tasks;
 pub mod species;
+pub mod social;

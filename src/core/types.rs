@@ -23,7 +23,7 @@ impl Default for EntityId {
 pub type Tick = u64;
 
 /// Location identifier for campaign map
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LocationId(pub u32);
 
 /// Flow field identifier
