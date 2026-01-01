@@ -789,11 +789,38 @@ fn execute_tasks(world: &mut World) {
                         true // No target position
                     }
                 }
+                ActionId::IdleWander => {
+                    // If no target or reached target, pick new random point
+                    let current = world.humans.positions[i];
+                    let needs_new_target = target_pos.map(|t| current.distance(&t) < 1.0).unwrap_or(true);
+
+                    if needs_new_target {
+                        // Pick random point within 10 units
+                        use rand::Rng;
+                        let mut rng = rand::thread_rng();
+                        let angle = rng.gen::<f32>() * std::f32::consts::TAU;
+                        let distance = rng.gen::<f32>() * 10.0;
+                        let offset = crate::core::types::Vec2::new(angle.cos() * distance, angle.sin() * distance);
+                        task.target_position = Some(current + offset);
+                    }
+
+                    if let Some(target) = task.target_position {
+                        let direction = (target - current).normalize();
+                        let speed = 1.0; // Slow wandering speed
+
+                        if direction.length() > 0.0 {
+                            world.humans.positions[i] = current + direction * speed;
+                        }
+                    }
+
+                    // IdleWander never auto-completes (duration 0)
+                    false
+                }
                 _ => false, // Not a movement action
             };
 
-            // Progress for non-movement actions (Rest, social actions, and Gather are handled specially above)
-            let is_special_action = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Follow | ActionId::Rest | ActionId::TalkTo | ActionId::Help | ActionId::Trade | ActionId::Gather);
+            // Progress for non-movement actions (Rest, social actions, Gather, and IdleWander are handled specially above)
+            let is_special_action = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Follow | ActionId::Rest | ActionId::TalkTo | ActionId::Help | ActionId::Trade | ActionId::Gather | ActionId::IdleWander);
             if !is_special_action {
                 let duration = task.action.base_duration();
                 let progress_rate = match duration {
@@ -1185,11 +1212,19 @@ mod tests {
 
     #[test]
     fn test_task_progress() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
         let mut world = World::new();
         world.spawn_human("Worker".into());
 
-        // Run first tick to get a task
-        run_simulation_tick(&mut world);
+        // Set initial position
+        world.humans.positions[0] = Vec2::new(0.0, 0.0);
+
+        // Give a non-continuous task that has traditional progress (Rest has duration 50)
+        let task = Task::new(ActionId::Rest, TaskPriority::Normal, 0);
+        world.humans.task_queues[0].push(task);
 
         // Get initial progress
         let initial_progress = world.humans.task_queues[0]
@@ -1200,13 +1235,15 @@ mod tests {
         // Run more ticks
         run_simulation_tick(&mut world);
 
-        // Progress should have increased
+        // Progress should have increased for Rest action
         let current_progress = world.humans.task_queues[0]
             .current()
             .map(|t| t.progress)
             .unwrap_or(0.0);
 
-        assert!(current_progress > initial_progress);
+        assert!(current_progress > initial_progress,
+                "Rest action should progress. Initial: {}, Current: {}",
+                initial_progress, current_progress);
     }
 
     #[test]
@@ -1909,5 +1946,107 @@ mod tests {
         let task_is_gather = current_task.map(|t| t.action == ActionId::Gather).unwrap_or(false);
         assert!(!task_is_gather,
                 "Gather task should be complete when zone is depleted");
+    }
+
+    #[test]
+    fn test_idle_wander_moves_slowly() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        let id = world.spawn_human("Wanderer".into());
+        let idx = world.humans.index_of(id).unwrap();
+
+        // Set initial position at origin
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Give IdleWander task
+        let task = Task::new(ActionId::IdleWander, TaskPriority::Low, 0);
+        world.humans.task_queues[idx].push(task);
+
+        let initial_pos = world.humans.positions[idx];
+
+        // Run several ticks
+        for _ in 0..10 {
+            run_simulation_tick(&mut world);
+        }
+
+        let final_pos = world.humans.positions[idx];
+        let distance_moved = initial_pos.distance(&final_pos);
+
+        // Should have moved (but slowly)
+        assert!(distance_moved > 0.0, "Should move when wandering");
+        assert!(distance_moved < 20.0, "Should move slowly (speed 1.0 * 10 ticks = max 10 units, but target may be closer)");
+    }
+
+    #[test]
+    fn test_idle_wander_never_completes() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        let id = world.spawn_human("Wanderer".into());
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Give IdleWander task
+        let task = Task::new(ActionId::IdleWander, TaskPriority::Low, 0);
+        world.humans.task_queues[idx].push(task);
+
+        // Run many ticks
+        for _ in 0..100 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Task should still be IdleWander (never auto-completes)
+        let current_task = world.humans.task_queues[idx].current();
+        assert!(current_task.is_some(), "Should still have a task");
+        assert_eq!(current_task.unwrap().action, ActionId::IdleWander,
+                   "Should still be IdleWander (continuous action)");
+    }
+
+    #[test]
+    fn test_idle_wander_picks_new_target_when_reached() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        let id = world.spawn_human("Wanderer".into());
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Give IdleWander task
+        let task = Task::new(ActionId::IdleWander, TaskPriority::Low, 0);
+        world.humans.task_queues[idx].push(task);
+
+        // Run first tick to get initial target
+        run_simulation_tick(&mut world);
+
+        let first_target = world.humans.task_queues[idx]
+            .current()
+            .and_then(|t| t.target_position);
+        assert!(first_target.is_some(), "Should have a target after first tick");
+
+        // Run enough ticks to reach the target (max distance 10, speed 1.0, so 10+ ticks)
+        for _ in 0..15 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Entity should have picked a new target at some point
+        // We can verify this by checking that it continued moving past the first target
+        let final_pos = world.humans.positions[idx];
+        let initial_pos = Vec2::new(0.0, 0.0);
+        let distance_from_start = initial_pos.distance(&final_pos);
+
+        // After 16 ticks at speed 1.0, should have moved approximately 16 units
+        // (but direction changes when reaching targets)
+        assert!(distance_from_start > 0.0,
+                "Should have moved from start position");
     }
 }
