@@ -12,15 +12,23 @@ pub struct ExpansionTargets {
 }
 
 /// Find expansion targets for a polity
+/// Territory is now tracked via region.controller, not polity.territory
 pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> ExpansionTargets {
     let mut unclaimed = Vec::new();
     let mut weak_neighbors = Vec::new();
 
+    // Find all regions controlled by this polity
+    let our_regions: Vec<u32> = world.regions.iter()
+        .filter(|r| r.controller == Some(polity.id.0))
+        .map(|r| r.id)
+        .collect();
+
     // Check all adjacent regions to our territory
-    for &region_id in &polity.territory {
+    for &region_id in &our_regions {
         if let Some(region) = world.get_region(region_id) {
             for &neighbor_id in &region.neighbors {
-                if polity.territory.contains(&neighbor_id) {
+                // Skip if we already control this region
+                if our_regions.contains(&neighbor_id) {
                     continue;
                 }
 
@@ -39,7 +47,7 @@ pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> Expans
                             unclaimed.push(neighbor_id);
                         }
                     } else if let Some(controller) = neighbor.controller {
-                        if controller != polity.id {
+                        if controller != polity.id.0 {
                             // Check if controller is weak
                             if let Some(other) = world.get_polity(controller) {
                                 if other.military_strength < polity.military_strength * 0.7 {
@@ -68,14 +76,16 @@ pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> Expans
 }
 
 /// Calculate expansion pressure for humans
+/// Territory is now tracked via region.controller, not polity.territory
 pub fn calculate_human_expansion_pressure(polity: &Polity, world: &AggregateWorld) -> f32 {
     let base = polity.human_state()
         .map(|s| s.expansion_pressure)
         .unwrap_or(0.0);
 
     // Pressure increases with population density
-    let total_capacity: u32 = polity.territory.iter()
-        .filter_map(|id| world.get_region(*id))
+    // Find total capacity of all regions we control
+    let total_capacity: u32 = world.regions.iter()
+        .filter(|r| r.controller == Some(polity.id.0))
         .map(|r| r.max_population)
         .sum();
 

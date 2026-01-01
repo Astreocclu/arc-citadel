@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 
-use crate::core::types::Species;
+use crate::core::types::{Species, PolityId, PolityTier, GovernmentType, RulerId};
 use crate::aggregate::region::{Region, Terrain, ResourceType};
 use crate::aggregate::polity::{
     Polity, PolityType, CulturalDrift, Relation, SpeciesState,
@@ -302,13 +302,26 @@ fn generate_species_polities(
             }),
         };
 
+        // Determine tier based on territory size
+        let tier = match territory.len() {
+            0..=5 => PolityTier::Barony,
+            6..=10 => PolityTier::County,
+            11..=20 => PolityTier::Duchy,
+            21..=40 => PolityTier::Kingdom,
+            _ => PolityTier::Empire,
+        };
+
         let polity = Polity {
-            id: polity_id,
+            id: PolityId(polity_id),
             name: generate_polity_name(species, rng),
             species,
             polity_type,
+            tier,
+            government: GovernmentType::Autocracy,
+            parent: None, // All polities start as sovereign
+            rulers: vec![RulerId(polity_id)], // Create a ruler with same ID as polity
+            council_roles: HashMap::new(),
             population,
-            territory,
             capital: capital_id,
             military_strength: population as f32 * 0.1,
             economic_strength: population as f32 * 0.08,
@@ -317,6 +330,9 @@ fn generate_species_polities(
             species_state,
             alive: true,
         };
+
+        // Update regions to point to this polity as controller
+        // Note: territory is now tracked via region.controller, not polity.territory
 
         polities.push(polity);
     }
@@ -345,8 +361,8 @@ fn generate_polity_name(species: Species, rng: &mut ChaCha8Rng) -> String {
 
 /// Initialize relations between all polities
 pub fn initialize_relations(world: &mut AggregateWorld) {
-    let polity_ids: Vec<u32> = world.polities.iter().map(|p| p.id).collect();
-    let species_map: HashMap<u32, Species> = world.polities.iter()
+    let polity_ids: Vec<PolityId> = world.polities.iter().map(|p| p.id).collect();
+    let species_map: HashMap<PolityId, Species> = world.polities.iter()
         .map(|p| (p.id, p.species))
         .collect();
 
@@ -358,7 +374,8 @@ pub fn initialize_relations(world: &mut AggregateWorld) {
                 // Same species = slightly positive, different = slightly negative
                 let base_opinion = if polity.species == *other_species { 10 } else { -10 };
 
-                polity.relations.insert(other_id, Relation {
+                // Relations are keyed by the inner u32 for backwards compatibility
+                polity.relations.insert(other_id.0, Relation {
                     opinion: base_opinion,
                     trust: 0,
                     at_war: false,

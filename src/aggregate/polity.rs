@@ -3,27 +3,33 @@
 use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
-use crate::core::types::Species;
+use crate::core::types::{GovernmentType, PolityId, PolityTier, RulerId, Species};
 
 /// A polity (nation, tribe, hold, grove, etc.)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Polity {
-    pub id: u32,
+    pub id: PolityId,
     pub name: String,
     pub species: Species,
     pub polity_type: PolityType,
 
-    // Physical state
+    // Hierarchy fields
+    pub tier: PolityTier,
+    pub government: GovernmentType,
+    pub parent: Option<PolityId>,  // None = sovereign
+    pub rulers: Vec<RulerId>,       // len=1 for autocracy, len=N for council
+    pub council_roles: HashMap<CouncilRole, RulerId>,
+
+    // Physical state (territory removed - Location.controller is source of truth)
     pub population: u32,
-    pub territory: HashSet<u32>,
-    pub capital: u32,
+    pub capital: u32,  // Region ID
     pub military_strength: f32,
     pub economic_strength: f32,
 
     // Cultural drift from species baseline
     pub cultural_drift: CulturalDrift,
 
-    // Relations with other polities
+    // Relations with other polities (treaties, not opinions)
     pub relations: HashMap<u32, Relation>,
 
     // Species-specific state
@@ -31,6 +37,15 @@ pub struct Polity {
 
     // Alive status
     pub alive: bool,
+}
+
+/// Council roles for government
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CouncilRole {
+    Chancellor,   // Diplomacy
+    Marshal,      // Military
+    Steward,      // Economy
+    Spymaster,    // Intrigue
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -238,5 +253,84 @@ impl Polity {
             SpeciesState::Elf(s) => Some(s),
             _ => None,
         }
+    }
+
+    /// Returns true if this polity has no parent (is sovereign)
+    pub fn is_sovereign(&self) -> bool {
+        self.parent.is_none()
+    }
+
+    /// Get the liege (immediate parent) if any
+    pub fn liege(&self) -> Option<PolityId> {
+        self.parent
+    }
+
+    /// Get the primary ruler (first in rulers list)
+    pub fn primary_ruler(&self) -> Option<RulerId> {
+        self.rulers.first().copied()
+    }
+
+    /// Check if a ruler is part of this polity's leadership
+    pub fn has_ruler(&self, ruler: RulerId) -> bool {
+        self.rulers.contains(&ruler)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::types::{PolityId, RulerId, PolityTier, GovernmentType};
+
+    #[test]
+    fn test_polity_has_new_fields() {
+        let polity = Polity {
+            id: PolityId(1),
+            name: "Kingdom of Aldoria".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom,
+            tier: PolityTier::Kingdom,
+            government: GovernmentType::Autocracy,
+            parent: None, // Sovereign
+            rulers: vec![RulerId(1)],
+            council_roles: HashMap::new(),
+            capital: 0,
+            population: 10000,
+            military_strength: 100.0,
+            economic_strength: 100.0,
+            cultural_drift: CulturalDrift::default(),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        };
+
+        assert!(polity.is_sovereign());
+        assert_eq!(polity.tier, PolityTier::Kingdom);
+        assert_eq!(polity.rulers.len(), 1);
+    }
+
+    #[test]
+    fn test_polity_is_vassal() {
+        let polity = Polity {
+            id: PolityId(2),
+            name: "Duchy of Valheim".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom, // Cultural type
+            tier: PolityTier::Duchy,          // Hierarchy rank
+            government: GovernmentType::Autocracy,
+            parent: Some(PolityId(1)),        // Vassal of polity 1
+            rulers: vec![RulerId(2)],
+            council_roles: HashMap::new(),
+            capital: 1,
+            population: 5000,
+            military_strength: 50.0,
+            economic_strength: 50.0,
+            cultural_drift: CulturalDrift::default(),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        };
+
+        assert!(!polity.is_sovereign());
+        assert_eq!(polity.parent, Some(PolityId(1)));
     }
 }

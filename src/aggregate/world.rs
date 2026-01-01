@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::aggregate::region::Region;
 use crate::aggregate::polity::Polity;
+use crate::core::types::PolityId;
 
 /// The aggregate world state for history simulation
 pub struct AggregateWorld {
@@ -65,10 +66,18 @@ impl AggregateWorld {
     }
 
     pub fn get_polity(&self, id: u32) -> Option<&Polity> {
-        self.polities.iter().find(|p| p.id == id)
+        self.polities.iter().find(|p| p.id == PolityId(id))
     }
 
     pub fn get_polity_mut(&mut self, id: u32) -> Option<&mut Polity> {
+        self.polities.iter_mut().find(|p| p.id == PolityId(id))
+    }
+
+    pub fn get_polity_by_polity_id(&self, id: PolityId) -> Option<&Polity> {
+        self.polities.iter().find(|p| p.id == id)
+    }
+
+    pub fn get_polity_by_polity_id_mut(&mut self, id: PolityId) -> Option<&mut Polity> {
         self.polities.iter_mut().find(|p| p.id == id)
     }
 
