@@ -10,7 +10,7 @@
 use crate::ecs::world::World;
 use crate::spatial::sparse_hash::SparseHashGrid;
 use crate::simulation::perception::{perception_system, find_nearest_food_zone, RelationshipType};
-use crate::simulation::action_select::{select_action_human, SelectionContext};
+use crate::simulation::action_select::{select_action_human, SelectionContext, select_action_orc, OrcSelectionContext};
 use crate::entity::thoughts::{Thought, Valence, CauseType};
 use crate::entity::needs::NeedType;
 use crate::entity::tasks::Task;
@@ -53,18 +53,27 @@ pub fn run_simulation_tick(world: &mut World) {
 /// - Safety decreases naturally when no threats present
 fn update_needs(world: &mut World) {
     let dt = 1.0;
-    let living_indices: Vec<usize> = world.humans.iter_living().collect();
 
-    // Sequential - this is already O(n) and very fast
+    // Process humans
+    let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for i in living_indices {
-        // Check if current action is restful (Rest, IdleObserve, Eat)
         let is_restful = world.humans.task_queues[i]
             .current()
             .map(|t| t.action.is_restful())
-            .unwrap_or(true); // No task = resting
-
+            .unwrap_or(true);
         let is_active = !is_restful;
         world.humans.needs[i].decay(dt, is_active);
+    }
+
+    // Process orcs
+    let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
+    for i in orc_indices {
+        let is_restful = world.orcs.task_queues[i]
+            .current()
+            .map(|t| t.action.is_restful())
+            .unwrap_or(true);
+        let is_active = !is_restful;
+        world.orcs.needs[i].decay(dt, is_active);
     }
 }
 
@@ -277,10 +286,16 @@ fn convert_thoughts_to_memories(world: &mut World) {
 ///
 /// Thoughts naturally fade, and faded thoughts are removed from the buffer.
 fn decay_thoughts(world: &mut World) {
-    // Collect indices first to avoid borrow conflicts
+    // Decay human thoughts
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for i in living_indices {
         world.humans.thoughts[i].decay_all();
+    }
+
+    // Decay orc thoughts
+    let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
+    for i in orc_indices {
+        world.orcs.thoughts[i].decay_all();
     }
 }
 
@@ -427,6 +442,76 @@ fn select_actions(world: &mut World) {
             }
         }
     }
+
+    // Process orc action selection (sequential for simplicity)
+    select_orc_actions(world, current_tick);
+}
+
+/// Select actions for orc entities
+fn select_orc_actions(world: &mut World, current_tick: u64) {
+    let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
+    let perception_range = 50.0;
+
+    // Build spatial grid for orc perception
+    let mut grid = SparseHashGrid::new(10.0);
+    let orc_positions: Vec<_> = world.orcs.positions.iter().cloned().collect();
+    let orc_ids: Vec<_> = world.orcs.ids.iter().cloned().collect();
+    grid.rebuild(orc_ids.iter().cloned().zip(orc_positions.iter().cloned()));
+
+    // Build lookup map for orc indices
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = orc_ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
+    for i in orc_indices {
+        if world.orcs.task_queues[i].current().is_some() {
+            continue;
+        }
+
+        let pos = world.orcs.positions[i];
+        let observer_id = world.orcs.ids[i];
+
+        let food_available = world.food_zones.iter().any(|zone| zone.contains(pos));
+        let nearest_food_zone = find_nearest_food_zone(pos, perception_range, &world.food_zones);
+
+        // Query nearby entities and build dispositions list
+        let perceived_dispositions: Vec<_> = grid
+            .query_neighbors(pos)
+            .filter(|&e| e != observer_id)
+            .filter_map(|entity| {
+                let entity_idx = *id_to_idx.get(&entity)?;
+                let entity_pos = orc_positions[entity_idx];
+                let distance = pos.distance(&entity_pos);
+                if distance <= perception_range {
+                    let disposition = world.orcs.social_memories[i].get_disposition(entity);
+                    Some((entity, disposition))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let ctx = OrcSelectionContext {
+            body: &world.orcs.body_states[i],
+            needs: &world.orcs.needs[i],
+            thoughts: &world.orcs.thoughts[i],
+            values: &world.orcs.values[i],
+            has_current_task: false,
+            threat_nearby: world.orcs.needs[i].safety > 0.5,
+            food_available,
+            safe_location: world.orcs.needs[i].safety < 0.3,
+            entity_nearby: !perceived_dispositions.is_empty(),
+            current_tick,
+            nearest_food_zone,
+            perceived_dispositions,
+        };
+
+        if let Some(task) = select_action_orc(&ctx) {
+            world.orcs.task_queues[i].push(task);
+        }
+    }
 }
 
 /// Execute current tasks for all entities
@@ -512,6 +597,24 @@ fn execute_tasks(world: &mut World) {
                     }
                     false // Flee continues until interrupted
                 }
+                ActionId::SeekSafety => {
+                    // Move away from threat position (stored in target_position)
+                    if let Some(threat_pos) = target_pos {
+                        let current = world.humans.positions[i];
+                        let away = (current - threat_pos).normalize();
+                        let speed = 3.0; // Fast like Flee
+
+                        if away.length() > 0.0 {
+                            world.humans.positions[i] = current + away * speed;
+                        }
+
+                        // Check if far enough away (20 units = safe)
+                        let distance = world.humans.positions[i].distance(&threat_pos);
+                        distance > 20.0 // Complete when safe
+                    } else {
+                        true // No threat position, complete immediately
+                    }
+                }
                 ActionId::Follow => {
                     // Use pre-computed target position from before we borrowed task_queues
                     if let Some((target_pos, target_exists)) = follow_target_pos {
@@ -550,7 +653,7 @@ fn execute_tasks(world: &mut World) {
             };
 
             // Progress for non-movement actions (Rest is handled specially above)
-            let is_movement_or_rest = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::Follow | ActionId::Rest);
+            let is_movement_or_rest = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Follow | ActionId::Rest);
             if !is_movement_or_rest {
                 let duration = task.action.base_duration();
                 let progress_rate = match duration {
@@ -604,6 +707,113 @@ fn execute_tasks(world: &mut World) {
             }
         }
     }
+
+    // Execute orc tasks
+    execute_orc_tasks(world);
+}
+
+/// Execute current tasks for orc entities
+fn execute_orc_tasks(world: &mut World) {
+    let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
+
+    for i in orc_indices {
+        // Get task info
+        let task_info = world.orcs.task_queues[i].current_mut().map(|task| {
+            let action = task.action;
+            let target_pos = task.target_position;
+
+            // Handle movement actions
+            let movement_complete = match action {
+                ActionId::MoveTo => {
+                    if let Some(target) = target_pos {
+                        let current = world.orcs.positions[i];
+                        let direction = (target - current).normalize();
+                        let speed = 2.0;
+                        if direction.length() > 0.0 {
+                            world.orcs.positions[i] = current + direction * speed;
+                        }
+                        world.orcs.positions[i].distance(&target) < 2.0
+                    } else {
+                        true
+                    }
+                }
+                ActionId::Flee => {
+                    if let Some(threat_pos) = target_pos {
+                        let current = world.orcs.positions[i];
+                        let away = (current - threat_pos).normalize();
+                        let speed = 3.0;
+                        if away.length() > 0.0 {
+                            world.orcs.positions[i] = current + away * speed;
+                        }
+                    }
+                    false
+                }
+                ActionId::SeekSafety => {
+                    if let Some(threat_pos) = target_pos {
+                        let current = world.orcs.positions[i];
+                        let away = (current - threat_pos).normalize();
+                        let speed = 3.0;
+                        if away.length() > 0.0 {
+                            world.orcs.positions[i] = current + away * speed;
+                        }
+                        let distance = world.orcs.positions[i].distance(&threat_pos);
+                        distance > 20.0
+                    } else {
+                        true
+                    }
+                }
+                ActionId::Rest => {
+                    world.orcs.body_states[i].fatigue =
+                        (world.orcs.body_states[i].fatigue - 0.01).max(0.0);
+                    let duration = task.action.base_duration();
+                    task.progress += 1.0 / duration as f32;
+                    task.progress >= 1.0
+                }
+                _ => false,
+            };
+
+            // Progress for non-movement actions
+            let is_movement_or_rest = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Rest);
+            if !is_movement_or_rest {
+                let duration = task.action.base_duration();
+                let progress_rate = match duration {
+                    0 => 0.1,
+                    1..=60 => 0.05,
+                    _ => 0.02,
+                };
+                task.progress += progress_rate;
+            }
+
+            let duration = task.action.base_duration();
+            let progress_complete = duration > 0 && task.progress >= 1.0;
+            let is_complete = movement_complete || progress_complete;
+            (action, is_complete)
+        });
+
+        if let Some((action, is_complete)) = task_info {
+            // Handle Eat action
+            if action == ActionId::Eat {
+                let pos = world.orcs.positions[i];
+                for zone in &mut world.food_zones {
+                    if zone.contains(pos) {
+                        let consumed = zone.consume(0.1);
+                        if consumed > 0.0 {
+                            world.orcs.needs[i].satisfy(NeedType::Food, consumed * 0.5);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                for (need, amount) in action.satisfies_needs() {
+                    world.orcs.needs[i].satisfy(need, amount * 0.05);
+                }
+            }
+
+            if is_complete {
+                world.orcs.task_queues[i].complete_current();
+            }
+        }
+    }
 }
 
 /// Regenerate food for scarce zones
@@ -628,16 +838,22 @@ fn regenerate_food_zones(world: &mut World) {
 /// the counter, so we check (current_tick - 1) to see if we just completed a day.
 fn decay_social_memories(world: &mut World) {
     // Only decay once per day
-    // We check current_tick (which was just incremented) to see if we hit a day boundary
     if world.current_tick % TICKS_PER_DAY != 0 {
         return;
     }
 
     let current_tick = world.current_tick;
-    let living_indices: Vec<usize> = world.humans.iter_living().collect();
 
+    // Decay human social memories
+    let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for &idx in &living_indices {
         world.humans.social_memories[idx].apply_decay(current_tick);
+    }
+
+    // Decay orc social memories
+    let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
+    for &idx in &orc_indices {
+        world.orcs.social_memories[idx].apply_decay(current_tick);
     }
 }
 
@@ -1184,6 +1400,86 @@ mod tests {
             (final_fatigue - 0.7).abs() < 0.01,
             "Fatigue should be approximately 0.7 after 10 ticks (0.8 - 10*0.01), got {}",
             final_fatigue
+        );
+    }
+
+    #[test]
+    fn test_seek_safety_moves_away_from_threats() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        // Entity at origin
+        let id = world.spawn_human("Scared".into());
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Give SeekSafety task with threat position at (5, 0)
+        let task = Task::new(ActionId::SeekSafety, TaskPriority::Critical, 0)
+            .with_position(Vec2::new(5.0, 0.0)); // Threat location
+        world.humans.task_queues[idx].push(task);
+
+        // Run tick
+        run_simulation_tick(&mut world);
+
+        // Should have moved away (negative x direction)
+        let pos = world.humans.positions[idx];
+        assert!(pos.x < 0.0, "Should move away from threat at (5,0), but x={}", pos.x);
+    }
+
+    #[test]
+    fn test_seek_safety_completes_when_safe() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        // Entity already 25 units away from threat (safe distance is 20)
+        let id = world.spawn_human("Safe".into());
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(25.0, 0.0);
+
+        // Give SeekSafety task with threat position at origin
+        let task = Task::new(ActionId::SeekSafety, TaskPriority::Critical, 0)
+            .with_position(Vec2::new(0.0, 0.0)); // Threat location
+        world.humans.task_queues[idx].push(task);
+
+        // Run tick
+        run_simulation_tick(&mut world);
+
+        // Task should be complete (entity was already safe distance away)
+        assert!(
+            world.humans.task_queues[idx].current().map(|t| t.action != ActionId::SeekSafety).unwrap_or(true),
+            "SeekSafety task should complete when entity is 20+ units from threat"
+        );
+    }
+
+    #[test]
+    fn test_seek_safety_no_target_completes_immediately() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        let id = world.spawn_human("NoThreat".into());
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Give SeekSafety task WITHOUT a target position
+        let task = Task::new(ActionId::SeekSafety, TaskPriority::Critical, 0);
+        world.humans.task_queues[idx].push(task);
+
+        // Run tick
+        run_simulation_tick(&mut world);
+
+        // Task should be complete (no threat position = complete immediately)
+        assert!(
+            world.humans.task_queues[idx].current().map(|t| t.action != ActionId::SeekSafety).unwrap_or(true),
+            "SeekSafety task should complete immediately when no target_position"
         );
     }
 }
