@@ -844,3 +844,277 @@ fn test_multiple_entities_compete_for_scarce_food() {
         "At least one entity should have eaten"
     );
 }
+
+// ============================================================================
+// Social Memory Integration Tests
+// ============================================================================
+
+use arc_citadel::entity::social::{EventType, Disposition, SocialMemoryParams};
+
+/// Integration test: Full social memory emergence cycle
+///
+/// This test verifies the complete emergent behavior chain:
+/// 1. Entities spawn in a community
+/// 2. Simulation runs for extended period
+/// 3. Entities form relationships through accumulated encounters
+/// 4. Dispositions are computed correctly from memories
+#[test]
+fn test_social_memory_emergence() {
+    let mut world = World::new();
+
+    // Create a small community
+    let alice = world.spawn_human("Alice".into());
+    let bob = world.spawn_human("Bob".into());
+    let charlie = world.spawn_human("Charlie".into());
+
+    let alice_idx = world.humans.index_of(alice).unwrap();
+    let bob_idx = world.humans.index_of(bob).unwrap();
+    let charlie_idx = world.humans.index_of(charlie).unwrap();
+
+    // Position them in a triangle (within perception range of each other)
+    world.humans.positions[alice_idx] = Vec2::new(0.0, 0.0);
+    world.humans.positions[bob_idx] = Vec2::new(10.0, 0.0);
+    world.humans.positions[charlie_idx] = Vec2::new(5.0, 8.0);
+
+    // Add food zone so they can survive (centered between them)
+    world.add_food_zone(Vec2::new(5.0, 4.0), 20.0, Abundance::Unlimited);
+
+    // Manually seed some initial encounters to ensure relationship formation
+    // This simulates what would happen through actual simulation interactions
+    world.humans.social_memories[alice_idx].record_encounter(
+        bob,
+        EventType::FirstMeeting,
+        0.4,
+        0,
+    );
+    world.humans.social_memories[alice_idx].record_encounter(
+        bob,
+        EventType::AidReceived,
+        0.7,
+        100,
+    );
+    world.humans.social_memories[bob_idx].record_encounter(
+        alice,
+        EventType::AidGiven,
+        0.5,
+        100,
+    );
+    world.humans.social_memories[alice_idx].record_encounter(
+        charlie,
+        EventType::Transaction,
+        0.3,
+        200,
+    );
+
+    // Run simulation for extended period
+    for _ in 0..5000 {
+        run_simulation_tick(&mut world);
+    }
+
+    // After extended interaction, entities should know each other
+    let alice_memory = &world.humans.social_memories[alice_idx];
+
+    // Alice should have formed relationships
+    assert!(alice_memory.slots.len() >= 1,
+        "Alice should know at least one other entity, has {} slots",
+        alice_memory.slots.len());
+
+    // Check that dispositions are computed correctly (not Unknown for known entities)
+    for slot in &alice_memory.slots {
+        let disposition = slot.get_disposition();
+        // Should have some disposition, not Unknown (since we seeded memories)
+        assert_ne!(disposition, Disposition::Unknown,
+            "Known entity should have a non-Unknown disposition, got {:?}", disposition);
+    }
+
+    // Verify the relationship with Bob specifically (we gave Alice positive memories of Bob)
+    let alice_disposition_to_bob = alice_memory.get_disposition(bob);
+    assert!(
+        alice_disposition_to_bob == Disposition::Friendly ||
+        alice_disposition_to_bob == Disposition::Favorable,
+        "Alice should have positive disposition toward Bob after receiving aid, got {:?}",
+        alice_disposition_to_bob
+    );
+}
+
+/// Integration test: Relationship slot eviction when capacity is exceeded
+///
+/// Verifies that:
+/// 1. Entity can track up to 200 relationships
+/// 2. When capacity is exceeded, weakest relationships are evicted
+/// 3. Slot count never exceeds max_relationship_slots
+#[test]
+fn test_relationship_eviction_when_full() {
+    let mut world = World::new();
+
+    // Create one observer
+    let observer = world.spawn_human("Observer".into());
+    let observer_idx = world.humans.index_of(observer).unwrap();
+
+    // Create more entities than slot capacity (200+)
+    let mut entity_ids = vec![];
+    for i in 0..210 {
+        let id = world.spawn_human(format!("Entity{}", i));
+        entity_ids.push(id);
+
+        // Position near observer (staggered to avoid overlap)
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new((i % 20) as f32 * 5.0, (i / 20) as f32 * 5.0);
+    }
+
+    // Manually create memories for all 210 entities
+    // We record significant encounters (intensity > threshold) to ensure slots are created
+    for (i, &entity_id) in entity_ids.iter().enumerate() {
+        world.humans.social_memories[observer_idx].record_encounter(
+            entity_id,
+            EventType::AidReceived,  // High intensity (0.7) to ensure slot creation
+            0.7,
+            i as u64,
+        );
+    }
+
+    // Should not exceed max slots (default is 200)
+    let slots = &world.humans.social_memories[observer_idx].slots;
+    let max_slots = world.humans.social_memories[observer_idx].params.max_relationship_slots;
+
+    assert!(
+        slots.len() <= max_slots,
+        "Should not exceed {} relationship slots, but has {}",
+        max_slots,
+        slots.len()
+    );
+    assert_eq!(
+        slots.len(),
+        max_slots,
+        "Should have exactly {} slots after adding {} entities",
+        max_slots,
+        entity_ids.len()
+    );
+
+    // Verify eviction actually occurred (some early entities should have been evicted)
+    // The first entities (tick 0) should have lower recency scores and be evicted
+    let evicted_count = entity_ids.iter()
+        .take(10)  // Check first 10 entities
+        .filter(|&&id| world.humans.social_memories[observer_idx].find_slot(id).is_none())
+        .count();
+
+    assert!(
+        evicted_count > 0,
+        "Some early entities should have been evicted due to lower recency, but {} remain",
+        10 - evicted_count
+    );
+}
+
+/// Integration test: Social memory with custom parameters
+///
+/// Verifies that SocialMemoryParams can be customized and respected
+#[test]
+fn test_social_memory_custom_params() {
+    let mut world = World::new();
+
+    let entity = world.spawn_human("CustomEntity".into());
+    let entity_idx = world.humans.index_of(entity).unwrap();
+
+    // Replace with custom params (smaller capacity for faster testing)
+    let custom_params = SocialMemoryParams {
+        max_relationship_slots: 5,
+        memories_per_slot: 3,
+        encounter_buffer_size: 10,
+        slot_allocation_threshold: 0.3,
+        memory_importance_floor: 0.2,
+        memory_salience_decay: 0.02,
+        recency_weight: 0.4,
+        intensity_weight: 0.4,
+        interaction_count_weight: 0.2,
+    };
+
+    world.humans.social_memories[entity_idx] =
+        arc_citadel::entity::social::SocialMemory::with_params(custom_params);
+
+    // Create 8 other entities and record encounters
+    let mut others = vec![];
+    for i in 0..8 {
+        let other = world.spawn_human(format!("Other{}", i));
+        others.push(other);
+
+        world.humans.social_memories[entity_idx].record_encounter(
+            other,
+            EventType::AidReceived,
+            0.7,
+            i as u64 * 100,
+        );
+    }
+
+    // With max_relationship_slots = 5, should have exactly 5 slots
+    let slots = &world.humans.social_memories[entity_idx].slots;
+    assert_eq!(
+        slots.len(),
+        5,
+        "Custom params should limit slots to 5, got {}",
+        slots.len()
+    );
+}
+
+/// Integration test: Disposition influences behavior over simulation
+///
+/// Verifies that entities with different dispositions toward each other
+/// will have their relationships persist through simulation ticks
+#[test]
+fn test_disposition_persistence_through_simulation() {
+    let mut world = World::new();
+
+    let alice = world.spawn_human("Alice".into());
+    let bob = world.spawn_human("Bob".into());
+
+    let alice_idx = world.humans.index_of(alice).unwrap();
+    let bob_idx = world.humans.index_of(bob).unwrap();
+
+    // Position them together
+    world.humans.positions[alice_idx] = Vec2::new(0.0, 0.0);
+    world.humans.positions[bob_idx] = Vec2::new(5.0, 0.0);
+
+    // Add food zone
+    world.add_food_zone(Vec2::new(2.5, 0.0), 10.0, Abundance::Unlimited);
+
+    // Create a hostile relationship from Alice to Bob
+    world.humans.social_memories[alice_idx].record_encounter(
+        bob,
+        EventType::HarmReceived,
+        0.9,
+        0,
+    );
+    world.humans.social_memories[alice_idx].record_encounter(
+        bob,
+        EventType::Betrayal,
+        0.9,
+        10,
+    );
+
+    // Verify initial hostile disposition
+    let initial_disposition = world.humans.social_memories[alice_idx].get_disposition(bob);
+    assert_eq!(
+        initial_disposition,
+        Disposition::Hostile,
+        "Initial disposition should be Hostile, got {:?}",
+        initial_disposition
+    );
+
+    // Run simulation for a while
+    for _ in 0..500 {
+        run_simulation_tick(&mut world);
+    }
+
+    // Relationship should persist (memories don't decay that fast)
+    let final_disposition = world.humans.social_memories[alice_idx].get_disposition(bob);
+    assert!(
+        final_disposition == Disposition::Hostile || final_disposition == Disposition::Suspicious,
+        "Disposition should remain negative after 500 ticks, got {:?}",
+        final_disposition
+    );
+
+    // The slot should still exist
+    assert!(
+        world.humans.social_memories[alice_idx].find_slot(bob).is_some(),
+        "Relationship slot should persist through simulation"
+    );
+}

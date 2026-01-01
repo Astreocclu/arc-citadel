@@ -145,6 +145,7 @@ fn run_perception(world: &World) -> Vec<Perception> {
                             entity,
                             distance,
                             relationship: RelationshipType::Unknown,
+                            disposition: arc_citadel::entity::social::Disposition::Unknown,
                             threat_level: 0.0,
                             notable_features: vec![],
                         })
@@ -232,6 +233,7 @@ fn select_actions(world: &mut World) {
             entity_nearby: true,
             current_tick,
             nearest_food_zone,
+            perceived_dispositions: vec![],
         };
 
         if let Some(task) = select_action_human(&ctx) {
