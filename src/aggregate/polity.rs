@@ -113,7 +113,7 @@ pub enum TreatyTerms {
     Trade,
     MilitaryAccess,
     Tribute { from: u32, to: u32, amount: u32 },
-    Vassalage { vassal: u32, lord: u32 },
+    // Vassalage removed - now represented by Polity.parent field
 }
 
 /// Species-specific state - enum variants for static dispatch

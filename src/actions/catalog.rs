@@ -70,13 +70,20 @@ impl ActionId {
     pub fn base_duration(&self) -> u32 {
         match self {
             ActionId::Attack | ActionId::Defend => 1,
-            ActionId::TalkTo => 60,
-            ActionId::Rest => 600,
-            ActionId::Eat => 30,
-            ActionId::Build => 3600,
-            ActionId::Craft => 1800,
+            ActionId::TalkTo => 30,     // Quick conversation
+            ActionId::Rest => 50,       // Short rest cycle
+            ActionId::Eat => 20,        // Quick meal
+            ActionId::Gather => 40,     // Foraging/collecting
+            ActionId::Build => 200,     // Substantial work
+            ActionId::Craft => 100,     // Crafting session
+            ActionId::Help => 30,       // Helping someone
             _ => 0,
         }
+    }
+
+    /// Check if this is a restful action (reduces fatigue accumulation)
+    pub fn is_restful(&self) -> bool {
+        matches!(self, ActionId::Rest | ActionId::IdleObserve | ActionId::Eat)
     }
 }
 
