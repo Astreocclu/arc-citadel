@@ -2,6 +2,7 @@
 
 use crate::core::types::{EntityId, Vec2};
 use crate::ecs::world::FoodZone;
+use crate::entity::social::{Disposition, SocialMemory};
 use crate::entity::species::human::HumanValues;
 use crate::spatial::sparse_hash::SparseHashGrid;
 
@@ -20,6 +21,7 @@ pub struct PerceivedEntity {
     pub entity: EntityId,
     pub distance: f32,
     pub relationship: RelationshipType,
+    pub disposition: Disposition,
     pub threat_level: f32,
     pub notable_features: Vec<String>,
 }
@@ -135,6 +137,7 @@ pub fn perception_system(
     spatial_grid: &SparseHashGrid,
     positions: &[Vec2],
     entity_ids: &[EntityId],
+    social_memories: &[SocialMemory],
     perception_range: f32,
 ) -> Vec<Perception> {
     // Build O(1) lookup map for entity indices
@@ -146,6 +149,7 @@ pub fn perception_system(
 
     entity_ids.iter().enumerate().map(|(i, &observer_id)| {
         let observer_pos = positions[i];
+        let observer_memory = &social_memories[i];
 
         let nearby: Vec<_> = spatial_grid.query_neighbors(observer_pos)
             .filter(|&e| e != observer_id)
@@ -158,10 +162,14 @@ pub fn perception_system(
                 let distance = observer_pos.distance(&entity_pos);
 
                 if distance <= perception_range {
+                    // Look up disposition from social memory
+                    let disposition = observer_memory.get_disposition(entity);
+
                     Some(PerceivedEntity {
                         entity,
                         distance,
                         relationship: RelationshipType::Unknown,
+                        disposition,
                         threat_level: 0.0,
                         notable_features: vec![],
                     })
@@ -186,6 +194,7 @@ mod tests {
     use super::*;
     use crate::core::types::Vec2;
     use crate::ecs::world::{Abundance, FoodZone};
+    use crate::entity::social::EventType;
 
     #[test]
     fn test_perception_finds_food_zone() {
@@ -200,8 +209,55 @@ mod tests {
         let nearest = find_nearest_food_zone(observer_pos, perception_range, &zones);
 
         assert!(nearest.is_some());
-        let (zone_id, zone_pos, distance) = nearest.unwrap();
+        let (zone_id, _zone_pos, distance) = nearest.unwrap();
         assert_eq!(zone_id, 0);  // Closer zone
         assert!(distance < 20.0);
+    }
+
+    #[test]
+    fn test_perception_includes_disposition() {
+        use crate::spatial::sparse_hash::SparseHashGrid;
+
+        // Create two entities
+        let alice = EntityId::new();
+        let bob = EntityId::new();
+
+        let positions = vec![
+            Vec2::new(0.0, 0.0),  // Alice at origin
+            Vec2::new(5.0, 0.0),  // Bob nearby
+        ];
+        let ids = vec![alice, bob];
+
+        // Build spatial grid
+        let mut grid = SparseHashGrid::new(10.0);
+        grid.rebuild(ids.iter().cloned().zip(positions.iter().cloned()));
+
+        // Create social memories - Alice has positive memories of Bob
+        let mut alice_memory = SocialMemory::new();
+        alice_memory.record_encounter(bob, EventType::AidReceived, 0.8, 0);
+        alice_memory.record_encounter(bob, EventType::GiftReceived, 0.6, 10);
+
+        let bob_memory = SocialMemory::new();  // Bob has no memories
+
+        let social_memories = vec![alice_memory, bob_memory];
+
+        // Run perception
+        let perceptions = perception_system(&grid, &positions, &ids, &social_memories, 50.0);
+
+        // Alice's perception of Bob should include disposition
+        let alice_perception = perceptions.iter().find(|p| p.observer == alice).unwrap();
+        assert_eq!(alice_perception.perceived_entities.len(), 1);
+
+        let perceived_bob = &alice_perception.perceived_entities[0];
+        assert_eq!(perceived_bob.entity, bob);
+        assert_eq!(perceived_bob.disposition, Disposition::Favorable);
+
+        // Bob's perception of Alice should be Unknown (no memories)
+        let bob_perception = perceptions.iter().find(|p| p.observer == bob).unwrap();
+        assert_eq!(bob_perception.perceived_entities.len(), 1);
+
+        let perceived_alice = &bob_perception.perceived_entities[0];
+        assert_eq!(perceived_alice.entity, alice);
+        assert_eq!(perceived_alice.disposition, Disposition::Unknown);
     }
 }

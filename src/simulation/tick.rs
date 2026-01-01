@@ -83,11 +83,14 @@ fn run_perception(world: &World) -> Vec<crate::simulation::perception::Perceptio
     // Build spatial grid
     grid.rebuild(ids.iter().cloned().zip(positions.iter().cloned()));
 
+    // Collect social memories for perception lookup
+    let social_memories: Vec<_> = world.humans.social_memories.iter().cloned().collect();
+
     // Use parallel for large entity counts, sequential for small
     let mut perceptions = if ids.len() >= PARALLEL_THRESHOLD {
-        perception_system_parallel(&grid, &positions, &ids, 50.0)
+        perception_system_parallel(&grid, &positions, &ids, &social_memories, 50.0)
     } else {
-        perception_system(&grid, &positions, &ids, 50.0)
+        perception_system(&grid, &positions, &ids, &social_memories, 50.0)
     };
 
     // Populate nearest_food_zone for each perception
@@ -108,6 +111,7 @@ fn perception_system_parallel(
     spatial_grid: &SparseHashGrid,
     positions: &[crate::core::types::Vec2],
     entity_ids: &[crate::core::types::EntityId],
+    social_memories: &[crate::entity::social::SocialMemory],
     perception_range: f32,
 ) -> Vec<crate::simulation::perception::Perception> {
     use crate::simulation::perception::{Perception, PerceivedEntity};
@@ -125,6 +129,7 @@ fn perception_system_parallel(
         .enumerate()
         .map(|(i, &observer_id)| {
             let observer_pos = positions[i];
+            let observer_memory = &social_memories[i];
 
             let nearby: Vec<_> = spatial_grid
                 .query_neighbors(observer_pos)
@@ -139,10 +144,14 @@ fn perception_system_parallel(
                     let distance = observer_pos.distance(&entity_pos);
 
                     if distance <= perception_range {
+                        // Look up disposition from social memory
+                        let disposition = observer_memory.get_disposition(entity);
+
                         Some(PerceivedEntity {
                             entity,
                             distance,
                             relationship: crate::simulation::perception::RelationshipType::Unknown,
+                            disposition,
                             threat_level: 0.0,
                             notable_features: vec![],
                         })
