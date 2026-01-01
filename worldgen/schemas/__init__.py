@@ -13,6 +13,25 @@ from .base import (
     generate_stable_id,
 )
 from .component import Component, ComponentCategory, ConnectionPoint
+from .template import (
+    SlotCount,
+    ClusterSlot,
+    InternalConnection,
+    ExternalPort,
+    ClusterTemplate,
+    AssembledCluster,
+)
+from .connector import (
+    ConnectorType,
+    EntryPoint,
+    MinorAnchorSlot,
+    ElasticSegment,
+    ConnectorHex,
+    ConnectorCollection,
+)
+from .minor import MinorCategory, MinorAnchor
+from .seed import ClusterPlacement, ConnectorAssignment, LayoutHint, WorldSeed
+from .world import WorldHex, HexMap, AssembledWorld
 
 __all__ = [
     # base
@@ -30,4 +49,30 @@ __all__ = [
     "Component",
     "ComponentCategory",
     "ConnectionPoint",
+    # template
+    "SlotCount",
+    "ClusterSlot",
+    "InternalConnection",
+    "ExternalPort",
+    "ClusterTemplate",
+    "AssembledCluster",
+    # connector
+    "ConnectorType",
+    "EntryPoint",
+    "MinorAnchorSlot",
+    "ElasticSegment",
+    "ConnectorHex",
+    "ConnectorCollection",
+    # minor
+    "MinorCategory",
+    "MinorAnchor",
+    # seed
+    "ClusterPlacement",
+    "ConnectorAssignment",
+    "LayoutHint",
+    "WorldSeed",
+    # world
+    "WorldHex",
+    "HexMap",
+    "AssembledWorld",
 ]
