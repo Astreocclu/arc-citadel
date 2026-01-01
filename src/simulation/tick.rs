@@ -14,6 +14,7 @@ use crate::simulation::action_select::{select_action_human, SelectionContext};
 use crate::entity::thoughts::{Thought, Valence, CauseType};
 use crate::entity::needs::NeedType;
 use crate::entity::tasks::Task;
+use crate::actions::catalog::ActionId;
 use rayon::prelude::*;
 
 /// Run a single simulation tick
@@ -302,7 +303,11 @@ fn select_actions(world: &mut World) {
 /// Progresses tasks and applies their effects (need satisfaction).
 /// Completes tasks when they reach full progress.
 ///
-/// # Progress Rates
+/// # Movement Actions
+/// - MoveTo: Moves toward target_position at 2.0 units/tick, completes within 2.0 units
+/// - Flee: Moves away from target_position at 3.0 units/tick, never auto-completes
+///
+/// # Progress Rates (non-movement)
 /// - Continuous (duration 0): 0.1/tick → NEVER completes (cancelled/replaced)
 /// - Quick (duration 1-60): 0.05/tick → completes in 20 ticks
 /// - Long (duration > 60): 0.02/tick → completes in 50 ticks
@@ -316,23 +321,63 @@ fn execute_tasks(world: &mut World) {
     // Collect indices first to avoid borrow conflicts
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for i in living_indices {
-        // Get task info first (action and whether complete)
+        // Get task info first (action, target_position, and whether complete)
         let task_info = world.humans.task_queues[i].current_mut().map(|task| {
-            let duration = task.action.base_duration();
-
-            // Progress rate varies by action duration
-            // See core::config::SimulationConfig for tunable values
-            let progress_rate = match duration {
-                0 => 0.1,       // Continuous actions progress but never complete
-                1..=60 => 0.05, // Quick: Eat, TalkTo, Attack (20 ticks)
-                _ => 0.02,      // Long: Build, Craft, Rest (50 ticks)
-            };
-            task.progress += progress_rate;
             let action = task.action;
+            let target_pos = task.target_position;
 
+            // Handle movement actions separately
+            let movement_complete = match action {
+                ActionId::MoveTo => {
+                    if let Some(target) = target_pos {
+                        let current = world.humans.positions[i];
+                        let direction = (target - current).normalize();
+                        let speed = 2.0; // units per tick
+
+                        // Move toward target (normalize handles zero-length vectors)
+                        if direction.length() > 0.0 {
+                            world.humans.positions[i] = current + direction * speed;
+                        }
+
+                        // Check if arrived (within 2.0 units)
+                        world.humans.positions[i].distance(&target) < 2.0
+                    } else {
+                        true // No target, complete immediately
+                    }
+                }
+                ActionId::Flee => {
+                    if let Some(threat_pos) = target_pos {
+                        let current = world.humans.positions[i];
+                        let away = (current - threat_pos).normalize();
+                        let speed = 3.0; // Flee faster
+
+                        // Move away from threat (normalize handles zero-length vectors)
+                        if away.length() > 0.0 {
+                            world.humans.positions[i] = current + away * speed;
+                        }
+                    }
+                    false // Flee continues until interrupted
+                }
+                _ => false, // Not a movement action
+            };
+
+            // Progress for non-movement actions
+            let is_movement = matches!(action, ActionId::MoveTo | ActionId::Flee);
+            if !is_movement {
+                let duration = task.action.base_duration();
+                let progress_rate = match duration {
+                    0 => 0.1,       // Continuous actions progress but never complete
+                    1..=60 => 0.05, // Quick: Eat, TalkTo, Attack (20 ticks)
+                    _ => 0.02,      // Long: Build, Craft, Rest (50 ticks)
+                };
+                task.progress += progress_rate;
+            }
+
+            let duration = task.action.base_duration();
             // Duration 0 = continuous actions (IdleWander, IdleObserve)
             // These NEVER complete automatically - they get cancelled/replaced
-            let is_complete = duration > 0 && task.progress >= 1.0;
+            let progress_complete = duration > 0 && task.progress >= 1.0;
+            let is_complete = movement_complete || progress_complete;
             (action, is_complete)
         });
 
@@ -486,5 +531,38 @@ mod tests {
             .unwrap_or(0.0);
 
         assert!(current_progress > initial_progress);
+    }
+
+    #[test]
+    fn test_moveto_changes_position() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority, TaskSource};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+        world.spawn_human("Mover".into());
+
+        // Set initial position
+        world.humans.positions[0] = Vec2::new(0.0, 0.0);
+
+        // Assign MoveTo task
+        let target = Vec2::new(100.0, 0.0);
+        let task = Task {
+            action: ActionId::MoveTo,
+            target_position: Some(target),
+            target_entity: None,
+            priority: TaskPriority::Normal,
+            created_tick: 0,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        };
+        world.humans.task_queues[0].push(task);
+
+        // Run tick
+        run_simulation_tick(&mut world);
+
+        // Position should have moved toward target
+        assert!(world.humans.positions[0].x > 0.0);
+        assert!(world.humans.positions[0].x < 100.0);  // Not teleported
     }
 }
