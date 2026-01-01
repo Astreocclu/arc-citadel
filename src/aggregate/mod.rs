@@ -17,7 +17,7 @@ pub mod species;
 pub use world::AggregateWorld;
 pub use region::{Region, Terrain, ResourceType};
 pub use polity::{Polity, PolityType, SpeciesState};
-// pub use ruler::Ruler;  // TODO: Uncomment when Ruler struct is implemented
+pub use ruler::Ruler;
 pub use simulation::{simulate, SimulationConfig};
 pub use events::{Event, EventType, HistoryLog};
 pub use output::SimulationOutput;

@@ -166,6 +166,86 @@ impl Family {
     }
 }
 
+/// A ruler (character who leads a polity)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Ruler {
+    pub id: RulerId,
+    pub name: String,
+    pub species: Species,
+    pub age: u8,
+    pub health: i8,                           // -10 (dying) to +10 (excellent)
+    pub personality: Vec<PersonalityTrait>,   // Usually 2-3 traits
+    pub skills: Skills,
+    pub claims: Vec<PolityId>,                // Polities this ruler claims to rule
+    pub family: Family,
+    pub opinions: HashMap<PolityId, Opinion>, // Sparse - only known polities
+    pub alive: bool,
+}
+
+impl Ruler {
+    pub fn new(
+        id: RulerId,
+        name: String,
+        species: Species,
+        age: u8,
+        personality: Vec<PersonalityTrait>,
+        skills: Skills,
+        family: Family,
+    ) -> Self {
+        Self {
+            id,
+            name,
+            species,
+            age,
+            health: 5, // Default healthy
+            personality,
+            skills,
+            claims: Vec::new(),
+            family,
+            opinions: HashMap::new(),
+            alive: true,
+        }
+    }
+
+    /// Get opinion of another polity (if any)
+    pub fn get_opinion(&self, polity: PolityId) -> Option<&Opinion> {
+        self.opinions.get(&polity)
+    }
+
+    /// Get mutable opinion of another polity (if any)
+    pub fn get_opinion_mut(&mut self, polity: PolityId) -> Option<&mut Opinion> {
+        self.opinions.get_mut(&polity)
+    }
+
+    /// Set or create opinion of another polity
+    pub fn set_opinion(&mut self, polity: PolityId, opinion: Opinion) {
+        self.opinions.insert(polity, opinion);
+    }
+
+    /// Calculate total war modifier from personality
+    pub fn war_modifier(&self) -> i8 {
+        self.personality.iter().map(|t| t.war_modifier()).sum()
+    }
+
+    /// Calculate total diplomacy modifier from personality and skills
+    pub fn diplomacy_modifier(&self) -> i8 {
+        let personality: i8 = self.personality.iter().map(|t| t.diplomacy_modifier()).sum();
+        personality.saturating_add(self.skills.diplomacy)
+    }
+
+    /// Add a claim to a polity
+    pub fn add_claim(&mut self, polity: PolityId) {
+        if !self.claims.contains(&polity) {
+            self.claims.push(polity);
+        }
+    }
+
+    /// Check if ruler has a claim to a polity
+    pub fn has_claim(&self, polity: PolityId) -> bool {
+        self.claims.contains(&polity)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,5 +319,45 @@ mod tests {
         family.add_child(RulerId(2));
         family.add_child(RulerId(3));
         assert_eq!(family.children.len(), 2);
+    }
+
+    #[test]
+    fn test_ruler_creation() {
+        let ruler = Ruler::new(
+            RulerId(1),
+            "King Aldric".to_string(),
+            Species::Human,
+            42,
+            vec![PersonalityTrait::Ambitious, PersonalityTrait::Warlike],
+            Skills::new(3, 8, 2, -1),
+            Family::founder(1),
+        );
+
+        assert_eq!(ruler.id, RulerId(1));
+        assert_eq!(ruler.name, "King Aldric");
+        assert_eq!(ruler.age, 42);
+        assert_eq!(ruler.health, 5); // Default healthy
+        assert!(ruler.opinions.is_empty()); // No opinions yet
+        assert!(ruler.claims.is_empty());
+    }
+
+    #[test]
+    fn test_ruler_get_opinion() {
+        let mut ruler = Ruler::new(
+            RulerId(1),
+            "King Aldric".to_string(),
+            Species::Human,
+            42,
+            vec![PersonalityTrait::Honorable],
+            Skills::default(),
+            Family::founder(1),
+        );
+
+        // No opinion yet
+        assert!(ruler.get_opinion(PolityId(2)).is_none());
+
+        // Set opinion
+        ruler.set_opinion(PolityId(2), Opinion::new(50));
+        assert_eq!(ruler.get_opinion(PolityId(2)).unwrap().base_value, 50);
     }
 }
