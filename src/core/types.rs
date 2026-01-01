@@ -129,6 +129,14 @@ impl PolityTier {
     }
 }
 
+/// Type of government (affects decision-making)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum GovernmentType {
+    #[default]
+    Autocracy,  // Single ruler makes decisions
+    Council,    // Multiple rulers vote on decisions
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,5 +190,12 @@ mod tests {
 
         // Test that same tier doesn't outrank itself
         assert!(!PolityTier::Kingdom.outranks(&PolityTier::Kingdom));
+    }
+
+    #[test]
+    fn test_government_type() {
+        let autocracy = GovernmentType::Autocracy;
+        let council = GovernmentType::Council;
+        assert_ne!(autocracy, council);
     }
 }
