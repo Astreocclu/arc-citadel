@@ -1,0 +1,62 @@
+Generate a hex region for a fantasy strategy game called Arc Citadel.
+
+## Region Details
+- Name: {region_name}
+- Theme: {region_theme}
+- Number of hexes: {hex_count}
+
+## Output Format
+Return a JSON object matching this exact structure:
+
+```json
+{{
+  "name": "Region Name",
+  "description": "A 1-2 sentence description of the region's atmosphere and history.",
+  "theme": "The overall theme in a few words",
+  "hexes": [
+    {{
+      "q": 0,
+      "r": 0,
+      "terrain": "plains",
+      "elevation": 0.3,
+      "moisture": 0.5,
+      "resources": [
+        {{"type": "fertile_soil", "abundance": 0.7}}
+      ],
+      "features": [
+        {{"type": "spring", "description": "A clear spring bubbles from ancient stones."}}
+      ],
+      "traversable": true,
+      "defense_bonus": 0.1
+    }}
+  ]
+}}
+```
+
+## Terrain Types
+plains, forest, hills, mountains, water, swamp, desert, tundra
+
+## Resource Types
+iron, copper, gold, silver, coal, gems, timber, stone, fertile_soil, fish, game, herbs
+
+## Feature Types
+ruins, cave, spring, ancient_tree, standing_stones, ravine, clearing, overlook
+
+## Constraints
+1. Elevation: 0.0-1.0 (mountains >= 0.7, water <= 0.3)
+2. Moisture: 0.0-1.0 (desert <= 0.2, swamp >= 0.7)
+3. Max 3 resources per hex
+4. Max 2 features per hex
+5. Defense bonus: 0.0-0.5 (higher for hills, forests, mountains)
+6. Use axial coordinates (q, r) - hexes should be adjacent/connected
+7. Water is typically not traversable by land units
+
+## Guidelines
+- Create variety within the theme
+- Resources should make sense for terrain (fish in water, timber in forest)
+- Features add flavor - use sparingly but meaningfully
+- Connected hexes should have plausible terrain transitions
+- High elevation areas near mountains, low near water
+- Consider strategic value when placing defense bonuses
+
+Generate {hex_count} hexes forming a coherent, connected region.

@@ -619,3 +619,173 @@ mod tests {
         assert!(memory.find_slot(new_target).is_some());
     }
 }
+
+#[cfg(test)]
+mod critical_edge_case_tests {
+    use super::*;
+    
+    /// Test that decay is recalculated from tick_created (not cumulative)
+    /// This verifies the decay model semantics
+    #[test]
+    fn test_decay_is_age_based_not_cumulative() {
+        let mut memory = RelationshipMemory::new(
+            EventType::AidReceived,
+            Valence::Positive,
+            0.8,
+            0, // created at tick 0
+        );
+        
+        // Decay at tick 2000
+        memory.apply_decay(2000, 0.02);
+        let salience_at_2k = memory.salience;
+        
+        // Decay again at tick 1000 (earlier tick!)
+        memory.apply_decay(1000, 0.02);
+        let salience_at_1k = memory.salience;
+        
+        // Since decay is age-based, calling with earlier tick should give HIGHER salience
+        // This is the current behavior - verify it's intentional
+        assert!(salience_at_1k > salience_at_2k, 
+            "Age-based decay: 1k ticks ({:.4}) should be higher than 2k ticks ({:.4})",
+            salience_at_1k, salience_at_2k);
+    }
+    
+    /// Test exact threshold boundaries
+    #[test]
+    fn test_threshold_boundary_at_exactly_floor() {
+        let mut memory = SocialMemory::new();
+        let target = EntityId::new();
+        
+        // importance_floor is 0.2
+        // At exactly 0.2 should be stored (not < 0.2)
+        memory.record_encounter(target, EventType::Observation, 0.2, 0);
+        
+        let stored = memory.encounter_buffer.iter().any(|e| e.target_id == target)
+                     || memory.find_slot(target).is_some();
+        assert!(stored, "Encounter at exactly floor (0.2) should be stored");
+    }
+    
+    /// Test that slot promotion at exactly threshold works
+    #[test]
+    fn test_slot_promotion_at_exactly_threshold() {
+        let mut memory = SocialMemory::new();
+        let target = EntityId::new();
+        
+        // slot_allocation_threshold is 0.3
+        // Single encounter at 0.3 should create slot immediately
+        memory.record_encounter(target, EventType::AidReceived, 0.3, 0);
+        
+        assert!(memory.find_slot(target).is_some(), 
+            "Encounter at exactly threshold (0.3) should create slot");
+        assert!(memory.encounter_buffer.is_empty(),
+            "Should not be in buffer if promoted to slot");
+    }
+    
+    /// Test that slot just below threshold goes to buffer
+    #[test]
+    fn test_slot_buffer_just_below_threshold() {
+        let mut memory = SocialMemory::new();
+        let target = EntityId::new();
+        
+        // Just below threshold
+        memory.record_encounter(target, EventType::Transaction, 0.29, 0);
+        
+        assert!(memory.find_slot(target).is_none(), 
+            "0.29 should not create slot");
+        assert!(memory.encounter_buffer.iter().any(|e| e.target_id == target),
+            "0.29 should be in buffer");
+    }
+    
+    /// Test memory reordering after decay
+    #[test]
+    fn test_memory_reordering_after_decay() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+        
+        // Add two memories: one old high-intensity, one recent lower-intensity
+        let old_memory = RelationshipMemory::new(
+            EventType::Betrayal, Valence::Negative, 0.9, 0  // old, high
+        );
+        let recent_memory = RelationshipMemory::new(
+            EventType::Transaction, Valence::Positive, 0.4, 5000  // recent, low
+        );
+        
+        slot.memories.push(old_memory);
+        slot.memories.push(recent_memory);
+        slot.memories.sort_by(|a, b| {
+            b.weighted_importance()
+                .partial_cmp(&a.weighted_importance())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        
+        // Before decay, old high-intensity should be first
+        assert!(slot.memories[0].intensity > 0.8, "High intensity should be first before decay");
+        
+        // Apply decay at tick 10000 (10 days later)
+        slot.apply_decay(10000, 0.02);
+        
+        // After decay, the old memory has decayed more, recent memory decayed less
+        // Recent memory might now be higher weighted_importance
+        let first_importance = slot.memories[0].weighted_importance();
+        let second_importance = slot.memories[1].weighted_importance();
+        
+        assert!(first_importance >= second_importance, 
+            "Memories should be sorted by weighted_importance after decay");
+    }
+    
+    /// Test disposition with all memories at salience floor
+    #[test]
+    fn test_disposition_with_floor_salience_memories() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+        
+        // Add a positive memory
+        let mut memory = RelationshipMemory::new(
+            EventType::AidReceived, Valence::Positive, 0.8, 0
+        );
+        
+        // Decay to floor (salience = 0.01)
+        memory.apply_decay(1000000, 0.5); // Massive decay
+        assert!((memory.salience - 0.01).abs() < 0.001, "Should be at floor");
+        
+        slot.memories.push(memory);
+        
+        let disposition = slot.get_disposition();
+        
+        // weighted_importance = 0.8 * 0.01 = 0.008
+        // This is very low, should be Neutral
+        assert!(disposition == Disposition::Neutral || disposition == Disposition::Friendly,
+            "Floor-salience memories should give low disposition: {:?}", disposition);
+    }
+    
+    /// Test encounter buffer eviction (oldest removed)
+    #[test]
+    fn test_encounter_buffer_evicts_oldest() {
+        let mut memory = SocialMemory::with_params(SocialMemoryParams {
+            encounter_buffer_size: 3,
+            slot_allocation_threshold: 10.0, // Very high so nothing promotes
+            memory_importance_floor: 0.1,
+            ..Default::default()
+        });
+        
+        let t1 = EntityId::new();
+        let t2 = EntityId::new();
+        let t3 = EntityId::new();
+        let t4 = EntityId::new();
+        
+        memory.record_encounter(t1, EventType::Transaction, 0.2, 100);  // oldest
+        memory.record_encounter(t2, EventType::Transaction, 0.2, 200);
+        memory.record_encounter(t3, EventType::Transaction, 0.2, 300);
+        
+        assert_eq!(memory.encounter_buffer.len(), 3);
+        
+        // Add 4th, should evict oldest (t1)
+        memory.record_encounter(t4, EventType::Transaction, 0.2, 400);
+        
+        assert_eq!(memory.encounter_buffer.len(), 3);
+        assert!(!memory.encounter_buffer.iter().any(|e| e.target_id == t1),
+            "Oldest encounter (t1) should be evicted");
+        assert!(memory.encounter_buffer.iter().any(|e| e.target_id == t4),
+            "Newest encounter (t4) should be present");
+    }
+}
