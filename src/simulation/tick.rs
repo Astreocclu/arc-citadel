@@ -452,6 +452,28 @@ fn execute_tasks(world: &mut World) {
     // Collect indices first to avoid borrow conflicts
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for i in living_indices {
+        // For Follow action, we need to look up target entity position BEFORE borrowing task_queues
+        // This avoids the borrow conflict between task_queues and index_of()
+        let follow_target_pos: Option<(crate::core::types::Vec2, bool)> = {
+            if let Some(task) = world.humans.task_queues[i].current() {
+                if task.action == ActionId::Follow {
+                    if let Some(target_id) = task.target_entity {
+                        if let Some(target_idx) = world.humans.index_of(target_id) {
+                            Some((world.humans.positions[target_idx], true))
+                        } else {
+                            Some((crate::core::types::Vec2::new(0.0, 0.0), false)) // Target doesn't exist
+                        }
+                    } else {
+                        None // No target entity
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
         // Get task info first (action, target_entity, target_position, and whether complete)
         let task_info = world.humans.task_queues[i].current_mut().map(|task| {
             let action = task.action;
@@ -490,11 +512,33 @@ fn execute_tasks(world: &mut World) {
                     }
                     false // Flee continues until interrupted
                 }
+                ActionId::Follow => {
+                    // Use pre-computed target position from before we borrowed task_queues
+                    if let Some((target_pos, target_exists)) = follow_target_pos {
+                        if target_exists {
+                            let current = world.humans.positions[i];
+                            let direction = (target_pos - current).normalize();
+                            let speed = 2.0;
+
+                            if direction.length() > 0.0 {
+                                world.humans.positions[i] = current + direction * speed;
+                            }
+
+                            // Follow never auto-completes - continues until interrupted
+                            false
+                        } else {
+                            // Target doesn't exist, complete
+                            true
+                        }
+                    } else {
+                        true // No target, complete immediately
+                    }
+                }
                 _ => false, // Not a movement action
             };
 
             // Progress for non-movement actions
-            let is_movement = matches!(action, ActionId::MoveTo | ActionId::Flee);
+            let is_movement = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::Follow);
             if !is_movement {
                 let duration = task.action.base_duration();
                 let progress_rate = match duration {
@@ -1047,5 +1091,49 @@ mod tests {
             "Salience should still be > 0.9 after one day, got {}",
             final_salience
         );
+    }
+
+    #[test]
+    fn test_follow_tracks_moving_target() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        // Spawn follower at origin
+        let follower_id = world.spawn_human("Follower".into());
+
+        // Spawn target at (10, 0)
+        let target_id = world.spawn_human("Target".into());
+
+        let follower_idx = world.humans.index_of(follower_id).unwrap();
+        let target_idx = world.humans.index_of(target_id).unwrap();
+
+        // Position them
+        world.humans.positions[follower_idx] = Vec2::new(0.0, 0.0);
+        world.humans.positions[target_idx] = Vec2::new(10.0, 0.0);
+
+        // Give follower a Follow task
+        let task = Task::new(ActionId::Follow, TaskPriority::Normal, 0)
+            .with_entity(target_id);
+        world.humans.task_queues[follower_idx].push(task);
+
+        // Run a tick
+        run_simulation_tick(&mut world);
+
+        // Follower should have moved toward target
+        let follower_pos = world.humans.positions[follower_idx];
+        assert!(follower_pos.x > 0.0, "Follower should move toward target");
+
+        // Move target
+        world.humans.positions[target_idx] = Vec2::new(10.0, 10.0);
+
+        // Run another tick
+        run_simulation_tick(&mut world);
+
+        // Follower should now be moving toward new position
+        let follower_pos = world.humans.positions[follower_idx];
+        assert!(follower_pos.y > 0.0 || follower_pos.x > 2.0, "Follower should track moving target");
     }
 }
