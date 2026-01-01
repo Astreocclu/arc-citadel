@@ -1,11 +1,13 @@
 //! AggregateWorld - the main world state container
 
+use std::collections::HashMap;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::aggregate::region::Region;
 use crate::aggregate::polity::Polity;
-use crate::core::types::PolityId;
+use crate::aggregate::ruler::Ruler;
+use crate::core::types::{PolityId, RulerId};
 
 /// The aggregate world state for history simulation
 pub struct AggregateWorld {
@@ -13,12 +15,18 @@ pub struct AggregateWorld {
     pub regions: Vec<Region>,
     /// All polities (nations/tribes/holds/groves)
     pub polities: Vec<Polity>,
+    /// All rulers (characters who lead polities)
+    pub rulers: HashMap<RulerId, Ruler>,
     /// Currently active wars
     pub active_wars: Vec<War>,
     /// Current simulation year
     pub year: u32,
     /// Random number generator (deterministic)
     pub rng: ChaCha8Rng,
+    /// Next polity ID to assign
+    next_polity_id: u32,
+    /// Next ruler ID to assign
+    next_ruler_id: u32,
 }
 
 /// Active war state machine
@@ -52,13 +60,45 @@ pub enum WarState {
 
 impl AggregateWorld {
     pub fn new(regions: Vec<Region>, polities: Vec<Polity>, rng: ChaCha8Rng) -> Self {
+        let next_polity_id = polities.iter()
+            .map(|p| p.id.0)
+            .max()
+            .unwrap_or(0) + 1;
+
         Self {
             regions,
             polities,
+            rulers: HashMap::new(),
             active_wars: Vec::new(),
             year: 0,
             rng,
+            next_polity_id,
+            next_ruler_id: 1,
         }
+    }
+
+    /// Generate a new unique PolityId
+    pub fn next_polity_id(&mut self) -> PolityId {
+        let id = PolityId(self.next_polity_id);
+        self.next_polity_id += 1;
+        id
+    }
+
+    /// Generate a new unique RulerId
+    pub fn next_ruler_id(&mut self) -> RulerId {
+        let id = RulerId(self.next_ruler_id);
+        self.next_ruler_id += 1;
+        id
+    }
+
+    /// Get a ruler by ID
+    pub fn get_ruler(&self, id: RulerId) -> Option<&Ruler> {
+        self.rulers.get(&id)
+    }
+
+    /// Get a mutable ruler by ID
+    pub fn get_ruler_mut(&mut self, id: RulerId) -> Option<&mut Ruler> {
+        self.rulers.get_mut(&id)
     }
 
     pub fn get_region(&self, id: u32) -> Option<&Region> {
@@ -83,5 +123,35 @@ impl AggregateWorld {
 
     pub fn next_war_id(&self) -> u32 {
         self.active_wars.iter().map(|w| w.id).max().unwrap_or(0) + 1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand_chacha::rand_core::SeedableRng;
+
+    #[test]
+    fn test_world_has_rulers() {
+        let world = AggregateWorld::new(vec![], vec![], ChaCha8Rng::seed_from_u64(42));
+        assert!(world.rulers.is_empty());
+    }
+
+    #[test]
+    fn test_next_polity_id() {
+        let mut world = AggregateWorld::new(vec![], vec![], ChaCha8Rng::seed_from_u64(42));
+        let id1 = world.next_polity_id();
+        let id2 = world.next_polity_id();
+        assert_eq!(id1, PolityId(1));
+        assert_eq!(id2, PolityId(2));
+    }
+
+    #[test]
+    fn test_next_ruler_id() {
+        let mut world = AggregateWorld::new(vec![], vec![], ChaCha8Rng::seed_from_u64(42));
+        let id1 = world.next_ruler_id();
+        let id2 = world.next_ruler_id();
+        assert_eq!(id1, RulerId(1));
+        assert_eq!(id2, RulerId(2));
     }
 }
