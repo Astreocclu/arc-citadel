@@ -30,6 +30,28 @@ pub fn get_sovereign(polity_id: PolityId, polities: &HashMap<PolityId, Polity>) 
     }
 }
 
+/// Get direct vassals of a polity (immediate children only)
+pub fn get_vassals(polity_id: PolityId, polities: &HashMap<PolityId, Polity>) -> Vec<PolityId> {
+    polities
+        .values()
+        .filter(|p| p.parent == Some(polity_id))
+        .map(|p| p.id)
+        .collect()
+}
+
+/// Get all vassals recursively (all descendants)
+pub fn get_all_vassals(polity_id: PolityId, polities: &HashMap<PolityId, Polity>) -> Vec<PolityId> {
+    let mut result = Vec::new();
+    let mut stack = get_vassals(polity_id, polities);
+
+    while let Some(vassal_id) = stack.pop() {
+        result.push(vassal_id);
+        stack.extend(get_vassals(vassal_id, polities));
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,5 +110,47 @@ mod tests {
     fn test_get_sovereign_missing() {
         let polities = make_polity_map(vec![make_polity(1, None)]);
         assert_eq!(get_sovereign(PolityId(999), &polities), None);
+    }
+
+    #[test]
+    fn test_get_vassals_direct() {
+        // Empire(1) has vassals Kingdom(2) and Kingdom(3)
+        let polities = make_polity_map(vec![
+            make_polity(1, None),
+            make_polity(2, Some(1)),
+            make_polity(3, Some(1)),
+            make_polity(4, Some(2)), // Vassal of 2, not 1
+        ]);
+
+        let vassals = get_vassals(PolityId(1), &polities);
+        assert_eq!(vassals.len(), 2);
+        assert!(vassals.contains(&PolityId(2)));
+        assert!(vassals.contains(&PolityId(3)));
+        assert!(!vassals.contains(&PolityId(4))); // Not direct vassal
+    }
+
+    #[test]
+    fn test_get_all_vassals_recursive() {
+        // Empire(1) -> Kingdom(2) -> Duchy(4)
+        //           -> Kingdom(3)
+        let polities = make_polity_map(vec![
+            make_polity(1, None),
+            make_polity(2, Some(1)),
+            make_polity(3, Some(1)),
+            make_polity(4, Some(2)),
+        ]);
+
+        let all_vassals = get_all_vassals(PolityId(1), &polities);
+        assert_eq!(all_vassals.len(), 3);
+        assert!(all_vassals.contains(&PolityId(2)));
+        assert!(all_vassals.contains(&PolityId(3)));
+        assert!(all_vassals.contains(&PolityId(4)));
+    }
+
+    #[test]
+    fn test_get_vassals_none() {
+        let polities = make_polity_map(vec![make_polity(1, None)]);
+        let vassals = get_vassals(PolityId(1), &polities);
+        assert!(vassals.is_empty());
     }
 }
