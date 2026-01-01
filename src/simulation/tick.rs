@@ -24,15 +24,17 @@ use rayon::prelude::*;
 /// 1. Update needs (decay over time)
 /// 2. Run perception (entities observe their surroundings)
 /// 3. Generate thoughts (reactions to perceptions)
-/// 4. Decay thoughts (thoughts fade over time)
-/// 5. Select actions (decide what to do based on needs, thoughts, values)
-/// 6. Execute tasks (progress current tasks, satisfy needs)
-/// 7. Regenerate food zones (scarce zones recover over time)
-/// 8. Advance tick counter
+/// 4. Convert intense thoughts to memories (thoughts about entities become social memories)
+/// 5. Decay thoughts (thoughts fade over time)
+/// 6. Select actions (decide what to do based on needs, thoughts, values)
+/// 7. Execute tasks (progress current tasks, satisfy needs)
+/// 8. Regenerate food zones (scarce zones recover over time)
+/// 9. Advance tick counter
 pub fn run_simulation_tick(world: &mut World) {
     update_needs(world);
     let perceptions = run_perception(world);
     generate_thoughts(world, &perceptions);
+    convert_thoughts_to_memories(world);
     decay_thoughts(world);
     select_actions(world);
     execute_tasks(world);
@@ -221,6 +223,41 @@ fn generate_thoughts(world: &mut World, perceptions: &[crate::simulation::percep
                 );
                 world.humans.thoughts[idx].add(thought);
             }
+        }
+    }
+}
+
+/// Convert intense thoughts about entities to social memories
+///
+/// Scans each entity's ThoughtBuffer for thoughts that are:
+/// - Intense (intensity >= THOUGHT_MEMORY_THRESHOLD)
+/// - About another entity (cause_entity is Some)
+///
+/// These thoughts are converted to memories via record_encounter().
+/// Uses EventType::Observation for now (can be refined later based on thought type).
+fn convert_thoughts_to_memories(world: &mut World) {
+    const THOUGHT_MEMORY_THRESHOLD: f32 = 0.7;
+
+    let current_tick = world.current_tick;
+    let living_indices: Vec<usize> = world.humans.iter_living().collect();
+
+    for &idx in &living_indices {
+        // Collect thoughts that should become memories
+        let thoughts_to_convert: Vec<_> = world.humans.thoughts[idx]
+            .iter()
+            .filter(|t| t.intensity >= THOUGHT_MEMORY_THRESHOLD && t.cause_entity.is_some())
+            .map(|t| (t.cause_entity.unwrap(), t.intensity))
+            .collect();
+
+        // Create memories from intense thoughts about entities
+        for (target_id, intensity) in thoughts_to_convert {
+            // Use EventType::Observation for now (can be refined later)
+            world.humans.social_memories[idx].record_encounter(
+                target_id,
+                EventType::Observation,
+                intensity,
+                current_tick,
+            );
         }
     }
 }
@@ -776,6 +813,80 @@ mod tests {
             alice_disposition == Disposition::Friendly || alice_disposition == Disposition::Favorable,
             "Alice should have friendly/favorable disposition toward Bob, got {:?}",
             alice_disposition
+        );
+    }
+
+    #[test]
+    fn test_intense_thoughts_create_memories() {
+        use crate::core::types::Vec2;
+        use crate::entity::thoughts::{Thought, CauseType};
+
+        let mut world = World::new();
+        let alice = world.spawn_human("Alice".into());
+        let bob = world.spawn_human("Bob".into());
+
+        let alice_idx = world.humans.index_of(alice).unwrap();
+
+        // Position them somewhere (doesn't matter for this test)
+        world.humans.positions[alice_idx] = Vec2::new(0.0, 0.0);
+
+        // Manually add an intense thought about Bob
+        let mut thought = Thought::new(
+            Valence::Positive,
+            0.9, // Very intense - above THOUGHT_MEMORY_THRESHOLD (0.7)
+            "observation",
+            "Bob did something amazing",
+            CauseType::Entity,
+            0,
+        );
+        thought.cause_entity = Some(bob);
+        world.humans.thoughts[alice_idx].add(thought);
+
+        // Run tick to process thoughts (convert_thoughts_to_memories happens after generate_thoughts)
+        run_simulation_tick(&mut world);
+
+        // Alice should remember Bob
+        let alice_memory = &world.humans.social_memories[alice_idx];
+        assert!(
+            alice_memory.find_slot(bob).is_some(),
+            "Alice should have a memory slot for Bob after intense thought about him"
+        );
+    }
+
+    #[test]
+    fn test_weak_thoughts_do_not_create_memories() {
+        use crate::core::types::Vec2;
+        use crate::entity::thoughts::{Thought, CauseType};
+
+        let mut world = World::new();
+        let alice = world.spawn_human("Alice".into());
+        let bob = world.spawn_human("Bob".into());
+
+        let alice_idx = world.humans.index_of(alice).unwrap();
+
+        // Position them somewhere
+        world.humans.positions[alice_idx] = Vec2::new(0.0, 0.0);
+
+        // Add a weak thought about Bob (below THOUGHT_MEMORY_THRESHOLD of 0.7)
+        let mut thought = Thought::new(
+            Valence::Positive,
+            0.5, // Below threshold
+            "observation",
+            "Bob walked by",
+            CauseType::Entity,
+            0,
+        );
+        thought.cause_entity = Some(bob);
+        world.humans.thoughts[alice_idx].add(thought);
+
+        // Run tick
+        run_simulation_tick(&mut world);
+
+        // Alice should NOT remember Bob (thought wasn't intense enough)
+        let alice_memory = &world.humans.social_memories[alice_idx];
+        assert!(
+            alice_memory.find_slot(bob).is_none(),
+            "Alice should NOT have a memory slot for Bob after weak thought"
         );
     }
 }
