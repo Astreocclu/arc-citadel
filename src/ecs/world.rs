@@ -3,6 +3,7 @@
 use ahash::AHashMap;
 use crate::core::types::{EntityId, Species, Vec2};
 use crate::entity::species::human::HumanArchetype;
+use crate::simulation::resource_zone::ResourceZone;
 
 /// Abundance level of a food zone
 #[derive(Debug, Clone)]
@@ -56,6 +57,7 @@ pub struct World {
     next_indices: AHashMap<Species, usize>,
     pub food_zones: Vec<FoodZone>,
     next_food_zone_id: u32,
+    pub resource_zones: Vec<ResourceZone>,
 }
 
 impl World {
@@ -72,6 +74,7 @@ impl World {
             next_indices,
             food_zones: Vec::new(),
             next_food_zone_id: 0,
+            resource_zones: Vec::new(),
         }
     }
 
