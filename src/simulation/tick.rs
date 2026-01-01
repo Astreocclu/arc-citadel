@@ -14,6 +14,7 @@ use crate::simulation::action_select::{select_action_human, SelectionContext};
 use crate::entity::thoughts::{Thought, Valence, CauseType};
 use crate::entity::needs::NeedType;
 use crate::entity::tasks::Task;
+use crate::entity::social::EventType;
 use crate::actions::catalog::ActionId;
 use rayon::prelude::*;
 
@@ -339,10 +340,11 @@ fn execute_tasks(world: &mut World) {
     // Collect indices first to avoid borrow conflicts
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for i in living_indices {
-        // Get task info first (action, target_position, and whether complete)
+        // Get task info first (action, target_entity, target_position, and whether complete)
         let task_info = world.humans.task_queues[i].current_mut().map(|task| {
             let action = task.action;
             let target_pos = task.target_position;
+            let target_entity = task.target_entity;
 
             // Handle movement actions separately
             let movement_complete = match action {
@@ -396,10 +398,10 @@ fn execute_tasks(world: &mut World) {
             // These NEVER complete automatically - they get cancelled/replaced
             let progress_complete = duration > 0 && task.progress >= 1.0;
             let is_complete = movement_complete || progress_complete;
-            (action, is_complete)
+            (action, target_entity, is_complete)
         });
 
-        if let Some((action, is_complete)) = task_info {
+        if let Some((action, target_entity, is_complete)) = task_info {
             // Handle Eat action specially: consume from food zone
             if action == ActionId::Eat {
                 let pos = world.humans.positions[i];
@@ -425,6 +427,11 @@ fn execute_tasks(world: &mut World) {
 
             // Complete task if done
             if is_complete {
+                // Create social memories if this was a social action with a target
+                if let Some(target_id) = target_entity {
+                    create_social_memory_from_task(world, i, action, target_id, world.current_tick);
+                }
+
                 world.humans.task_queues[i].complete_current();
             }
         }
@@ -439,6 +446,56 @@ fn regenerate_food_zones(world: &mut World) {
     for zone in &mut world.food_zones {
         zone.regenerate();
     }
+}
+
+/// Create social memories when a social action completes
+///
+/// Maps ActionId to EventType for both actor and target:
+/// - Help: Actor remembers AidGiven, Target remembers AidReceived
+/// - Attack: Actor remembers HarmGiven, Target remembers HarmReceived
+/// - TalkTo/Trade: Both remember Transaction
+///
+/// Creates memories for BOTH parties - the actor remembers the target
+/// and the target remembers the actor.
+fn create_social_memory_from_task(
+    world: &mut World,
+    actor_idx: usize,
+    action: ActionId,
+    target_id: crate::core::types::EntityId,
+    current_tick: u64,
+) {
+    let actor_id = world.humans.ids[actor_idx];
+
+    // Find target index
+    let target_idx = match world.humans.index_of(target_id) {
+        Some(idx) => idx,
+        None => return, // Target not found (may have died or been removed)
+    };
+
+    // Map action to event types for actor and target
+    let (actor_event, target_event) = match action {
+        ActionId::Help => (EventType::AidGiven, EventType::AidReceived),
+        ActionId::TalkTo => (EventType::Transaction, EventType::Transaction),
+        ActionId::Trade => (EventType::Transaction, EventType::Transaction),
+        ActionId::Attack => (EventType::HarmGiven, EventType::HarmReceived),
+        _ => return, // Non-social action with target, no memory created
+    };
+
+    // Record for actor (remembers helping/attacking/talking to target)
+    world.humans.social_memories[actor_idx].record_encounter(
+        target_id,
+        actor_event,
+        actor_event.base_intensity(),
+        current_tick,
+    );
+
+    // Record for target (remembers being helped/attacked/talked to by actor)
+    world.humans.social_memories[target_idx].record_encounter(
+        actor_id,
+        target_event,
+        target_event.base_intensity(),
+        current_tick,
+    );
 }
 
 #[cfg(test)]
@@ -667,5 +724,58 @@ mod tests {
         } else {
             panic!("Zone should be Scarce");
         }
+    }
+
+    #[test]
+    fn test_help_action_creates_memories() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{TaskPriority, TaskSource};
+        use crate::entity::social::Disposition;
+
+        let mut world = World::new();
+        let alice = world.spawn_human("Alice".into());
+        let bob = world.spawn_human("Bob".into());
+
+        let alice_idx = world.humans.index_of(alice).unwrap();
+        let bob_idx = world.humans.index_of(bob).unwrap();
+
+        // Position them together
+        world.humans.positions[alice_idx] = Vec2::new(0.0, 0.0);
+        world.humans.positions[bob_idx] = Vec2::new(1.0, 0.0);
+
+        // Alice helps Bob
+        let task = Task {
+            action: ActionId::Help,
+            target_entity: Some(bob),
+            target_position: None,
+            priority: TaskPriority::Normal,
+            created_tick: 0,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        };
+        world.humans.task_queues[alice_idx].push(task);
+
+        // Run enough ticks for Help to complete (duration=30, progress_rate=0.05, so 20 ticks)
+        for _ in 0..25 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Bob should remember being helped by Alice (AidReceived has intensity 0.7, above threshold 0.3)
+        let bob_memory = &world.humans.social_memories[bob_idx];
+        let disposition = bob_memory.get_disposition(alice);
+        assert!(
+            disposition == Disposition::Friendly || disposition == Disposition::Favorable,
+            "Bob should have friendly/favorable disposition toward Alice, got {:?}",
+            disposition
+        );
+
+        // Alice should remember helping Bob (AidGiven has intensity 0.5, above threshold 0.3)
+        let alice_memory = &world.humans.social_memories[alice_idx];
+        let alice_disposition = alice_memory.get_disposition(bob);
+        assert!(
+            alice_disposition == Disposition::Friendly || alice_disposition == Disposition::Favorable,
+            "Alice should have friendly/favorable disposition toward Bob, got {:?}",
+            alice_disposition
+        );
     }
 }
