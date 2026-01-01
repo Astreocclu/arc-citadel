@@ -607,115 +607,120 @@ fn execute_tasks(world: &mut World) {
             }
         };
 
-        // Get task info first (action, target_entity, target_position, and whether complete)
+        // Get task info and execute based on action category
+        // Note: Helper functions cannot be extracted due to Rust's borrowing rules -
+        // the closure captures world mutably for task access, so we dispatch inline.
+        use crate::actions::catalog::ActionCategory;
+
         let task_info = world.humans.task_queues[i].current_mut().map(|task| {
             let action = task.action;
             let target_pos = task.target_position;
             let target_entity = task.target_entity;
 
-            // Handle movement actions separately
-            let movement_complete = match action {
-                ActionId::MoveTo => {
-                    if let Some(target) = target_pos {
-                        let current = world.humans.positions[i];
-                        let direction = (target - current).normalize();
-                        let speed = 2.0; // units per tick
-
-                        // Move toward target (normalize handles zero-length vectors)
-                        if direction.length() > 0.0 {
-                            world.humans.positions[i] = current + direction * speed;
-                        }
-
-                        // Check if arrived (within 2.0 units)
-                        world.humans.positions[i].distance(&target) < 2.0
-                    } else {
-                        true // No target, complete immediately
-                    }
-                }
-                ActionId::Flee => {
-                    if let Some(threat_pos) = target_pos {
-                        let current = world.humans.positions[i];
-                        let away = (current - threat_pos).normalize();
-                        let speed = 3.0; // Flee faster
-
-                        // Move away from threat (normalize handles zero-length vectors)
-                        if away.length() > 0.0 {
-                            world.humans.positions[i] = current + away * speed;
-                        }
-                    }
-                    false // Flee continues until interrupted
-                }
-                ActionId::SeekSafety => {
-                    // Move away from threat position (stored in target_position)
-                    if let Some(threat_pos) = target_pos {
-                        let current = world.humans.positions[i];
-                        let away = (current - threat_pos).normalize();
-                        let speed = 3.0; // Fast like Flee
-
-                        if away.length() > 0.0 {
-                            world.humans.positions[i] = current + away * speed;
-                        }
-
-                        // Check if far enough away (20 units = safe)
-                        let distance = world.humans.positions[i].distance(&threat_pos);
-                        distance > 20.0 // Complete when safe
-                    } else {
-                        true // No threat position, complete immediately
-                    }
-                }
-                ActionId::Follow => {
-                    // Use pre-computed target position from before we borrowed task_queues
-                    if let Some((target_pos, target_exists)) = follow_target_pos {
-                        if target_exists {
-                            let current = world.humans.positions[i];
-                            let direction = (target_pos - current).normalize();
-                            let speed = 2.0;
-
-                            if direction.length() > 0.0 {
-                                world.humans.positions[i] = current + direction * speed;
+            // Dispatch based on action category for cleaner organization
+            let is_complete = match action.category() {
+                // =========== MOVEMENT ACTIONS (MoveTo, Follow, Flee) ===========
+                ActionCategory::Movement => {
+                    match action {
+                        ActionId::MoveTo => {
+                            if let Some(target) = target_pos {
+                                let current = world.humans.positions[i];
+                                let direction = (target - current).normalize();
+                                let speed = 2.0;
+                                if direction.length() > 0.0 {
+                                    world.humans.positions[i] = current + direction * speed;
+                                }
+                                world.humans.positions[i].distance(&target) < 2.0
+                            } else {
+                                true
                             }
-
-                            // Follow never auto-completes - continues until interrupted
-                            false
-                        } else {
-                            // Target doesn't exist, complete
-                            true
                         }
-                    } else {
-                        true // No target, complete immediately
+                        ActionId::Flee => {
+                            if let Some(threat_pos) = target_pos {
+                                let current = world.humans.positions[i];
+                                let away = (current - threat_pos).normalize();
+                                let speed = 3.0;
+                                if away.length() > 0.0 {
+                                    world.humans.positions[i] = current + away * speed;
+                                }
+                            }
+                            false
+                        }
+                        ActionId::Follow => {
+                            if let Some((target_pos, target_exists)) = follow_target_pos {
+                                if target_exists {
+                                    let current = world.humans.positions[i];
+                                    let direction = (target_pos - current).normalize();
+                                    let speed = 2.0;
+                                    if direction.length() > 0.0 {
+                                        world.humans.positions[i] = current + direction * speed;
+                                    }
+                                    false
+                                } else {
+                                    true
+                                }
+                            } else {
+                                true
+                            }
+                        }
+                        _ => false,
                     }
                 }
-                ActionId::Rest => {
-                    // Stay still (no position change needed - current code doesn't use velocities)
 
-                    // Reduce fatigue
-                    world.humans.body_states[i].fatigue =
-                        (world.humans.body_states[i].fatigue - 0.01).max(0.0);
-
-                    // Progress toward completion
-                    let duration = task.action.base_duration(); // 50 ticks
-                    task.progress += 1.0 / duration as f32;
-                    task.progress >= 1.0
+                // =========== SURVIVAL ACTIONS (Rest, Eat, SeekSafety) ===========
+                ActionCategory::Survival => {
+                    match action {
+                        ActionId::SeekSafety => {
+                            if let Some(threat_pos) = target_pos {
+                                let current = world.humans.positions[i];
+                                let away = (current - threat_pos).normalize();
+                                let speed = 3.0;
+                                if away.length() > 0.0 {
+                                    world.humans.positions[i] = current + away * speed;
+                                }
+                                let distance = world.humans.positions[i].distance(&threat_pos);
+                                distance > 20.0
+                            } else {
+                                true
+                            }
+                        }
+                        ActionId::Rest => {
+                            world.humans.body_states[i].fatigue =
+                                (world.humans.body_states[i].fatigue - 0.01).max(0.0);
+                            let duration = task.action.base_duration();
+                            task.progress += 1.0 / duration as f32;
+                            task.progress >= 1.0
+                        }
+                        ActionId::Eat => {
+                            // Eat consumption is handled after the closure
+                            let duration = task.action.base_duration();
+                            let progress_rate = match duration {
+                                0 => 0.1,
+                                1..=60 => 0.05,
+                                _ => 0.02,
+                            };
+                            task.progress += progress_rate;
+                            duration > 0 && task.progress >= 1.0
+                        }
+                        _ => false,
+                    }
                 }
-                ActionId::TalkTo | ActionId::Help | ActionId::Trade => {
-                    // Social actions require proximity - use pre-computed target info
+
+                // =========== SOCIAL ACTIONS (TalkTo, Help, Trade) ===========
+                ActionCategory::Social => {
                     if let Some((target_pos, target_idx, _target_id, _target_exists, _target_is_idle)) = social_target_info {
                         let current = world.humans.positions[i];
                         let distance = current.distance(&target_pos);
                         const SOCIAL_RANGE: f32 = 5.0;
 
                         if distance > SOCIAL_RANGE {
-                            // Move toward target
                             let direction = (target_pos - current).normalize();
                             let speed = 2.0;
                             if direction.length() > 0.0 {
                                 world.humans.positions[i] = current + direction * speed;
                             }
-                            false // Not complete yet - still approaching
+                            false
                         } else {
-                            // In range - interact
-
-                            // Determine satisfaction amounts based on action
                             let (social_amount, purpose_amount) = match action {
                                 ActionId::TalkTo => (0.02, 0.0),
                                 ActionId::Help => (0.03, 0.01),
@@ -723,7 +728,6 @@ fn execute_tasks(world: &mut World) {
                                 _ => (0.0, 0.0),
                             };
 
-                            // Satisfy needs for BOTH parties
                             world.humans.needs[i].satisfy(NeedType::Social, social_amount);
                             world.humans.needs[target_idx].satisfy(NeedType::Social, social_amount);
 
@@ -732,20 +736,16 @@ fn execute_tasks(world: &mut World) {
                                 world.humans.needs[target_idx].satisfy(NeedType::Purpose, purpose_amount);
                             }
 
-                            // Create memories for both (on first tick of interaction)
                             if task.progress < 0.01 {
                                 let event_type = match action {
                                     ActionId::Help => EventType::AidGiven,
                                     ActionId::Trade => EventType::Transaction,
                                     _ => EventType::Observation,
                                 };
-
                                 let actor_id = world.humans.ids[i];
-
                                 world.humans.social_memories[i].record_encounter(
                                     target_entity.unwrap(), event_type, 0.5, world.current_tick
                                 );
-
                                 let target_event = match action {
                                     ActionId::Help => EventType::AidReceived,
                                     _ => event_type,
@@ -753,179 +753,170 @@ fn execute_tasks(world: &mut World) {
                                 world.humans.social_memories[target_idx].record_encounter(
                                     actor_id, target_event, 0.5, world.current_tick
                                 );
-
-                                // Note: Reciprocal task is handled after the closure to avoid borrow conflict
                             }
 
-                            // Progress toward completion
                             let duration = action.base_duration() as f32;
                             let progress_rate = if duration > 0.0 { 1.0 / duration } else { 0.1 };
                             task.progress += progress_rate;
                             task.progress >= 1.0
                         }
                     } else {
-                        true // No target or target doesn't exist, complete immediately
+                        true
                     }
                 }
-                ActionId::Gather => {
-                    // Gather resources from ResourceZone
-                    if let Some(zone_pos) = target_pos {
-                        let current = world.humans.positions[i];
 
-                        // Find resource zone at target position
-                        let zone_idx = world.resource_zones.iter().position(|z| z.contains(zone_pos));
+                // =========== WORK ACTIONS (Gather, Build, Craft, Repair) ===========
+                ActionCategory::Work => {
+                    match action {
+                        ActionId::Gather => {
+                            if let Some(zone_pos) = target_pos {
+                                let current = world.humans.positions[i];
+                                let zone_idx = world.resource_zones.iter().position(|z| z.contains(zone_pos));
 
-                        if let Some(zone_idx) = zone_idx {
-                            let distance = current.distance(&zone_pos);
+                                if let Some(zone_idx) = zone_idx {
+                                    let distance = current.distance(&zone_pos);
 
-                            if distance > 2.0 {
-                                // Move to zone
-                                let direction = (zone_pos - current).normalize();
-                                let speed = 2.0;
+                                    if distance > 2.0 {
+                                        let direction = (zone_pos - current).normalize();
+                                        let speed = 2.0;
+                                        if direction.length() > 0.0 {
+                                            world.humans.positions[i] = current + direction * speed;
+                                        }
+                                        false
+                                    } else {
+                                        let gathered = world.resource_zones[zone_idx].gather(0.02);
+                                        if gathered > 0.0 {
+                                            world.humans.needs[i].satisfy(NeedType::Purpose, gathered * 0.5);
+                                        }
+                                        let duration = action.base_duration() as f32;
+                                        let progress_rate = if duration > 0.0 { 1.0 / duration } else { 0.1 };
+                                        task.progress += progress_rate;
+                                        task.progress >= 1.0 || world.resource_zones[zone_idx].current <= 0.0
+                                    }
+                                } else {
+                                    true
+                                }
+                            } else {
+                                true
+                            }
+                        }
+                        ActionId::Build | ActionId::Craft | ActionId::Repair => {
+                            let duration = task.action.base_duration();
+                            let progress_rate = match duration {
+                                0 => 0.1,
+                                1..=60 => 0.05,
+                                _ => 0.02,
+                            };
+                            task.progress += progress_rate;
+                            duration > 0 && task.progress >= 1.0
+                        }
+                        _ => false,
+                    }
+                }
+
+                // =========== IDLE ACTIONS (IdleWander, IdleObserve) ===========
+                ActionCategory::Idle => {
+                    match action {
+                        ActionId::IdleWander => {
+                            let current = world.humans.positions[i];
+                            let needs_new_target = target_pos.map(|t| current.distance(&t) < 1.0).unwrap_or(true);
+
+                            if needs_new_target {
+                                use rand::Rng;
+                                let mut rng = rand::thread_rng();
+                                let angle = rng.gen::<f32>() * std::f32::consts::TAU;
+                                let distance = rng.gen::<f32>() * 10.0;
+                                let offset = crate::core::types::Vec2::new(angle.cos() * distance, angle.sin() * distance);
+                                task.target_position = Some(current + offset);
+                            }
+
+                            if let Some(target) = task.target_position {
+                                let direction = (target - current).normalize();
+                                let speed = 1.0;
                                 if direction.length() > 0.0 {
                                     world.humans.positions[i] = current + direction * speed;
                                 }
-                                false // Not complete yet - still approaching
-                            } else {
-                                // At zone - gather
-                                let gathered = world.resource_zones[zone_idx].gather(0.02);
-
-                                if gathered > 0.0 {
-                                    // Satisfy purpose proportional to gathered amount
-                                    world.humans.needs[i].satisfy(NeedType::Purpose, gathered * 0.5);
-                                }
-
-                                // Complete when zone empty or task duration reached
-                                let duration = action.base_duration() as f32; // 40 ticks
-                                let progress_rate = if duration > 0.0 { 1.0 / duration } else { 0.1 };
-                                task.progress += progress_rate;
-
-                                task.progress >= 1.0 || world.resource_zones[zone_idx].current <= 0.0
                             }
-                        } else {
-                            true // No zone at target
+                            false
                         }
-                    } else {
-                        true // No target position
+                        ActionId::IdleObserve => {
+                            false
+                        }
+                        _ => false,
                     }
                 }
-                ActionId::IdleWander => {
-                    // If no target or reached target, pick new random point
-                    let current = world.humans.positions[i];
-                    let needs_new_target = target_pos.map(|t| current.distance(&t) < 1.0).unwrap_or(true);
 
-                    if needs_new_target {
-                        // Pick random point within 10 units
-                        use rand::Rng;
-                        let mut rng = rand::thread_rng();
-                        let angle = rng.gen::<f32>() * std::f32::consts::TAU;
-                        let distance = rng.gen::<f32>() * 10.0;
-                        let offset = crate::core::types::Vec2::new(angle.cos() * distance, angle.sin() * distance);
-                        task.target_position = Some(current + offset);
-                    }
-
-                    if let Some(target) = task.target_position {
-                        let direction = (target - current).normalize();
-                        let speed = 1.0; // Slow wandering speed
-
-                        if direction.length() > 0.0 {
-                            world.humans.positions[i] = current + direction * speed;
-                        }
-                    }
-
-                    // IdleWander never auto-completes (duration 0)
+                // =========== COMBAT ACTIONS (stubs) ===========
+                ActionCategory::Combat => {
                     false
                 }
-                ActionId::IdleObserve => {
-                    // Stay still - don't update position
-                    // Perception boost is handled in perception system (1.5x range)
-
-                    // IdleObserve never auto-completes (duration 0)
-                    false
-                }
-                _ => false, // Not a movement action
             };
 
-            // Progress for non-movement actions (Rest, social actions, Gather, IdleWander, and IdleObserve are handled specially above)
-            let is_special_action = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Follow | ActionId::Rest | ActionId::TalkTo | ActionId::Help | ActionId::Trade | ActionId::Gather | ActionId::IdleWander | ActionId::IdleObserve);
-            if !is_special_action {
-                let duration = task.action.base_duration();
-                let progress_rate = match duration {
-                    0 => 0.1,       // Continuous actions progress but never complete
-                    1..=60 => 0.05, // Quick: Eat, TalkTo, Attack (20 ticks)
-                    _ => 0.02,      // Long: Build, Craft, Rest (50 ticks)
-                };
-                task.progress += progress_rate;
-            }
-
-            let duration = task.action.base_duration();
-            // Duration 0 = continuous actions (IdleWander, IdleObserve)
-            // These NEVER complete automatically - they get cancelled/replaced
-            let progress_complete = duration > 0 && task.progress >= 1.0;
-            let is_complete = movement_complete || progress_complete;
             (action, target_entity, is_complete)
         });
 
-        if let Some((action, target_entity, is_complete)) = task_info {
-            // Handle Eat action specially: consume from food zone
-            if action == ActionId::Eat {
-                let pos = world.humans.positions[i];
-                // Find food zone entity is standing in and consume from it
-                for zone in &mut world.food_zones {
-                    if zone.contains(pos) {
-                        let consumed = zone.consume(0.1); // Consume rate per tick
-                        if consumed > 0.0 {
-                            world.humans.needs[i].satisfy(NeedType::Food, consumed * 0.5);
-                        }
-                        break;
+        let Some((action, target_entity, is_complete)) = task_info else {
+            continue;
+        };
+
+        // Handle Eat action specially: consume from food zone
+        if action == ActionId::Eat {
+            let pos = world.humans.positions[i];
+            // Find food zone entity is standing in and consume from it
+            for zone in &mut world.food_zones {
+                if zone.contains(pos) {
+                    let consumed = zone.consume(0.1); // Consume rate per tick
+                    if consumed > 0.0 {
+                        world.humans.needs[i].satisfy(NeedType::Food, consumed * 0.5);
                     }
-                }
-            } else {
-                // SATISFACTION MULTIPLIER: 0.05
-                // Actions apply a fraction of their nominal satisfaction each tick.
-                // This accumulates over the task duration to total satisfaction.
-                // Without this, entities would fully satisfy needs in one tick.
-                for (need, amount) in action.satisfies_needs() {
-                    world.humans.needs[i].satisfy(need, amount * 0.05);
+                    break;
                 }
             }
+        } else {
+            // SATISFACTION MULTIPLIER: 0.05
+            // Actions apply a fraction of their nominal satisfaction each tick.
+            // This accumulates over the task duration to total satisfaction.
+            // Without this, entities would fully satisfy needs in one tick.
+            for (need, amount) in action.satisfies_needs() {
+                world.humans.needs[i].satisfy(need, amount * 0.05);
+            }
+        }
 
-            // Push reciprocal task for social actions (deferred from closure to avoid borrow conflict)
-            // This happens on the first tick of interaction when task.progress was < 0.01
-            if matches!(action, ActionId::TalkTo | ActionId::Help | ActionId::Trade) {
-                if let Some((_target_pos, target_idx, _target_id, _target_exists, target_is_idle)) = social_target_info {
-                    // Check current task progress to see if this is the first tick of interaction
-                    let first_tick_of_interaction = world.humans.task_queues[i]
+        // Push reciprocal task for social actions (deferred from closure to avoid borrow conflict)
+        // This happens on the first tick of interaction when task.progress was < 0.01
+        if matches!(action, ActionId::TalkTo | ActionId::Help | ActionId::Trade) {
+            if let Some((_target_pos, target_idx, _target_id, _target_exists, target_is_idle)) = social_target_info {
+                // Check current task progress to see if this is the first tick of interaction
+                let first_tick_of_interaction = world.humans.task_queues[i]
+                    .current()
+                    .map(|t| t.progress > 0.0 && t.progress < 0.1)
+                    .unwrap_or(false);
+
+                if first_tick_of_interaction {
+                    // Check if target is idle and not already doing a social action
+                    let target_doing_social = world.humans.task_queues[target_idx]
                         .current()
-                        .map(|t| t.progress > 0.0 && t.progress < 0.1)
+                        .map(|t| matches!(t.action, ActionId::TalkTo | ActionId::Help | ActionId::Trade))
                         .unwrap_or(false);
 
-                    if first_tick_of_interaction {
-                        // Check if target is idle and not already doing a social action
-                        let target_doing_social = world.humans.task_queues[target_idx]
-                            .current()
-                            .map(|t| matches!(t.action, ActionId::TalkTo | ActionId::Help | ActionId::Trade))
-                            .unwrap_or(false);
-
-                        if target_is_idle && !target_doing_social {
-                            let actor_id = world.humans.ids[i];
-                            let reciprocal = Task::new(action, crate::entity::tasks::TaskPriority::Normal, world.current_tick)
-                                .with_entity(actor_id);
-                            world.humans.task_queues[target_idx].push(reciprocal);
-                        }
+                    if target_is_idle && !target_doing_social {
+                        let actor_id = world.humans.ids[i];
+                        let reciprocal = Task::new(action, crate::entity::tasks::TaskPriority::Normal, world.current_tick)
+                            .with_entity(actor_id);
+                        world.humans.task_queues[target_idx].push(reciprocal);
                     }
                 }
             }
+        }
 
-            // Complete task if done
-            if is_complete {
-                // Create social memories if this was a social action with a target
-                if let Some(target_id) = target_entity {
-                    create_social_memory_from_task(world, i, action, target_id, world.current_tick);
-                }
-
-                world.humans.task_queues[i].complete_current();
+        // Complete task if done
+        if is_complete {
+            // Create social memories if this was a social action with a target
+            if let Some(target_id) = target_entity {
+                create_social_memory_from_task(world, i, action, target_id, world.current_tick);
             }
+
+            world.humans.task_queues[i].complete_current();
         }
     }
 
