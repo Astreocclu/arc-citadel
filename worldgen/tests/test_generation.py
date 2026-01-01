@@ -139,7 +139,7 @@ class TestQualityGenerator:
         generator = QualityGenerator()
 
         assert generator.target_score == 9.0  # DEFAULT_TARGET_SCORE
-        assert generator.max_iterations == 10  # MAX_QUALITY_ITERATIONS
+        assert generator.max_iterations == 5  # MAX_QUALITY_ITERATIONS
         assert generator.candidates_per_round == 3  # CANDIDATES_PER_ROUND
         assert generator.client is None  # Lazy initialization
 
