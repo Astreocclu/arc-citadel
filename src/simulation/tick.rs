@@ -26,7 +26,8 @@ use rayon::prelude::*;
 /// 4. Decay thoughts (thoughts fade over time)
 /// 5. Select actions (decide what to do based on needs, thoughts, values)
 /// 6. Execute tasks (progress current tasks, satisfy needs)
-/// 7. Advance tick counter
+/// 7. Regenerate food zones (scarce zones recover over time)
+/// 8. Advance tick counter
 pub fn run_simulation_tick(world: &mut World) {
     update_needs(world);
     let perceptions = run_perception(world);
@@ -34,6 +35,7 @@ pub fn run_simulation_tick(world: &mut World) {
     decay_thoughts(world);
     select_actions(world);
     execute_tasks(world);
+    regenerate_food_zones(world);
     world.tick();
 }
 
@@ -429,6 +431,16 @@ fn execute_tasks(world: &mut World) {
     }
 }
 
+/// Regenerate food for scarce zones
+///
+/// Scarce zones slowly replenish over time, up to their maximum capacity.
+/// This creates dynamic resource availability and strategic considerations.
+fn regenerate_food_zones(world: &mut World) {
+    for zone in &mut world.food_zones {
+        zone.regenerate();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -572,11 +584,11 @@ mod tests {
         let mut world = World::new();
         world.spawn_human("Eater".into());
 
-        // Add scarce food zone
+        // Add scarce food zone with no regeneration (to isolate depletion testing)
         let _zone_id = world.add_food_zone(
             Vec2::new(0.0, 0.0),
             10.0,
-            Abundance::Scarce { current: 10.0, max: 100.0, regen: 0.1 },
+            Abundance::Scarce { current: 10.0, max: 100.0, regen: 0.0 },
         );
 
         // Entity at the zone
@@ -630,5 +642,30 @@ mod tests {
         // Position should have moved toward target
         assert!(world.humans.positions[0].x > 0.0);
         assert!(world.humans.positions[0].x < 100.0);  // Not teleported
+    }
+
+    #[test]
+    fn test_scarce_zone_regenerates() {
+        use crate::core::types::Vec2;
+        use crate::ecs::world::Abundance;
+
+        let mut world = World::new();
+        world.add_food_zone(
+            Vec2::new(0.0, 0.0),
+            10.0,
+            Abundance::Scarce { current: 0.0, max: 100.0, regen: 1.0 },  // Empty but regens
+        );
+
+        // Run ticks
+        for _ in 0..50 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Zone should have regenerated
+        if let Abundance::Scarce { current, .. } = &world.food_zones[0].abundance {
+            assert!(*current > 0.0, "Zone should have regenerated, but current is {}", *current);
+        } else {
+            panic!("Zone should be Scarce");
+        }
     }
 }
