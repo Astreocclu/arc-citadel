@@ -56,12 +56,28 @@ impl SparseHashGrid {
     }
 
     /// Query entities within radius
-    pub fn query_radius(&self, center: Vec2, radius: f32, positions: &[Vec2]) -> Vec<EntityId> {
-        let radius_sq = radius * radius;
+    ///
+    /// Requires an entity-to-index mapping to look up positions correctly.
+    /// Build this map once before querying:
+    /// ```ignore
+    /// let id_to_idx: AHashMap<EntityId, usize> = entity_ids
+    ///     .iter()
+    ///     .enumerate()
+    ///     .map(|(i, &id)| (id, i))
+    ///     .collect();
+    /// ```
+    pub fn query_radius(
+        &self,
+        center: Vec2,
+        radius: f32,
+        positions: &[Vec2],
+        id_to_idx: &ahash::AHashMap<EntityId, usize>,
+    ) -> Vec<EntityId> {
         self.query_neighbors(center)
             .filter(|&entity| {
-                let idx = entity.0.as_u128() as usize % positions.len();
-                positions.get(idx)
+                // Look up the correct index for this entity
+                id_to_idx.get(&entity)
+                    .and_then(|&idx| positions.get(idx))
                     .map(|pos| center.distance(pos) <= radius)
                     .unwrap_or(false)
             })

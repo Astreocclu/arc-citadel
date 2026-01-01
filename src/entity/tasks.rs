@@ -17,12 +17,17 @@ pub struct Task {
     pub source: TaskSource,
 }
 
+/// Task priority levels with explicit ordering values
+///
+/// Higher numeric value = higher priority.
+/// This ordering is relied upon by TaskQueue::push for insertion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum TaskPriority {
-    Critical,
-    High,
-    Normal,
-    Low,
+    Low = 0,
+    Normal = 1,
+    High = 2,
+    Critical = 3,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

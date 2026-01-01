@@ -53,16 +53,30 @@ impl Needs {
     }
 
     /// Decay needs over time (called each tick)
+    ///
+    /// Decay rates are tuned so that:
+    /// - Rest: reaches critical (~0.8) in ~800 active ticks
+    /// - Food: reaches critical in ~1600 ticks (eat less often than rest)
+    /// - Social: slow buildup, ~2600 ticks to critical
+    /// - Purpose: slowest, ~4000 ticks to critical
+    /// - Safety: RECOVERS when no threats (asymmetric to others)
+    ///
+    /// See `core::config::SimulationConfig` for tunable values.
     pub fn decay(&mut self, dt: f32, is_active: bool) {
+        // Active entities tire 50% faster (working, moving, fighting)
         let activity_mult = if is_active { 1.5 } else { 1.0 };
 
-        self.rest += 0.001 * dt * activity_mult;
-        self.food += 0.0005 * dt;
-        self.social += 0.0003 * dt;
-        self.purpose += 0.0002 * dt;
+        // Needs INCREASE over time (0.0 = satisfied, 1.0 = desperate)
+        self.rest += 0.001 * dt * activity_mult;  // Fastest when active
+        self.food += 0.0005 * dt;                  // Half of rest rate
+        self.social += 0.0003 * dt;                // Slow social pressure
+        self.purpose += 0.0002 * dt;               // Slowest - aimlessness builds gradually
 
+        // Safety DECREASES when no threats (opposite of other needs)
+        // This prevents entities from being permanently scared
         self.safety = (self.safety - 0.01 * dt).max(0.0);
 
+        // Clamp to valid range
         self.rest = self.rest.min(1.0);
         self.food = self.food.min(1.0);
         self.social = self.social.min(1.0);

@@ -32,6 +32,11 @@ pub enum CauseType {
 }
 
 impl Thought {
+    /// Create a new thought
+    ///
+    /// Default decay rate is 0.01/tick, so a thought at intensity 1.0
+    /// fades to 0.0 in about 100 ticks, creating a "memory horizon".
+    /// Thoughts below 0.1 intensity are considered faded and removed.
     pub fn new(
         valence: Valence,
         intensity: f32,
@@ -48,6 +53,8 @@ impl Thought {
             cause_type,
             cause_entity: None,
             created_tick: tick,
+            // Default decay: 100 ticks from 1.0 → 0.0
+            // See core::config::SimulationConfig::thought_decay_rate
             decay_rate: 0.01,
         }
     }
@@ -76,17 +83,28 @@ impl ThoughtBuffer {
         }
     }
 
+    /// Add a thought to the buffer
+    ///
+    /// When buffer is full (max_thoughts = 20), eviction rules:
+    /// 1. Find the weakest existing thought (lowest intensity)
+    /// 2. Only evict if new thought is stronger than the weakest
+    /// 3. If new thought is weaker than all existing, it's discarded
+    ///
+    /// This ensures the buffer always contains the most intense thoughts.
     pub fn add(&mut self, thought: Thought) {
         if self.thoughts.len() >= self.max_thoughts {
+            // Find the weakest thought
             if let Some(pos) = self.thoughts
                 .iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| a.intensity.partial_cmp(&b.intensity).unwrap())
                 .map(|(i, _)| i)
             {
+                // Only evict if new thought is stronger
                 if self.thoughts[pos].intensity < thought.intensity {
                     self.thoughts.remove(pos);
                 } else {
+                    // New thought too weak - discard it
                     return;
                 }
             }

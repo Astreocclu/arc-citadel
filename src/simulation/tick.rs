@@ -39,7 +39,7 @@ pub fn run_simulation_tick(world: &mut World) {
 /// Update all entity needs based on time passage
 ///
 /// Needs decay (increase) over time:
-/// - Rest increases faster when active
+/// - Rest increases faster when active (but not during restful actions)
 /// - Food increases steadily
 /// - Social and purpose increase slowly
 /// - Safety decreases naturally when no threats present
@@ -49,7 +49,13 @@ fn update_needs(world: &mut World) {
 
     // Sequential - this is already O(n) and very fast
     for i in living_indices {
-        let is_active = world.humans.task_queues[i].current().is_some();
+        // Check if current action is restful (Rest, IdleObserve, Eat)
+        let is_restful = world.humans.task_queues[i]
+            .current()
+            .map(|t| t.action.is_restful())
+            .unwrap_or(true); // No task = resting
+
+        let is_active = !is_restful;
         world.humans.needs[i].decay(dt, is_active);
     }
 }
@@ -281,24 +287,48 @@ fn select_actions(world: &mut World) {
 ///
 /// Progresses tasks and applies their effects (need satisfaction).
 /// Completes tasks when they reach full progress.
+///
+/// # Progress Rates
+/// - Continuous (duration 0): 0.1/tick → NEVER completes (cancelled/replaced)
+/// - Quick (duration 1-60): 0.05/tick → completes in 20 ticks
+/// - Long (duration > 60): 0.02/tick → completes in 50 ticks
+///
+/// # Need Satisfaction
+/// Actions satisfy needs at `amount * 0.05` per tick.
+/// This creates meaningful time investment:
+/// - Rest action: 0.3 × 0.05 × 50 ticks = 0.75 total satisfaction
+/// - Eat action: 0.5 × 0.05 × 20 ticks = 0.5 total satisfaction
 fn execute_tasks(world: &mut World) {
     // Collect indices first to avoid borrow conflicts
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for i in living_indices {
         // Get task info first (action and whether complete)
         let task_info = world.humans.task_queues[i].current_mut().map(|task| {
-            // Progress the task
-            task.progress += 0.01;
-            let action = task.action;
             let duration = task.action.base_duration();
+
+            // Progress rate varies by action duration
+            // See core::config::SimulationConfig for tunable values
+            let progress_rate = match duration {
+                0 => 0.1,       // Continuous actions progress but never complete
+                1..=60 => 0.05, // Quick: Eat, TalkTo, Attack (20 ticks)
+                _ => 0.02,      // Long: Build, Craft, Rest (50 ticks)
+            };
+            task.progress += progress_rate;
+            let action = task.action;
+
+            // Duration 0 = continuous actions (IdleWander, IdleObserve)
+            // These NEVER complete automatically - they get cancelled/replaced
             let is_complete = duration > 0 && task.progress >= 1.0;
             (action, is_complete)
         });
 
         if let Some((action, is_complete)) = task_info {
-            // Satisfy needs based on action type
+            // SATISFACTION MULTIPLIER: 0.05
+            // Actions apply a fraction of their nominal satisfaction each tick.
+            // This accumulates over the task duration to total satisfaction.
+            // Without this, entities would fully satisfy needs in one tick.
             for (need, amount) in action.satisfies_needs() {
-                world.humans.needs[i].satisfy(need, amount * 0.01);
+                world.humans.needs[i].satisfy(need, amount * 0.05);
             }
 
             // Complete task if done

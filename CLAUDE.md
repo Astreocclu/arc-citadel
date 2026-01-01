@@ -333,6 +333,85 @@ cargo test --lib simulation::
 | ui/ | Stub | Planned |
 | genetics/ | Stub | Planned |
 
+## Important Implementation Details
+
+These are critical details that affect how systems behave. Missing these can cause subtle bugs.
+
+### Need Satisfaction Multiplier
+
+Actions don't satisfy needs immediately. There's a **0.05x multiplier** per tick:
+
+```rust
+// Action says it satisfies food by 0.5
+// Actual satisfaction per tick: 0.5 × 0.05 = 0.025
+
+// Over a 20-tick action:
+// Total satisfaction: 0.025 × 20 = 0.5
+```
+
+This creates meaningful time investment. An entity can't just "eat once" and be full.
+
+### Safety Need is Asymmetric
+
+Unlike other needs that only increase, safety **decreases** when no threats are present:
+
+```rust
+// Other needs: increase over time (0.0 → 1.0)
+self.rest += 0.001;
+self.food += 0.0005;
+
+// Safety: decreases over time (1.0 → 0.0)
+self.safety = (self.safety - 0.01).max(0.0);
+```
+
+This prevents entities from being permanently scared after a threat is gone.
+
+### Spatial Query Requirements
+
+When using `query_radius`, you must provide an entity-to-index map:
+
+```rust
+// Build the map ONCE before querying
+let id_to_idx: AHashMap<EntityId, usize> = entity_ids
+    .iter()
+    .enumerate()
+    .map(|(i, &id)| (id, i))
+    .collect();
+
+// Then query safely
+grid.query_radius(center, radius, positions, &id_to_idx);
+```
+
+### Task Priority Ordering
+
+`TaskPriority` uses explicit numeric values for safe ordering:
+
+```rust
+pub enum TaskPriority {
+    Low = 0,
+    Normal = 1,
+    High = 2,
+    Critical = 3,
+}
+```
+
+Higher values = higher priority. The `TaskQueue` relies on this ordering.
+
+### Configuration Reference
+
+All magic numbers are documented in `src/core/config.rs`:
+
+| Parameter | Default | Effect |
+|-----------|---------|--------|
+| `grid_cell_size` | 10.0 | Spatial query performance |
+| `perception_range` | 50.0 | How far entities see |
+| `critical_need_threshold` | 0.8 | When needs trigger immediate action |
+| `satisfaction_multiplier` | 0.05 | How fast actions satisfy needs |
+| `thought_decay_rate` | 0.01 | How fast thoughts fade (100 ticks to 0) |
+| `parallel_threshold` | 1000 | When to use parallel processing |
+
+See `SimulationConfig` for the complete list with documentation.
+
 ## Implementation Plan Reference
 
 See `docs/plans/2025-12-31-arc-citadel-mvp.md` for detailed implementation tasks.
