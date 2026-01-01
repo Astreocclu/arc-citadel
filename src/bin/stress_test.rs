@@ -1,5 +1,5 @@
 use std::time::Instant;
-use arc_citadel::ecs::world::World;
+use arc_citadel::ecs::world::{World, Abundance};
 use arc_citadel::core::types::Vec2;
 use arc_citadel::simulation::tick::run_simulation_tick;
 
@@ -35,6 +35,30 @@ fn main() {
         world.humans.values[i].safety = ((i + 3) % 10) as f32 * 0.1;
         world.humans.values[i].ambition = ((i + 5) % 10) as f32 * 0.1;
     }
+
+    // Create food zones
+    println!("Creating food zones...");
+
+    // Abundant zones (4 corners) - world is 2000x2000
+    world.add_food_zone(Vec2::new(200.0, 200.0), 100.0, Abundance::Unlimited);
+    world.add_food_zone(Vec2::new(1800.0, 200.0), 100.0, Abundance::Unlimited);
+    world.add_food_zone(Vec2::new(200.0, 1800.0), 100.0, Abundance::Unlimited);
+    world.add_food_zone(Vec2::new(1800.0, 1800.0), 100.0, Abundance::Unlimited);
+
+    // Scarce zones (center area - creates competition)
+    for x in (600..=1400).step_by(200) {
+        for y in (600..=1400).step_by(200) {
+            world.add_food_zone(
+                Vec2::new(x as f32, y as f32),
+                50.0,
+                Abundance::Scarce { current: 500.0, max: 500.0, regen: 5.0 },
+            );
+        }
+    }
+
+    println!("Created {} food zones (4 abundant corners, {} scarce center)",
+        world.food_zones.len(),
+        world.food_zones.len() - 4);
 
     // Verify initial state
     println!("\n=== Initial State ===");
