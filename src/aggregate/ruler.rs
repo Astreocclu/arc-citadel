@@ -73,6 +73,55 @@ impl PersonalityTrait {
     }
 }
 
+/// Opinion of a ruler toward another polity
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Opinion {
+    pub base_value: i16,                  // -100 to +100
+    pub trust: i8,                        // -10 to +10 (separate from liking)
+    pub modifiers: Vec<OpinionModifier>,  // Temporary modifiers
+}
+
+/// Temporary modifier to opinion
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpinionModifier {
+    pub reason: String,
+    pub value: i8,           // -50 to +50
+    pub turns_remaining: u8,
+}
+
+impl Opinion {
+    pub fn new(base_value: i16) -> Self {
+        Self {
+            base_value: base_value.clamp(-100, 100),
+            trust: 0,
+            modifiers: Vec::new(),
+        }
+    }
+
+    /// Calculate effective opinion including all modifiers
+    pub fn effective_value(&self) -> i16 {
+        let modifier_sum: i16 = self.modifiers.iter().map(|m| m.value as i16).sum();
+        (self.base_value + modifier_sum).clamp(-100, 100)
+    }
+
+    /// Add a temporary modifier
+    pub fn add_modifier(&mut self, reason: &str, value: i8, turns: u8) {
+        self.modifiers.push(OpinionModifier {
+            reason: reason.to_string(),
+            value,
+            turns_remaining: turns,
+        });
+    }
+
+    /// Decay modifiers by one turn, removing expired ones
+    pub fn decay_modifiers(&mut self) {
+        for modifier in &mut self.modifiers {
+            modifier.turns_remaining = modifier.turns_remaining.saturating_sub(1);
+        }
+        self.modifiers.retain(|m| m.turns_remaining > 0);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,5 +154,28 @@ mod tests {
         assert_eq!(skills.martial, -10);
         assert_eq!(skills.stewardship, 5);
         assert_eq!(skills.intrigue, -5);
+    }
+
+    #[test]
+    fn test_opinion_effective_value() {
+        let mut opinion = Opinion::new(-20);
+        assert_eq!(opinion.effective_value(), -20);
+
+        // Add a positive modifier
+        opinion.add_modifier("trade_agreement", 15, 10);
+        assert_eq!(opinion.effective_value(), -5); // -20 + 15 = -5
+    }
+
+    #[test]
+    fn test_opinion_decay_modifiers() {
+        let mut opinion = Opinion::new(0);
+        opinion.add_modifier("recent_gift", 10, 2);
+
+        opinion.decay_modifiers();
+        assert_eq!(opinion.modifiers.len(), 1);
+        assert_eq!(opinion.modifiers[0].turns_remaining, 1);
+
+        opinion.decay_modifiers();
+        assert_eq!(opinion.modifiers.len(), 0); // Expired
     }
 }
