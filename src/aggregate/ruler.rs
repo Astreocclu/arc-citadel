@@ -22,6 +22,27 @@ pub enum PersonalityTrait {
     Zealous,      // Religious/ideological focus
 }
 
+/// Ruler skills affecting governance and war
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct Skills {
+    pub diplomacy: i8,    // -10 to +10: affects opinion formation, alliance success
+    pub martial: i8,      // -10 to +10: affects military effectiveness
+    pub stewardship: i8,  // -10 to +10: affects economic growth
+    pub intrigue: i8,     // -10 to +10: affects espionage, plot success
+}
+
+impl Skills {
+    /// Create new skills, clamping values to valid range
+    pub fn new(diplomacy: i8, martial: i8, stewardship: i8, intrigue: i8) -> Self {
+        Self {
+            diplomacy: diplomacy.clamp(-10, 10),
+            martial: martial.clamp(-10, 10),
+            stewardship: stewardship.clamp(-10, 10),
+            intrigue: intrigue.clamp(-10, 10),
+        }
+    }
+}
+
 impl PersonalityTrait {
     /// Modifier to war declaration likelihood (-10 to +10)
     pub fn war_modifier(&self) -> i8 {
@@ -65,5 +86,24 @@ mod tests {
         assert!(ambitious.war_modifier() > 0);
         // Cautious decreases war likelihood
         assert!(cautious.war_modifier() < 0);
+    }
+
+    #[test]
+    fn test_skills_default() {
+        let skills = Skills::default();
+        assert_eq!(skills.diplomacy, 0);
+        assert_eq!(skills.martial, 0);
+        assert_eq!(skills.stewardship, 0);
+        assert_eq!(skills.intrigue, 0);
+    }
+
+    #[test]
+    fn test_skills_clamped() {
+        let skills = Skills::new(15, -15, 5, -5);
+        // Values should be clamped to -10..=10
+        assert_eq!(skills.diplomacy, 10);
+        assert_eq!(skills.martial, -10);
+        assert_eq!(skills.stewardship, 5);
+        assert_eq!(skills.intrigue, -5);
     }
 }
