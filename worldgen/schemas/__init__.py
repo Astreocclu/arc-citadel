@@ -12,8 +12,10 @@ from .base import (
     HexCoord,
     generate_stable_id,
 )
+from .component import Component, ComponentCategory, ConnectionPoint
 
 __all__ = [
+    # base
     "Terrain",
     "ResourceType",
     "Abundance",
@@ -24,4 +26,8 @@ __all__ = [
     "SpeciesFitness",
     "HexCoord",
     "generate_stable_id",
+    # component
+    "Component",
+    "ComponentCategory",
+    "ConnectionPoint",
 ]
