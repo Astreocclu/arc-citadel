@@ -101,6 +101,16 @@ impl PolityId {
     }
 }
 
+/// Unique identifier for rulers (characters who lead polities)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct RulerId(pub u32);
+
+impl RulerId {
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,5 +130,14 @@ mod tests {
         let mut map: HashMap<PolityId, &str> = HashMap::new();
         map.insert(PolityId(1), "empire");
         assert_eq!(map.get(&PolityId(1)), Some(&"empire"));
+    }
+
+    #[test]
+    fn test_ruler_id_equality() {
+        let a = RulerId(1);
+        let b = RulerId(1);
+        let c = RulerId(2);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
     }
 }
