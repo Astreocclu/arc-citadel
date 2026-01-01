@@ -30,6 +30,7 @@ use rayon::prelude::*;
 /// 7. Execute tasks (progress current tasks, satisfy needs)
 /// 8. Regenerate food zones (scarce zones recover over time)
 /// 9. Advance tick counter
+/// 10. Decay social memories (once per day, after tick advances)
 pub fn run_simulation_tick(world: &mut World) {
     update_needs(world);
     let perceptions = run_perception(world);
@@ -40,6 +41,7 @@ pub fn run_simulation_tick(world: &mut World) {
     execute_tasks(world);
     regenerate_food_zones(world);
     world.tick();
+    decay_social_memories(world);
 }
 
 /// Update all entity needs based on time passage
@@ -276,6 +278,12 @@ fn decay_thoughts(world: &mut World) {
 /// Threshold for parallelization (below this, sequential is faster due to thread overhead)
 const PARALLEL_THRESHOLD: usize = 1000;
 
+/// Number of simulation ticks per day
+///
+/// Used for time-based systems like memory decay that should run once per day.
+/// At 1000 ticks per day, daily events happen roughly every 1000 ticks.
+pub const TICKS_PER_DAY: u64 = 1000;
+
 /// Select actions for entities without current tasks (PARALLEL when beneficial)
 ///
 /// Uses the action selection algorithm to choose appropriate actions
@@ -482,6 +490,31 @@ fn execute_tasks(world: &mut World) {
 fn regenerate_food_zones(world: &mut World) {
     for zone in &mut world.food_zones {
         zone.regenerate();
+    }
+}
+
+/// Decay social memories once per simulation day
+///
+/// Social memories fade over time, causing salience to decrease.
+/// This runs once per day (every TICKS_PER_DAY ticks) to:
+/// - Apply decay to all relationship slot memories
+/// - Decay encounter buffer salience
+/// - Remove near-zero encounters
+///
+/// Called at the END of run_simulation_tick, AFTER world.tick() has advanced
+/// the counter, so we check (current_tick - 1) to see if we just completed a day.
+fn decay_social_memories(world: &mut World) {
+    // Only decay once per day
+    // We check current_tick (which was just incremented) to see if we hit a day boundary
+    if world.current_tick % TICKS_PER_DAY != 0 {
+        return;
+    }
+
+    let current_tick = world.current_tick;
+    let living_indices: Vec<usize> = world.humans.iter_living().collect();
+
+    for &idx in &living_indices {
+        world.humans.social_memories[idx].apply_decay(current_tick);
     }
 }
 
@@ -887,6 +920,65 @@ mod tests {
         assert!(
             alice_memory.find_slot(bob).is_none(),
             "Alice should NOT have a memory slot for Bob after weak thought"
+        );
+    }
+
+    #[test]
+    fn test_memory_decay_happens_daily() {
+        let mut world = World::new();
+        let alice = world.spawn_human("Alice".into());
+        let bob = world.spawn_human("Bob".into());
+
+        let alice_idx = world.humans.index_of(alice).unwrap();
+
+        // Create a memory directly via record_encounter
+        world.humans.social_memories[alice_idx].record_encounter(
+            bob,
+            EventType::AidReceived,
+            0.8, // High intensity, above threshold
+            0,   // Created at tick 0
+        );
+
+        // Get initial salience (should be 1.0)
+        let initial_salience = world.humans.social_memories[alice_idx]
+            .find_slot(bob)
+            .expect("Alice should have a memory slot for Bob")
+            .memories[0]
+            .salience;
+        assert!(
+            (initial_salience - 1.0).abs() < 0.01,
+            "Initial salience should be 1.0, got {}",
+            initial_salience
+        );
+
+        // Run exactly TICKS_PER_DAY ticks (1000)
+        // After tick 1000, decay_social_memories will run because current_tick % 1000 == 0
+        for _ in 0..TICKS_PER_DAY {
+            run_simulation_tick(&mut world);
+        }
+
+        // Verify we're at the right tick
+        assert_eq!(world.current_tick, TICKS_PER_DAY, "Should be at tick 1000");
+
+        // Salience should have decayed (decay runs at tick 1000)
+        let final_salience = world.humans.social_memories[alice_idx]
+            .find_slot(bob)
+            .expect("Alice should still have a memory slot for Bob")
+            .memories[0]
+            .salience;
+
+        assert!(
+            final_salience < initial_salience,
+            "Salience should have decayed after one day. Initial: {}, Final: {}",
+            initial_salience,
+            final_salience
+        );
+
+        // Verify decay is reasonable (should be around 98% of original with 2% decay)
+        assert!(
+            final_salience > 0.9,
+            "Salience should still be > 0.9 after one day, got {}",
+            final_salience
         );
     }
 }
