@@ -252,6 +252,36 @@ pub fn filter_perception_human(
 }
 ```
 
+## Critical Implementation Details
+
+### Task Execution and Need Satisfaction
+
+Actions satisfy needs at **0.05x per tick**, not the nominal amount:
+
+```rust
+// ActionId::Eat says it satisfies food by 0.5
+// But actual satisfaction per tick is: 0.5 × 0.05 = 0.025
+
+// Over a 20-tick action duration:
+// Total satisfaction: 0.025 × 20 = 0.5
+```
+
+This creates meaningful time investment - entities can't instantly satisfy needs.
+
+### Task Completion Rules
+
+| Duration | Progress Rate | Behavior |
+|----------|---------------|----------|
+| 0 (continuous) | 0.1/tick | **Never completes** - cancelled/replaced only |
+| 1-60 (quick) | 0.05/tick | Completes in ~20 ticks |
+| >60 (long) | 0.02/tick | Completes in ~50 ticks |
+
+Continuous actions (IdleWander, IdleObserve) run until interrupted by a higher-priority task.
+
+### Configuration
+
+All magic numbers are documented in `core::config::SimulationConfig`.
+
 ## Testing
 
 ```bash

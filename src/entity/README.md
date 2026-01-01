@@ -297,6 +297,52 @@ let memory = &mut world.humans.memories[idx];
 memory.add_event(event);
 ```
 
+## Critical Implementation Details
+
+### Safety Need is Asymmetric
+
+Unlike other needs that only **increase** over time, safety **decreases**:
+
+```rust
+// Other needs increase (0.0 → 1.0 over time)
+self.rest += 0.001;   // Gets more tired
+self.food += 0.0005;  // Gets hungrier
+
+// Safety DECREASES (1.0 → 0.0 over time)
+self.safety = (self.safety - 0.01).max(0.0);  // Calms down
+```
+
+This prevents entities from being permanently scared after a threat is gone.
+
+### TaskPriority Uses Explicit Ordering
+
+Priority is defined with explicit numeric values for safe comparison:
+
+```rust
+#[repr(u8)]
+pub enum TaskPriority {
+    Low = 0,
+    Normal = 1,
+    High = 2,
+    Critical = 3,
+}
+```
+
+Higher values = higher priority. The `TaskQueue::push` method relies on this ordering to insert tasks correctly.
+
+### Need Decay Rates
+
+Needs increase at different rates (per tick when active):
+
+| Need | Rate | Time to Critical (~0.8) |
+|------|------|------------------------|
+| Rest | 0.001 | ~800 ticks |
+| Food | 0.0005 | ~1600 ticks |
+| Social | 0.0003 | ~2600 ticks |
+| Purpose | 0.0002 | ~4000 ticks |
+
+Active entities decay 1.5x faster for rest.
+
 ## Testing
 
 ```bash
