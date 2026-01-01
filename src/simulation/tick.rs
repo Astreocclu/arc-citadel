@@ -332,7 +332,7 @@ fn select_actions(world: &mut World) {
 /// Actions satisfy needs at `amount * 0.05` per tick.
 /// This creates meaningful time investment:
 /// - Rest action: 0.3 × 0.05 × 50 ticks = 0.75 total satisfaction
-/// - Eat action: 0.5 × 0.05 × 20 ticks = 0.5 total satisfaction
+/// - Eat action: consumes from food zone, satisfies at `consumed * 0.5`
 fn execute_tasks(world: &mut World) {
     // Collect indices first to avoid borrow conflicts
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
@@ -398,12 +398,27 @@ fn execute_tasks(world: &mut World) {
         });
 
         if let Some((action, is_complete)) = task_info {
-            // SATISFACTION MULTIPLIER: 0.05
-            // Actions apply a fraction of their nominal satisfaction each tick.
-            // This accumulates over the task duration to total satisfaction.
-            // Without this, entities would fully satisfy needs in one tick.
-            for (need, amount) in action.satisfies_needs() {
-                world.humans.needs[i].satisfy(need, amount * 0.05);
+            // Handle Eat action specially: consume from food zone
+            if action == ActionId::Eat {
+                let pos = world.humans.positions[i];
+                // Find food zone entity is standing in and consume from it
+                for zone in &mut world.food_zones {
+                    if zone.contains(pos) {
+                        let consumed = zone.consume(0.1); // Consume rate per tick
+                        if consumed > 0.0 {
+                            world.humans.needs[i].satisfy(NeedType::Food, consumed * 0.5);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                // SATISFACTION MULTIPLIER: 0.05
+                // Actions apply a fraction of their nominal satisfaction each tick.
+                // This accumulates over the task duration to total satisfaction.
+                // Without this, entities would fully satisfy needs in one tick.
+                for (need, amount) in action.satisfies_needs() {
+                    world.humans.needs[i].satisfy(need, amount * 0.05);
+                }
             }
 
             // Complete task if done
@@ -547,6 +562,41 @@ mod tests {
             .unwrap_or(0.0);
 
         assert!(current_progress > initial_progress);
+    }
+
+    #[test]
+    fn test_eating_depletes_scarce_zone() {
+        use crate::core::types::Vec2;
+        use crate::ecs::world::Abundance;
+
+        let mut world = World::new();
+        world.spawn_human("Eater".into());
+
+        // Add scarce food zone
+        let _zone_id = world.add_food_zone(
+            Vec2::new(0.0, 0.0),
+            10.0,
+            Abundance::Scarce { current: 10.0, max: 100.0, regen: 0.1 },
+        );
+
+        // Entity at the zone
+        world.humans.positions[0] = Vec2::new(0.0, 0.0);
+        world.humans.needs[0].food = 0.9;  // Very hungry
+
+        // Run several ticks (entity should eat and deplete)
+        for _ in 0..50 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Zone should be depleted
+        if let Abundance::Scarce { current, .. } = &world.food_zones[0].abundance {
+            assert!(*current < 10.0, "Zone should be partially depleted, but current is {}", *current);
+        } else {
+            panic!("Zone should be Scarce");
+        }
+
+        // Entity should be less hungry
+        assert!(world.humans.needs[0].food < 0.9, "Entity should be less hungry");
     }
 
     #[test]
