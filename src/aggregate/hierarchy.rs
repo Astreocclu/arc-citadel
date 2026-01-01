@@ -52,6 +52,43 @@ pub fn get_all_vassals(polity_id: PolityId, polities: &HashMap<PolityId, Polity>
     result
 }
 
+/// Check if subject is a vassal of lord (at any level)
+pub fn is_vassal_of(subject: PolityId, lord: PolityId, polities: &HashMap<PolityId, Polity>) -> bool {
+    if subject == lord {
+        return false; // Not a vassal of yourself
+    }
+
+    let mut current = subject;
+    let mut visited = std::collections::HashSet::new();
+
+    while let Some(polity) = polities.get(&current) {
+        if !visited.insert(current) {
+            return false; // Cycle detected
+        }
+
+        match polity.parent {
+            Some(parent_id) if parent_id == lord => return true,
+            Some(parent_id) => current = parent_id,
+            None => return false, // Reached sovereign without finding lord
+        }
+    }
+
+    false
+}
+
+/// Check if two polities are in the same realm (share a sovereign)
+pub fn same_realm(a: PolityId, b: PolityId, polities: &HashMap<PolityId, Polity>) -> bool {
+    match (get_sovereign(a, polities), get_sovereign(b, polities)) {
+        (Some(sov_a), Some(sov_b)) => sov_a == sov_b,
+        _ => false,
+    }
+}
+
+/// Get the liege (immediate parent) of a polity
+pub fn get_liege(polity_id: PolityId, polities: &HashMap<PolityId, Polity>) -> Option<PolityId> {
+    polities.get(&polity_id).and_then(|p| p.parent)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,5 +189,61 @@ mod tests {
         let polities = make_polity_map(vec![make_polity(1, None)]);
         let vassals = get_vassals(PolityId(1), &polities);
         assert!(vassals.is_empty());
+    }
+
+    #[test]
+    fn test_is_vassal_of_direct() {
+        let polities = make_polity_map(vec![
+            make_polity(1, None),
+            make_polity(2, Some(1)),
+        ]);
+
+        assert!(is_vassal_of(PolityId(2), PolityId(1), &polities));
+        assert!(!is_vassal_of(PolityId(1), PolityId(2), &polities));
+    }
+
+    #[test]
+    fn test_is_vassal_of_indirect() {
+        // Empire(1) -> Kingdom(2) -> Duchy(3)
+        let polities = make_polity_map(vec![
+            make_polity(1, None),
+            make_polity(2, Some(1)),
+            make_polity(3, Some(2)),
+        ]);
+
+        // Duchy is vassal of both Kingdom and Empire
+        assert!(is_vassal_of(PolityId(3), PolityId(2), &polities));
+        assert!(is_vassal_of(PolityId(3), PolityId(1), &polities));
+    }
+
+    #[test]
+    fn test_same_realm() {
+        // Empire(1) -> Kingdom(2) -> Duchy(3)
+        //           -> Kingdom(4)
+        let polities = make_polity_map(vec![
+            make_polity(1, None),
+            make_polity(2, Some(1)),
+            make_polity(3, Some(2)),
+            make_polity(4, Some(1)),
+            make_polity(5, None), // Different sovereign
+        ]);
+
+        assert!(same_realm(PolityId(2), PolityId(3), &polities));
+        assert!(same_realm(PolityId(2), PolityId(4), &polities));
+        assert!(same_realm(PolityId(3), PolityId(4), &polities));
+        assert!(!same_realm(PolityId(2), PolityId(5), &polities));
+    }
+
+    #[test]
+    fn test_get_liege() {
+        let polities = make_polity_map(vec![
+            make_polity(1, None),
+            make_polity(2, Some(1)),
+            make_polity(3, Some(2)),
+        ]);
+
+        assert_eq!(get_liege(PolityId(1), &polities), None);
+        assert_eq!(get_liege(PolityId(2), &polities), Some(PolityId(1)));
+        assert_eq!(get_liege(PolityId(3), &polities), Some(PolityId(2)));
     }
 }
