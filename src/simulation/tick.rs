@@ -9,7 +9,7 @@
 
 use crate::ecs::world::World;
 use crate::spatial::sparse_hash::SparseHashGrid;
-use crate::simulation::perception::{perception_system, RelationshipType};
+use crate::simulation::perception::{perception_system, find_nearest_food_zone, RelationshipType};
 use crate::simulation::action_select::{select_action_human, SelectionContext};
 use crate::entity::thoughts::{Thought, Valence, CauseType};
 use crate::entity::needs::NeedType;
@@ -64,6 +64,7 @@ fn update_needs(world: &mut World) {
 ///
 /// Creates a spatial hash grid for efficient neighbor queries,
 /// then runs perception for each entity to determine what they can see.
+/// Also populates nearest_food_zone for each entity.
 fn run_perception(world: &World) -> Vec<crate::simulation::perception::Perception> {
     let mut grid = SparseHashGrid::new(10.0);
 
@@ -75,11 +76,23 @@ fn run_perception(world: &World) -> Vec<crate::simulation::perception::Perceptio
     grid.rebuild(ids.iter().cloned().zip(positions.iter().cloned()));
 
     // Use parallel for large entity counts, sequential for small
-    if ids.len() >= PARALLEL_THRESHOLD {
+    let mut perceptions = if ids.len() >= PARALLEL_THRESHOLD {
         perception_system_parallel(&grid, &positions, &ids, 50.0)
     } else {
         perception_system(&grid, &positions, &ids, 50.0)
+    };
+
+    // Populate nearest_food_zone for each perception
+    let perception_range = 50.0;
+    for (i, perception) in perceptions.iter_mut().enumerate() {
+        perception.nearest_food_zone = find_nearest_food_zone(
+            positions[i],
+            perception_range,
+            &world.food_zones,
+        );
     }
+
+    perceptions
 }
 
 /// Parallel perception - each entity's perception is independent
@@ -136,6 +149,7 @@ fn perception_system_parallel(
                 perceived_entities,
                 perceived_objects: vec![],
                 perceived_events: vec![],
+                nearest_food_zone: None, // Will be populated after with food zone data
             }
         })
         .collect()

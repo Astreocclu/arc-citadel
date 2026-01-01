@@ -159,6 +159,7 @@ fn run_perception(world: &World) -> Vec<Perception> {
                 perceived_entities,
                 perceived_objects: vec![],
                 perceived_events: vec![],
+                nearest_food_zone: None,
             }
         })
         .collect()

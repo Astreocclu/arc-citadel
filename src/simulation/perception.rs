@@ -1,6 +1,7 @@
 //! Perception system - what entities notice based on their values
 
 use crate::core::types::{EntityId, Vec2};
+use crate::ecs::world::FoodZone;
 use crate::entity::species::human::HumanValues;
 use crate::spatial::sparse_hash::SparseHashGrid;
 
@@ -10,6 +11,8 @@ pub struct Perception {
     pub perceived_entities: Vec<PerceivedEntity>,
     pub perceived_objects: Vec<PerceivedObject>,
     pub perceived_events: Vec<PerceivedEvent>,
+    /// Nearest food zone: (zone_id, position, distance)
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +111,26 @@ pub fn filter_perception_human(
         .collect()
 }
 
+/// Find the nearest food zone within perception range
+pub fn find_nearest_food_zone(
+    observer_pos: Vec2,
+    perception_range: f32,
+    food_zones: &[FoodZone],
+) -> Option<(u32, Vec2, f32)> {
+    let mut nearest: Option<(u32, Vec2, f32)> = None;
+
+    for zone in food_zones {
+        let distance = observer_pos.distance(&zone.position);
+        if distance <= perception_range {
+            if nearest.is_none() || distance < nearest.as_ref().unwrap().2 {
+                nearest = Some((zone.id, zone.position, distance));
+            }
+        }
+    }
+
+    nearest
+}
+
 pub fn perception_system(
     spatial_grid: &SparseHashGrid,
     positions: &[Vec2],
@@ -153,6 +176,32 @@ pub fn perception_system(
             perceived_entities,
             perceived_objects: vec![],
             perceived_events: vec![],
+            nearest_food_zone: None, // Will be populated by caller with food zone data
         }
     }).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::types::Vec2;
+    use crate::ecs::world::{Abundance, FoodZone};
+
+    #[test]
+    fn test_perception_finds_food_zone() {
+        let zones = vec![
+            FoodZone { id: 0, position: Vec2::new(50.0, 50.0), radius: 10.0, abundance: Abundance::Unlimited },
+            FoodZone { id: 1, position: Vec2::new(200.0, 200.0), radius: 20.0, abundance: Abundance::Unlimited },
+        ];
+
+        let observer_pos = Vec2::new(60.0, 60.0);
+        let perception_range = 100.0;
+
+        let nearest = find_nearest_food_zone(observer_pos, perception_range, &zones);
+
+        assert!(nearest.is_some());
+        let (zone_id, zone_pos, distance) = nearest.unwrap();
+        assert_eq!(zone_id, 0);  // Closer zone
+        assert!(distance < 20.0);
+    }
 }
