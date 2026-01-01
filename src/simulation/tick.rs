@@ -297,9 +297,27 @@ pub const TICKS_PER_DAY: u64 = 1000;
 ///
 /// Uses the action selection algorithm to choose appropriate actions
 /// based on needs, thoughts, and values.
+///
+/// Builds a spatial grid to find nearby entities and looks up their dispositions
+/// from social memory for disposition-aware action selection.
 fn select_actions(world: &mut World) {
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     let current_tick = world.current_tick;
+
+    // Build spatial grid for nearby entity queries
+    let mut grid = SparseHashGrid::new(10.0);
+    let positions: Vec<_> = world.humans.positions.iter().cloned().collect();
+    let ids: Vec<_> = world.humans.ids.iter().cloned().collect();
+    grid.rebuild(ids.iter().cloned().zip(positions.iter().cloned()));
+
+    // Build O(1) lookup map for entity indices
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
+    let perception_range = 50.0;
 
     if living_indices.len() >= PARALLEL_THRESHOLD {
         // PARALLEL path for large entity counts
@@ -310,11 +328,30 @@ fn select_actions(world: &mut World) {
                     return None;
                 }
                 let pos = world.humans.positions[i];
+                let observer_id = world.humans.ids[i];
+
                 // Check if entity is AT a food zone
                 let food_available = world.food_zones.iter()
                     .any(|zone| zone.contains(pos));
                 // Find nearest food zone within perception range
-                let nearest_food_zone = find_nearest_food_zone(pos, 50.0, &world.food_zones);
+                let nearest_food_zone = find_nearest_food_zone(pos, perception_range, &world.food_zones);
+
+                // Query nearby entities and build dispositions list
+                let perceived_dispositions: Vec<_> = grid
+                    .query_neighbors(pos)
+                    .filter(|&e| e != observer_id)
+                    .filter_map(|entity| {
+                        let entity_idx = *id_to_idx.get(&entity)?;
+                        let entity_pos = positions[entity_idx];
+                        let distance = pos.distance(&entity_pos);
+                        if distance <= perception_range {
+                            let disposition = world.humans.social_memories[i].get_disposition(entity);
+                            Some((entity, disposition))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
 
                 let ctx = SelectionContext {
                     body: &world.humans.body_states[i],
@@ -325,9 +362,10 @@ fn select_actions(world: &mut World) {
                     threat_nearby: world.humans.needs[i].safety > 0.5,
                     food_available,
                     safe_location: world.humans.needs[i].safety < 0.3,
-                    entity_nearby: true,
+                    entity_nearby: !perceived_dispositions.is_empty(),
                     current_tick,
                     nearest_food_zone,
+                    perceived_dispositions,
                 };
                 Some((i, select_action_human(&ctx)))
             })
@@ -345,11 +383,30 @@ fn select_actions(world: &mut World) {
                 continue;
             }
             let pos = world.humans.positions[i];
+            let observer_id = world.humans.ids[i];
+
             // Check if entity is AT a food zone
             let food_available = world.food_zones.iter()
                 .any(|zone| zone.contains(pos));
             // Find nearest food zone within perception range
-            let nearest_food_zone = find_nearest_food_zone(pos, 50.0, &world.food_zones);
+            let nearest_food_zone = find_nearest_food_zone(pos, perception_range, &world.food_zones);
+
+            // Query nearby entities and build dispositions list
+            let perceived_dispositions: Vec<_> = grid
+                .query_neighbors(pos)
+                .filter(|&e| e != observer_id)
+                .filter_map(|entity| {
+                    let entity_idx = *id_to_idx.get(&entity)?;
+                    let entity_pos = positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        let disposition = world.humans.social_memories[i].get_disposition(entity);
+                        Some((entity, disposition))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
             let ctx = SelectionContext {
                 body: &world.humans.body_states[i],
@@ -360,9 +417,10 @@ fn select_actions(world: &mut World) {
                 threat_nearby: world.humans.needs[i].safety > 0.5,
                 food_available,
                 safe_location: world.humans.needs[i].safety < 0.3,
-                entity_nearby: true,
+                entity_nearby: !perceived_dispositions.is_empty(),
                 current_tick,
                 nearest_food_zone,
+                perceived_dispositions,
             };
             if let Some(task) = select_action_human(&ctx) {
                 world.humans.task_queues[i].push(task);

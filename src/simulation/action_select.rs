@@ -1,12 +1,13 @@
 //! Action selection algorithm - the heart of autonomous behavior
 
 use crate::actions::catalog::ActionId;
-use crate::entity::needs::{Needs, NeedType};
-use crate::entity::thoughts::ThoughtBuffer;
+use crate::core::types::{EntityId, Tick, Vec2};
 use crate::entity::body::BodyState;
+use crate::entity::needs::{Needs, NeedType};
+use crate::entity::social::Disposition;
 use crate::entity::species::human::HumanValues;
 use crate::entity::tasks::{Task, TaskPriority, TaskSource};
-use crate::core::types::{Tick, Vec2};
+use crate::entity::thoughts::ThoughtBuffer;
 
 /// Context provided to the action selection algorithm
 pub struct SelectionContext<'a> {
@@ -22,6 +23,9 @@ pub struct SelectionContext<'a> {
     pub current_tick: Tick,
     /// Nearest food zone: (zone_id, position, distance)
     pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    /// Nearby entities with their dispositions (from perception and social memory)
+    /// Used for disposition-aware action selection (flee from hostile, talk to friendly)
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
 }
 
 /// Main action selection function for humans
@@ -29,9 +33,10 @@ pub struct SelectionContext<'a> {
 /// This function implements autonomous behavior by:
 /// 1. First checking for critical needs (safety, food, rest at > 0.8)
 /// 2. If entity already has a task, returning None (don't interrupt)
-/// 3. Checking for value-driven impulses from strong thoughts
-/// 4. Addressing moderate needs (> 0.6)
-/// 5. Falling back to idle behavior based on values
+/// 3. Checking disposition-based responses (flee from hostile, approach friendly)
+/// 4. Checking for value-driven impulses from strong thoughts
+/// 5. Addressing moderate needs (> 0.6)
+/// 6. Falling back to idle behavior based on values
 pub fn select_action_human(ctx: &SelectionContext) -> Option<Task> {
     // Critical needs always take priority
     if let Some(critical) = ctx.needs.has_critical() {
@@ -41,6 +46,12 @@ pub fn select_action_human(ctx: &SelectionContext) -> Option<Task> {
     // Don't interrupt existing tasks
     if ctx.has_current_task {
         return None;
+    }
+
+    // Check for disposition-based responses
+    // This uses social memory to react to nearby entities based on past experiences
+    if let Some(task) = check_disposition_response(ctx) {
+        return Some(task);
     }
 
     // Check for value-driven impulses from thoughts
@@ -129,6 +140,57 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
         }),
         _ => None,
     }
+}
+
+/// Check for disposition-based responses to nearby entities
+///
+/// This function uses social memory to react to nearby entities based on
+/// past experiences. It enables emergent social behavior where:
+/// - Hostile entities trigger flight response when safety need is elevated
+/// - Friendly entities encourage social interaction when social need is elevated
+///
+/// Returns a task if disposition-based action is warranted, None otherwise.
+fn check_disposition_response(ctx: &SelectionContext) -> Option<Task> {
+    // Check for hostile entities nearby when safety need is elevated
+    // Threshold: safety need > 0.5 triggers concern about hostile entities
+    let has_hostile = ctx.perceived_dispositions.iter()
+        .any(|(_, d)| matches!(d, Disposition::Hostile | Disposition::Suspicious));
+
+    if has_hostile && ctx.needs.safety > 0.5 {
+        // Hostile entity nearby and we feel unsafe - flee!
+        return Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::High,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        });
+    }
+
+    // Check for friendly entities when social need is elevated
+    // Threshold: social need > 0.5 triggers desire to interact with friends
+    let friendly_target = ctx.perceived_dispositions.iter()
+        .find(|(_, d)| matches!(d, Disposition::Friendly | Disposition::Favorable))
+        .map(|(id, _)| *id);
+
+    if let Some(target_id) = friendly_target {
+        if ctx.needs.social > 0.5 {
+            // Friendly entity nearby and we want company - talk to them!
+            return Some(Task {
+                action: ActionId::TalkTo,
+                target_position: None,
+                target_entity: Some(target_id),
+                priority: TaskPriority::Normal,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            });
+        }
+    }
+
+    None
 }
 
 /// Check if strong thoughts combined with values should trigger action
@@ -240,6 +302,7 @@ mod tests {
             entity_nearby: false,
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -269,6 +332,7 @@ mod tests {
             entity_nearby: false,
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -297,6 +361,7 @@ mod tests {
             entity_nearby: false,
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -331,6 +396,7 @@ mod tests {
             entity_nearby: true,
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -360,6 +426,7 @@ mod tests {
             entity_nearby: true, // Someone to talk to
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -392,6 +459,7 @@ mod tests {
             entity_nearby: false,
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -424,6 +492,7 @@ mod tests {
             entity_nearby: true,
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -452,6 +521,7 @@ mod tests {
             entity_nearby: false, // No one to talk to
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -489,6 +559,7 @@ mod tests {
             entity_nearby: false,
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -518,6 +589,7 @@ mod tests {
             entity_nearby: false,
             current_tick: 0,
             nearest_food_zone: None,
+            perceived_dispositions: vec![],
         };
 
         // Critical needs should still trigger even with existing task
@@ -550,6 +622,7 @@ mod tests {
             entity_nearby: false,
             current_tick: 0,
             nearest_food_zone: Some((0, Vec2::new(100.0, 100.0), 50.0)), // Food zone nearby
+            perceived_dispositions: vec![],
         };
 
         let task = select_action_human(&ctx);
@@ -560,5 +633,247 @@ mod tests {
         let target = task.target_position.expect("Expected target_position to be set");
         assert!((target.x - 100.0).abs() < 0.001);
         assert!((target.y - 100.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_hostile_disposition_influences_action() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.safety = 0.6; // Elevated safety need (not critical, but concerned)
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a hostile entity
+        let hostile_entity = EntityId::new();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![(hostile_entity, Disposition::Hostile)],
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With hostile entity nearby and elevated safety need, should flee
+        assert_eq!(task.action, ActionId::Flee);
+        assert_eq!(task.priority, TaskPriority::High);
+    }
+
+    #[test]
+    fn test_suspicious_disposition_triggers_flee() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.safety = 0.6; // Elevated safety need
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a suspicious entity
+        let suspicious_entity = EntityId::new();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![(suspicious_entity, Disposition::Suspicious)],
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // Suspicious entities also trigger flee response
+        assert_eq!(task.action, ActionId::Flee);
+        assert_eq!(task.priority, TaskPriority::High);
+    }
+
+    #[test]
+    fn test_friendly_disposition_influences_action() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.social = 0.6; // Elevated social need
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a friendly entity
+        let friendly_entity = EntityId::new();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![(friendly_entity, Disposition::Friendly)],
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With friendly entity nearby and elevated social need, should talk
+        assert_eq!(task.action, ActionId::TalkTo);
+        assert_eq!(task.target_entity, Some(friendly_entity));
+        assert_eq!(task.priority, TaskPriority::Normal);
+    }
+
+    #[test]
+    fn test_favorable_disposition_triggers_talk() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.social = 0.6; // Elevated social need
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a favorable entity
+        let favorable_entity = EntityId::new();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![(favorable_entity, Disposition::Favorable)],
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // Favorable entities also trigger talk response
+        assert_eq!(task.action, ActionId::TalkTo);
+        assert_eq!(task.target_entity, Some(favorable_entity));
+    }
+
+    #[test]
+    fn test_hostile_takes_priority_over_friendly() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.safety = 0.6; // Both safety and social needs elevated
+        needs.social = 0.6;
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create both hostile and friendly entities
+        let hostile_entity = EntityId::new();
+        let friendly_entity = EntityId::new();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![
+                (hostile_entity, Disposition::Hostile),
+                (friendly_entity, Disposition::Friendly),
+            ],
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // Safety response (flee from hostile) takes priority over social (talk to friendly)
+        assert_eq!(task.action, ActionId::Flee);
+    }
+
+    #[test]
+    fn test_low_safety_need_ignores_hostile() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.safety = 0.3; // Low safety need (entity feels safe)
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a hostile entity
+        let hostile_entity = EntityId::new();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![(hostile_entity, Disposition::Hostile)],
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With low safety need, hostile entity doesn't trigger flee
+        assert_ne!(task.action, ActionId::Flee);
+    }
+
+    #[test]
+    fn test_low_social_need_ignores_friendly() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.social = 0.3; // Low social need (entity doesn't want to talk)
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a friendly entity
+        let friendly_entity = EntityId::new();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![(friendly_entity, Disposition::Friendly)],
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With low social need, friendly entity doesn't trigger talk
+        // (falls through to idle behavior)
+        assert_ne!(task.action, ActionId::TalkTo);
     }
 }
