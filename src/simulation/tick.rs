@@ -559,6 +559,34 @@ fn execute_tasks(world: &mut World) {
             }
         };
 
+        // For social actions (TalkTo, Help, Trade), pre-compute target info
+        // Returns (target_pos, target_idx, target_id, target_exists, target_is_idle)
+        let social_target_info: Option<(crate::core::types::Vec2, usize, crate::core::types::EntityId, bool, bool)> = {
+            if let Some(task) = world.humans.task_queues[i].current() {
+                if matches!(task.action, ActionId::TalkTo | ActionId::Help | ActionId::Trade) {
+                    if let Some(target_id) = task.target_entity {
+                        if let Some(target_idx) = world.humans.index_of(target_id) {
+                            let target_pos = world.humans.positions[target_idx];
+                            // Check if target is idle (IdleWander/IdleObserve) or has no task
+                            let target_is_idle = world.humans.task_queues[target_idx]
+                                .current()
+                                .map(|t| matches!(t.action, ActionId::IdleWander | ActionId::IdleObserve))
+                                .unwrap_or(true);
+                            Some((target_pos, target_idx, target_id, true, target_is_idle))
+                        } else {
+                            None // Target doesn't exist
+                        }
+                    } else {
+                        None // No target entity
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
         // Get task info first (action, target_entity, target_position, and whether complete)
         let task_info = world.humans.task_queues[i].current_mut().map(|task| {
             let action = task.action;
@@ -649,12 +677,82 @@ fn execute_tasks(world: &mut World) {
                     task.progress += 1.0 / duration as f32;
                     task.progress >= 1.0
                 }
+                ActionId::TalkTo | ActionId::Help | ActionId::Trade => {
+                    // Social actions require proximity - use pre-computed target info
+                    if let Some((target_pos, target_idx, _target_id, _target_exists, _target_is_idle)) = social_target_info {
+                        let current = world.humans.positions[i];
+                        let distance = current.distance(&target_pos);
+                        const SOCIAL_RANGE: f32 = 5.0;
+
+                        if distance > SOCIAL_RANGE {
+                            // Move toward target
+                            let direction = (target_pos - current).normalize();
+                            let speed = 2.0;
+                            if direction.length() > 0.0 {
+                                world.humans.positions[i] = current + direction * speed;
+                            }
+                            false // Not complete yet - still approaching
+                        } else {
+                            // In range - interact
+
+                            // Determine satisfaction amounts based on action
+                            let (social_amount, purpose_amount) = match action {
+                                ActionId::TalkTo => (0.02, 0.0),
+                                ActionId::Help => (0.03, 0.01),
+                                ActionId::Trade => (0.02, 0.02),
+                                _ => (0.0, 0.0),
+                            };
+
+                            // Satisfy needs for BOTH parties
+                            world.humans.needs[i].satisfy(NeedType::Social, social_amount);
+                            world.humans.needs[target_idx].satisfy(NeedType::Social, social_amount);
+
+                            if purpose_amount > 0.0 {
+                                world.humans.needs[i].satisfy(NeedType::Purpose, purpose_amount);
+                                world.humans.needs[target_idx].satisfy(NeedType::Purpose, purpose_amount);
+                            }
+
+                            // Create memories for both (on first tick of interaction)
+                            if task.progress < 0.01 {
+                                let event_type = match action {
+                                    ActionId::Help => EventType::AidGiven,
+                                    ActionId::Trade => EventType::Transaction,
+                                    _ => EventType::Observation,
+                                };
+
+                                let actor_id = world.humans.ids[i];
+
+                                world.humans.social_memories[i].record_encounter(
+                                    target_entity.unwrap(), event_type, 0.5, world.current_tick
+                                );
+
+                                let target_event = match action {
+                                    ActionId::Help => EventType::AidReceived,
+                                    _ => event_type,
+                                };
+                                world.humans.social_memories[target_idx].record_encounter(
+                                    actor_id, target_event, 0.5, world.current_tick
+                                );
+
+                                // Note: Reciprocal task is handled after the closure to avoid borrow conflict
+                            }
+
+                            // Progress toward completion
+                            let duration = action.base_duration() as f32;
+                            let progress_rate = if duration > 0.0 { 1.0 / duration } else { 0.1 };
+                            task.progress += progress_rate;
+                            task.progress >= 1.0
+                        }
+                    } else {
+                        true // No target or target doesn't exist, complete immediately
+                    }
+                }
                 _ => false, // Not a movement action
             };
 
-            // Progress for non-movement actions (Rest is handled specially above)
-            let is_movement_or_rest = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Follow | ActionId::Rest);
-            if !is_movement_or_rest {
+            // Progress for non-movement actions (Rest and social actions are handled specially above)
+            let is_special_action = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Follow | ActionId::Rest | ActionId::TalkTo | ActionId::Help | ActionId::Trade);
+            if !is_special_action {
                 let duration = task.action.base_duration();
                 let progress_rate = match duration {
                     0 => 0.1,       // Continuous actions progress but never complete
@@ -693,6 +791,33 @@ fn execute_tasks(world: &mut World) {
                 // Without this, entities would fully satisfy needs in one tick.
                 for (need, amount) in action.satisfies_needs() {
                     world.humans.needs[i].satisfy(need, amount * 0.05);
+                }
+            }
+
+            // Push reciprocal task for social actions (deferred from closure to avoid borrow conflict)
+            // This happens on the first tick of interaction when task.progress was < 0.01
+            if matches!(action, ActionId::TalkTo | ActionId::Help | ActionId::Trade) {
+                if let Some((_target_pos, target_idx, _target_id, _target_exists, target_is_idle)) = social_target_info {
+                    // Check current task progress to see if this is the first tick of interaction
+                    let first_tick_of_interaction = world.humans.task_queues[i]
+                        .current()
+                        .map(|t| t.progress > 0.0 && t.progress < 0.1)
+                        .unwrap_or(false);
+
+                    if first_tick_of_interaction {
+                        // Check if target is idle and not already doing a social action
+                        let target_doing_social = world.humans.task_queues[target_idx]
+                            .current()
+                            .map(|t| matches!(t.action, ActionId::TalkTo | ActionId::Help | ActionId::Trade))
+                            .unwrap_or(false);
+
+                        if target_is_idle && !target_doing_social {
+                            let actor_id = world.humans.ids[i];
+                            let reciprocal = Task::new(action, crate::entity::tasks::TaskPriority::Normal, world.current_tick)
+                                .with_entity(actor_id);
+                            world.humans.task_queues[target_idx].push(reciprocal);
+                        }
+                    }
                 }
             }
 
@@ -1481,5 +1606,131 @@ mod tests {
             world.humans.task_queues[idx].current().map(|t| t.action != ActionId::SeekSafety).unwrap_or(true),
             "SeekSafety task should complete immediately when no target_position"
         );
+    }
+
+    #[test]
+    fn test_social_action_requires_proximity() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        // Two entities far apart
+        let a_id = world.spawn_human("Alice".into());
+        let b_id = world.spawn_human("Bob".into());
+
+        let a_idx = world.humans.index_of(a_id).unwrap();
+        let b_idx = world.humans.index_of(b_id).unwrap();
+
+        // Position them far apart (20 units)
+        world.humans.positions[a_idx] = Vec2::new(0.0, 0.0);
+        world.humans.positions[b_idx] = Vec2::new(20.0, 0.0);
+
+        // Set high social need
+        world.humans.needs[a_idx].social = 0.8;
+        world.humans.needs[b_idx].social = 0.8;
+
+        // Alice tries to TalkTo Bob
+        let task = Task::new(ActionId::TalkTo, TaskPriority::Normal, 0)
+            .with_entity(b_id);
+        world.humans.task_queues[a_idx].push(task);
+
+        // Run tick
+        run_simulation_tick(&mut world);
+
+        // Alice should have moved toward Bob (not satisfied yet)
+        let alice_pos = world.humans.positions[a_idx];
+        assert!(alice_pos.x > 0.0, "Should move toward target, but x={}", alice_pos.x);
+
+        // Social need should NOT be satisfied yet (too far)
+        assert!(world.humans.needs[a_idx].social > 0.7,
+            "Should not satisfy social need when far, but social={}",
+            world.humans.needs[a_idx].social);
+    }
+
+    #[test]
+    fn test_social_action_mutual_satisfaction() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        // Two entities close together
+        let a_id = world.spawn_human("Alice".into());
+        let b_id = world.spawn_human("Bob".into());
+
+        let a_idx = world.humans.index_of(a_id).unwrap();
+        let b_idx = world.humans.index_of(b_id).unwrap();
+
+        // Position them within 5.0 units (social range)
+        world.humans.positions[a_idx] = Vec2::new(0.0, 0.0);
+        world.humans.positions[b_idx] = Vec2::new(3.0, 0.0);
+
+        // Set high social need
+        world.humans.needs[a_idx].social = 0.8;
+        world.humans.needs[b_idx].social = 0.8;
+
+        // Alice talks to Bob
+        let task = Task::new(ActionId::TalkTo, TaskPriority::Normal, 0)
+            .with_entity(b_id);
+        world.humans.task_queues[a_idx].push(task);
+
+        // Run several ticks
+        for _ in 0..5 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Both should have reduced social need
+        assert!(world.humans.needs[a_idx].social < 0.8,
+            "Alice's social need should decrease, but got {}",
+            world.humans.needs[a_idx].social);
+        assert!(world.humans.needs[b_idx].social < 0.8,
+            "Bob's social need should decrease too, but got {}",
+            world.humans.needs[b_idx].social);
+
+        // Both should have memories of each other
+        assert!(world.humans.social_memories[a_idx].find_slot(b_id).is_some(),
+                "Alice should remember Bob");
+        assert!(world.humans.social_memories[b_idx].find_slot(a_id).is_some(),
+                "Bob should remember Alice");
+    }
+
+    #[test]
+    fn test_social_action_creates_memories_for_both() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        // Two entities close together
+        let a_id = world.spawn_human("Alice".into());
+        let b_id = world.spawn_human("Bob".into());
+
+        let a_idx = world.humans.index_of(a_id).unwrap();
+        let b_idx = world.humans.index_of(b_id).unwrap();
+
+        // Position them within 5.0 units (social range)
+        world.humans.positions[a_idx] = Vec2::new(0.0, 0.0);
+        world.humans.positions[b_idx] = Vec2::new(3.0, 0.0);
+
+        // Alice helps Bob
+        let task = Task::new(ActionId::Help, TaskPriority::Normal, 0)
+            .with_entity(b_id);
+        world.humans.task_queues[a_idx].push(task);
+
+        // Run a single tick (memory is created on first tick of interaction)
+        run_simulation_tick(&mut world);
+
+        // Both should have memories
+        let alice_memory = &world.humans.social_memories[a_idx];
+        let bob_memory = &world.humans.social_memories[b_idx];
+
+        assert!(alice_memory.find_slot(b_id).is_some(),
+                "Alice should remember Bob after helping");
+        assert!(bob_memory.find_slot(a_id).is_some(),
+                "Bob should remember Alice after being helped");
     }
 }
