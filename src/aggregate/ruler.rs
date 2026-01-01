@@ -122,6 +122,50 @@ impl Opinion {
     }
 }
 
+/// Family relationships for a ruler
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Family {
+    pub father: Option<RulerId>,
+    pub mother: Option<RulerId>,
+    pub spouse: Option<RulerId>,
+    pub children: Vec<RulerId>,
+    pub dynasty_id: u32,  // For dynasty-wide mechanics
+}
+
+impl Family {
+    /// Create a family for a dynasty founder (no parents)
+    pub fn founder(dynasty_id: u32) -> Self {
+        Self {
+            father: None,
+            mother: None,
+            spouse: None,
+            children: Vec::new(),
+            dynasty_id,
+        }
+    }
+
+    /// Create a family with known parents
+    pub fn with_parents(father: RulerId, mother: RulerId, dynasty_id: u32) -> Self {
+        Self {
+            father: Some(father),
+            mother: Some(mother),
+            spouse: None,
+            children: Vec::new(),
+            dynasty_id,
+        }
+    }
+
+    pub fn add_child(&mut self, child: RulerId) {
+        if !self.children.contains(&child) {
+            self.children.push(child);
+        }
+    }
+
+    pub fn set_spouse(&mut self, spouse: RulerId) {
+        self.spouse = Some(spouse);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -177,5 +221,23 @@ mod tests {
 
         opinion.decay_modifiers();
         assert_eq!(opinion.modifiers.len(), 0); // Expired
+    }
+
+    #[test]
+    fn test_family_founder() {
+        let family = Family::founder(1);
+        assert!(family.father.is_none());
+        assert!(family.mother.is_none());
+        assert!(family.spouse.is_none());
+        assert!(family.children.is_empty());
+        assert_eq!(family.dynasty_id, 1);
+    }
+
+    #[test]
+    fn test_family_add_child() {
+        let mut family = Family::founder(1);
+        family.add_child(RulerId(2));
+        family.add_child(RulerId(3));
+        assert_eq!(family.children.len(), 2);
     }
 }
