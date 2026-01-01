@@ -1,0 +1,43 @@
+Rate this {asset_type} from 1-10. Be HARSH. A 7 is good. A 9 is excellent.
+
+STRATEGIC VALUE (1-10):
+- Does it create interesting choices?
+- Is it defensible/contestable/valuable?
+- Does it have multiple viable uses?
+- Score 1-3 if generic, 4-6 if solid, 7-9 if excellent
+
+NARRATIVE POTENTIAL (1-10):
+- Does it imply history beyond what's stated?
+- Does it create questions players want answered?
+- Is it memorable and distinctive?
+- Score 1-3 if generic, 4-6 if interesting, 7-9 if compelling
+
+SPECIES AUTHENTICITY (1-10):
+- Does it feel GENUINELY {species}?
+- NOT a human with cosmetic differences?
+- Does it reflect the species' actual values?
+  - Dwarf: CRAFT-TRUTH, STONE-DEBT, GRUDGE-BALANCE, OATH-CHAIN
+  - Elf: PATTERN-BEAUTY, SLOW-GROWTH, MEMORY-WEIGHT, CHANGE-GRIEF
+  - Human: HONOR, AMBITION, LOYALTY, PIETY
+- Score 1-3 if human-with-hat, 4-6 if somewhat alien, 7-9 if genuinely different
+
+SENSORY RICHNESS (1-10):
+- Can you FEEL being there?
+- Specific sights, sounds, smells?
+- Not just "it's dark" but "the air tastes of iron and old smoke"?
+- Score 1-3 if vague, 4-6 if decent, 7-9 if immersive
+
+ASSET:
+{asset_json}
+
+Respond with ONLY this JSON:
+{{
+  "strategic_score": <1-10>,
+  "narrative_score": <1-10>,
+  "authenticity_score": <1-10>,
+  "sensory_score": <1-10>,
+  "overall_score": <1-10>,
+  "strengths": ["strength 1", "strength 2"],
+  "weaknesses": ["weakness 1", "weakness 2"],
+  "improvement_suggestions": ["suggestion 1", "suggestion 2"]
+}}
