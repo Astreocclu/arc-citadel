@@ -747,11 +747,53 @@ fn execute_tasks(world: &mut World) {
                         true // No target or target doesn't exist, complete immediately
                     }
                 }
+                ActionId::Gather => {
+                    // Gather resources from ResourceZone
+                    if let Some(zone_pos) = target_pos {
+                        let current = world.humans.positions[i];
+
+                        // Find resource zone at target position
+                        let zone_idx = world.resource_zones.iter().position(|z| z.contains(zone_pos));
+
+                        if let Some(zone_idx) = zone_idx {
+                            let distance = current.distance(&zone_pos);
+
+                            if distance > 2.0 {
+                                // Move to zone
+                                let direction = (zone_pos - current).normalize();
+                                let speed = 2.0;
+                                if direction.length() > 0.0 {
+                                    world.humans.positions[i] = current + direction * speed;
+                                }
+                                false // Not complete yet - still approaching
+                            } else {
+                                // At zone - gather
+                                let gathered = world.resource_zones[zone_idx].gather(0.02);
+
+                                if gathered > 0.0 {
+                                    // Satisfy purpose proportional to gathered amount
+                                    world.humans.needs[i].satisfy(NeedType::Purpose, gathered * 0.5);
+                                }
+
+                                // Complete when zone empty or task duration reached
+                                let duration = action.base_duration() as f32; // 40 ticks
+                                let progress_rate = if duration > 0.0 { 1.0 / duration } else { 0.1 };
+                                task.progress += progress_rate;
+
+                                task.progress >= 1.0 || world.resource_zones[zone_idx].current <= 0.0
+                            }
+                        } else {
+                            true // No zone at target
+                        }
+                    } else {
+                        true // No target position
+                    }
+                }
                 _ => false, // Not a movement action
             };
 
-            // Progress for non-movement actions (Rest and social actions are handled specially above)
-            let is_special_action = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Follow | ActionId::Rest | ActionId::TalkTo | ActionId::Help | ActionId::Trade);
+            // Progress for non-movement actions (Rest, social actions, and Gather are handled specially above)
+            let is_special_action = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Follow | ActionId::Rest | ActionId::TalkTo | ActionId::Help | ActionId::Trade | ActionId::Gather);
             if !is_special_action {
                 let duration = task.action.base_duration();
                 let progress_rate = match duration {
@@ -1732,5 +1774,140 @@ mod tests {
                 "Alice should remember Bob after helping");
         assert!(bob_memory.find_slot(a_id).is_some(),
                 "Bob should remember Alice after being helped");
+    }
+
+    #[test]
+    fn test_gather_depletes_resource_zone() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+        use crate::simulation::resource_zone::{ResourceZone, ResourceType};
+
+        let mut world = World::new();
+
+        // Create resource zone at (10, 0)
+        let zone = ResourceZone::new(
+            Vec2::new(10.0, 0.0),
+            ResourceType::Wood,
+            5.0,
+        );
+        world.resource_zones.push(zone);
+
+        // Spawn gatherer at (10, 0) - already at zone
+        let id = world.spawn_human("Gatherer".into());
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(10.0, 0.0);
+
+        // Set purpose need
+        world.humans.needs[idx].purpose = 0.7;
+
+        // Give Gather task (target position is zone center)
+        let task = Task::new(ActionId::Gather, TaskPriority::Normal, 0)
+            .with_position(Vec2::new(10.0, 0.0));
+        world.humans.task_queues[idx].push(task);
+
+        let initial_resources = world.resource_zones[0].current;
+        let initial_purpose = world.humans.needs[idx].purpose;
+
+        // Run 10 ticks
+        for _ in 0..10 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Resources should be depleted
+        assert!(world.resource_zones[0].current < initial_resources,
+                "Resource zone should be depleted. Initial: {}, Current: {}",
+                initial_resources, world.resource_zones[0].current);
+
+        // Purpose need should decrease (0.02 gathered * 0.5 satisfaction per tick)
+        assert!(world.humans.needs[idx].purpose < initial_purpose,
+                "Purpose need should be satisfied. Initial: {}, Current: {}",
+                initial_purpose, world.humans.needs[idx].purpose);
+    }
+
+    #[test]
+    fn test_gather_moves_to_zone_if_far() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+        use crate::simulation::resource_zone::{ResourceZone, ResourceType};
+
+        let mut world = World::new();
+
+        // Create resource zone at (10, 0)
+        let zone = ResourceZone::new(
+            Vec2::new(10.0, 0.0),
+            ResourceType::Wood,
+            5.0,
+        );
+        world.resource_zones.push(zone);
+
+        // Spawn gatherer at origin - far from zone
+        let id = world.spawn_human("Gatherer".into());
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Give Gather task (target position is zone center)
+        let task = Task::new(ActionId::Gather, TaskPriority::Normal, 0)
+            .with_position(Vec2::new(10.0, 0.0));
+        world.humans.task_queues[idx].push(task);
+
+        let initial_resources = world.resource_zones[0].current;
+
+        // Run 1 tick - should move toward zone, not gather yet
+        run_simulation_tick(&mut world);
+
+        // Position should have moved toward zone
+        let pos = world.humans.positions[idx];
+        assert!(pos.x > 0.0, "Should move toward zone, but x={}", pos.x);
+        assert!(pos.x < 10.0, "Should not teleport to zone, but x={}", pos.x);
+
+        // Resources should NOT be depleted yet (too far)
+        assert!((world.resource_zones[0].current - initial_resources).abs() < 0.001,
+                "Resources should not be depleted while moving");
+    }
+
+    #[test]
+    fn test_gather_completes_when_zone_depleted() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+        use crate::simulation::resource_zone::{ResourceZone, ResourceType};
+
+        let mut world = World::new();
+
+        // Create nearly depleted resource zone
+        let mut zone = ResourceZone::new(
+            Vec2::new(10.0, 0.0),
+            ResourceType::Stone,
+            5.0,
+        );
+        zone.current = 0.05; // Almost empty
+        world.resource_zones.push(zone);
+
+        // Spawn gatherer at zone
+        let id = world.spawn_human("Gatherer".into());
+        let idx = world.humans.index_of(id).unwrap();
+        world.humans.positions[idx] = Vec2::new(10.0, 0.0);
+
+        // Give Gather task
+        let task = Task::new(ActionId::Gather, TaskPriority::Normal, 0)
+            .with_position(Vec2::new(10.0, 0.0));
+        world.humans.task_queues[idx].push(task);
+
+        // Run enough ticks to deplete the zone (0.02 per tick, 3 ticks to deplete 0.05)
+        for _ in 0..5 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Zone should be depleted
+        assert!(world.resource_zones[0].current < 0.01,
+                "Zone should be depleted, but current={}", world.resource_zones[0].current);
+
+        // Task should be complete (zone empty triggers completion)
+        let current_task = world.humans.task_queues[idx].current();
+        let task_is_gather = current_task.map(|t| t.action == ActionId::Gather).unwrap_or(false);
+        assert!(!task_is_gather,
+                "Gather task should be complete when zone is depleted");
     }
 }
