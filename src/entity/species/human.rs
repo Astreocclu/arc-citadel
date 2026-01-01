@@ -5,6 +5,7 @@ use crate::entity::body::BodyState;
 use crate::entity::needs::Needs;
 use crate::entity::thoughts::ThoughtBuffer;
 use crate::entity::tasks::TaskQueue;
+use crate::entity::social::SocialMemory;
 
 /// Human-specific value vocabulary
 #[derive(Debug, Clone, Default)]
@@ -54,6 +55,7 @@ pub struct HumanArchetype {
     pub values: Vec<HumanValues>,
     pub task_queues: Vec<TaskQueue>,
     pub alive: Vec<bool>,
+    pub social_memories: Vec<SocialMemory>,
 }
 
 impl HumanArchetype {
@@ -70,6 +72,7 @@ impl HumanArchetype {
             values: Vec::new(),
             task_queues: Vec::new(),
             alive: Vec::new(),
+            social_memories: Vec::new(),
         }
     }
 
@@ -89,6 +92,7 @@ impl HumanArchetype {
         self.values.push(HumanValues::default());
         self.task_queues.push(TaskQueue::new());
         self.alive.push(true);
+        self.social_memories.push(SocialMemory::new());
     }
 
     pub fn index_of(&self, id: EntityId) -> Option<usize> {
@@ -106,5 +110,20 @@ impl HumanArchetype {
 impl Default for HumanArchetype {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_human_has_social_memory() {
+        let mut archetype = HumanArchetype::new();
+        let id = EntityId::new();
+        archetype.spawn(id, "Alice".into(), 0);
+
+        assert_eq!(archetype.social_memories.len(), 1);
+        assert_eq!(archetype.social_memories[0].slots.len(), 0); // Empty initially
     }
 }
