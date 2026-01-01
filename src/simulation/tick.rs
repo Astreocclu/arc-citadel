@@ -534,12 +534,24 @@ fn execute_tasks(world: &mut World) {
                         true // No target, complete immediately
                     }
                 }
+                ActionId::Rest => {
+                    // Stay still (no position change needed - current code doesn't use velocities)
+
+                    // Reduce fatigue
+                    world.humans.body_states[i].fatigue =
+                        (world.humans.body_states[i].fatigue - 0.01).max(0.0);
+
+                    // Progress toward completion
+                    let duration = task.action.base_duration(); // 50 ticks
+                    task.progress += 1.0 / duration as f32;
+                    task.progress >= 1.0
+                }
                 _ => false, // Not a movement action
             };
 
-            // Progress for non-movement actions
-            let is_movement = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::Follow);
-            if !is_movement {
+            // Progress for non-movement actions (Rest is handled specially above)
+            let is_movement_or_rest = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::Follow | ActionId::Rest);
+            if !is_movement_or_rest {
                 let duration = task.action.base_duration();
                 let progress_rate = match duration {
                     0 => 0.1,       // Continuous actions progress but never complete
@@ -1135,5 +1147,43 @@ mod tests {
         // Follower should now be moving toward new position
         let follower_pos = world.humans.positions[follower_idx];
         assert!(follower_pos.y > 0.0 || follower_pos.x > 2.0, "Follower should track moving target");
+    }
+
+    #[test]
+    fn test_rest_reduces_fatigue() {
+        use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+        let id = world.spawn_human("Tired".into());
+        let idx = world.humans.index_of(id).unwrap();
+
+        // Position entity
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Set high fatigue
+        world.humans.body_states[idx].fatigue = 0.8;
+
+        // Give Rest task
+        let task = Task::new(ActionId::Rest, TaskPriority::Normal, 0);
+        world.humans.task_queues[idx].push(task);
+
+        let initial_fatigue = world.humans.body_states[idx].fatigue;
+
+        // Run 10 ticks
+        for _ in 0..10 {
+            run_simulation_tick(&mut world);
+        }
+
+        let final_fatigue = world.humans.body_states[idx].fatigue;
+        assert!(final_fatigue < initial_fatigue, "Rest should reduce fatigue");
+
+        // With 0.01 reduction per tick over 10 ticks, fatigue should be 0.7
+        assert!(
+            (final_fatigue - 0.7).abs() < 0.01,
+            "Fatigue should be approximately 0.7 after 10 ticks (0.8 - 10*0.01), got {}",
+            final_fatigue
+        );
     }
 }
