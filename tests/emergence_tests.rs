@@ -697,3 +697,150 @@ fn test_simulation_stability_over_time() {
 
     assert_eq!(world.current_tick, 500);
 }
+
+// ============================================================================
+// Movement to Food Cycle Integration Tests
+// ============================================================================
+
+/// Integration test: Full movement-to-food cycle
+///
+/// This test verifies the complete emergent behavior chain:
+/// 1. Entity spawns away from food zone (but within perception range)
+/// 2. Entity detects food zone via perception
+/// 3. Hungry entity selects MoveTo action toward food
+/// 4. Entity moves toward food zone over multiple ticks
+/// 5. When entity reaches food zone, it eats
+/// 6. Eating satisfies the food need
+#[test]
+fn test_entity_moves_to_food_and_eats() {
+    let mut world = World::new();
+
+    // Spawn entity away from food but within perception range (50 units)
+    world.spawn_human("Hungry".into());
+    world.humans.positions[0] = Vec2::new(0.0, 0.0);
+    world.humans.needs[0].food = 0.9; // Very hungry (critical level)
+
+    // Add food zone within perception range (40 units away, radius 10)
+    // This ensures entity can perceive the zone initially
+    world.add_food_zone(Vec2::new(40.0, 0.0), 10.0, Abundance::Unlimited);
+
+    // Record initial state
+    let initial_food_need = world.humans.needs[0].food;
+    let initial_x = world.humans.positions[0].x;
+
+    // Run simulation for enough ticks to reach food and eat
+    // Movement speed is 2.0 units/tick, so ~20 ticks to cover 40 units
+    // Plus extra ticks for eating
+    for _ in 0..50 {
+        run_simulation_tick(&mut world);
+    }
+
+    // Entity should have moved toward food
+    assert!(
+        world.humans.positions[0].x > initial_x + 20.0,
+        "Entity should have moved toward food zone. Initial x: {}, Current x: {}",
+        initial_x,
+        world.humans.positions[0].x
+    );
+
+    // Entity should have eaten (reduced hunger)
+    assert!(
+        world.humans.needs[0].food < initial_food_need,
+        "Entity should have eaten and reduced hunger. Initial: {}, Current: {}",
+        initial_food_need,
+        world.humans.needs[0].food
+    );
+}
+
+/// Integration test: Entity reaches food zone and stops moving
+///
+/// Verifies that entities actually arrive at the food zone (within radius)
+/// and don't just move in the general direction.
+#[test]
+fn test_entity_reaches_food_zone() {
+    let mut world = World::new();
+
+    // Spawn entity at origin
+    world.spawn_human("Traveler".into());
+    world.humans.positions[0] = Vec2::new(0.0, 0.0);
+    world.humans.needs[0].food = 0.9; // Very hungry
+
+    // Add food zone 30 units away (within perception range of 50) with radius 10
+    let zone_pos = Vec2::new(30.0, 0.0);
+    let zone_radius = 10.0;
+    world.add_food_zone(zone_pos, zone_radius, Abundance::Unlimited);
+
+    // Run enough ticks to reach the zone
+    // Distance: 30 units, speed: 2.0/tick => ~15 ticks minimum
+    for _ in 0..50 {
+        run_simulation_tick(&mut world);
+    }
+
+    // Entity should be within food zone radius
+    let distance_to_zone = world.humans.positions[0].distance(&zone_pos);
+    assert!(
+        distance_to_zone <= zone_radius + 5.0, // Small tolerance for movement overshoot
+        "Entity should have reached food zone. Distance to zone: {}, Zone radius: {}",
+        distance_to_zone,
+        zone_radius
+    );
+}
+
+/// Integration test: Multiple hungry entities compete for scarce food
+///
+/// Tests emergent behavior when multiple entities need the same resource.
+#[test]
+fn test_multiple_entities_compete_for_scarce_food() {
+    let mut world = World::new();
+
+    // Spawn 3 entities at different positions (all within perception range of food)
+    // Entities are staggered at 0, 10, and 20 units from origin
+    for i in 0..3 {
+        world.spawn_human(format!("Hungry{}", i));
+        world.humans.positions[i] = Vec2::new(i as f32 * 10.0, 0.0); // Staggered positions
+        world.humans.needs[i].food = 0.9; // Very hungry
+    }
+
+    // Add scarce food zone within perception range (40 units away)
+    let zone_pos = Vec2::new(40.0, 0.0);
+    world.add_food_zone(
+        zone_pos,
+        15.0,
+        Abundance::Scarce {
+            current: 5.0,  // Limited food
+            max: 10.0,
+            regen: 0.0,    // No regeneration for this test
+        },
+    );
+
+    // Record initial food levels
+    let initial_zone_food = match &world.food_zones[0].abundance {
+        Abundance::Scarce { current, .. } => *current,
+        _ => panic!("Expected Scarce zone"),
+    };
+
+    // Run simulation (enough ticks for entities to reach food and eat)
+    for _ in 0..100 {
+        run_simulation_tick(&mut world);
+    }
+
+    // At least some entities should have eaten (zone depleted)
+    let final_zone_food = match &world.food_zones[0].abundance {
+        Abundance::Scarce { current, .. } => *current,
+        _ => panic!("Expected Scarce zone"),
+    };
+
+    assert!(
+        final_zone_food < initial_zone_food,
+        "Food zone should be depleted. Initial: {}, Final: {}",
+        initial_zone_food,
+        final_zone_food
+    );
+
+    // At least one entity should have reduced hunger
+    let any_ate = world.humans.needs.iter().take(3).any(|n| n.food < 0.9);
+    assert!(
+        any_ate,
+        "At least one entity should have eaten"
+    );
+}
