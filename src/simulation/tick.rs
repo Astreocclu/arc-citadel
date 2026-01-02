@@ -18,6 +18,8 @@ use crate::entity::needs::NeedType;
 use crate::entity::tasks::Task;
 use crate::entity::social::EventType;
 use crate::actions::catalog::ActionId;
+use crate::city::building::BuildingState;
+use crate::city::construction::{apply_construction_work, calculate_worker_contribution, ContributionResult};
 use rayon::prelude::*;
 
 /// Run a single simulation tick
@@ -811,7 +813,51 @@ fn execute_tasks(world: &mut World) {
                                 true
                             }
                         }
-                        ActionId::Build | ActionId::Craft | ActionId::Repair => {
+                        ActionId::Build => {
+                            // Check for building target - use construction system if present
+                            if let Some(building_id) = task.target_building {
+                                if let Some(building_idx) = world.buildings.index_of(building_id) {
+                                    // Get worker skill and fatigue
+                                    let building_skill = world.humans.building_skills[i];
+                                    let fatigue = world.humans.body_states[i].fatigue;
+
+                                    // Calculate contribution
+                                    let contribution = calculate_worker_contribution(building_skill, fatigue);
+
+                                    // Apply to building
+                                    let result = apply_construction_work(
+                                        &mut world.buildings,
+                                        building_idx,
+                                        contribution,
+                                        world.current_tick,
+                                    );
+
+                                    match result {
+                                        ContributionResult::Completed { .. } => {
+                                            // Improve skill on completion (small increment, capped at 1.0)
+                                            world.humans.building_skills[i] = (world.humans.building_skills[i] + 0.01).min(1.0);
+                                            true // Task complete
+                                        }
+                                        ContributionResult::InProgress { .. } => false,
+                                        ContributionResult::AlreadyComplete => true,
+                                        ContributionResult::NotFound => true, // Building gone, complete task
+                                    }
+                                } else {
+                                    true // Building not found, complete task
+                                }
+                            } else {
+                                // Legacy progress-based logic (no building target)
+                                let duration = task.action.base_duration();
+                                let progress_rate = match duration {
+                                    0 => 0.1,
+                                    1..=60 => 0.05,
+                                    _ => 0.02,
+                                };
+                                task.progress += progress_rate;
+                                duration > 0 && task.progress >= 1.0
+                            }
+                        }
+                        ActionId::Craft | ActionId::Repair => {
                             let duration = task.action.base_duration();
                             let progress_rate = match duration {
                                 0 => 0.1,
@@ -2310,5 +2356,125 @@ mod tests {
         assert!(final_salience < initial_salience,
             "Salience should decay after one day. Initial: {}, Final: {}",
             initial_salience, final_salience);
+    }
+
+    #[test]
+    fn test_build_action_with_building_target() {
+        use crate::city::building::{BuildingType, BuildingState};
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+        use crate::core::types::Vec2;
+
+        let mut world = World::new();
+        let entity = world.spawn_human("Builder".into());
+
+        // Spawn a building
+        let building_id = world.spawn_building(BuildingType::Wall, Vec2::new(50.0, 50.0));
+
+        // Get entity index
+        let idx = world.humans.index_of(entity).unwrap();
+
+        // Set position near building
+        world.humans.positions[idx] = Vec2::new(50.0, 50.0);
+
+        // Set high building skill for faster progress
+        world.humans.building_skills[idx] = 1.0;
+
+        // Create build task
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
+            .with_building(building_id);
+        world.humans.task_queues[idx].push(task);
+
+        // Run many ticks to complete construction
+        // Wall needs 80 work, max contribution per tick = 1.0 (skill 1.0, no fatigue)
+        for _ in 0..100 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Building should be complete
+        let building_idx = world.buildings.index_of(building_id).unwrap();
+        assert_eq!(world.buildings.states[building_idx], BuildingState::Complete);
+    }
+
+    #[test]
+    fn test_build_action_improves_skill_on_completion() {
+        use crate::city::building::{BuildingType, BuildingState};
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+        use crate::core::types::Vec2;
+
+        let mut world = World::new();
+        let entity = world.spawn_human("Builder".into());
+
+        // Spawn a wall (80 work required)
+        let building_id = world.spawn_building(BuildingType::Wall, Vec2::new(50.0, 50.0));
+
+        let idx = world.humans.index_of(entity).unwrap();
+        world.humans.positions[idx] = Vec2::new(50.0, 50.0);
+        world.humans.building_skills[idx] = 0.5;
+
+        // Track initial skill
+        let initial_skill = world.humans.building_skills[idx];
+
+        // Create build task
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
+            .with_building(building_id);
+        world.humans.task_queues[idx].push(task);
+
+        // Run until building complete
+        for _ in 0..200 {
+            run_simulation_tick(&mut world);
+            let building_idx = world.buildings.index_of(building_id).unwrap();
+            if world.buildings.states[building_idx] == BuildingState::Complete {
+                break;
+            }
+        }
+
+        // Skill should have improved
+        let final_skill = world.humans.building_skills[idx];
+        assert!(final_skill > initial_skill,
+            "Building skill should improve after completion. Initial: {}, Final: {}",
+            initial_skill, final_skill);
+    }
+
+    #[test]
+    fn test_build_action_progress_reflects_construction() {
+        use crate::city::building::{BuildingType, BuildingState};
+        use crate::entity::tasks::{Task, TaskPriority};
+        use crate::actions::catalog::ActionId;
+        use crate::core::types::Vec2;
+
+        let mut world = World::new();
+        let entity = world.spawn_human("Builder".into());
+
+        // Spawn a house (100 work required)
+        let building_id = world.spawn_building(BuildingType::House, Vec2::new(50.0, 50.0));
+
+        let idx = world.humans.index_of(entity).unwrap();
+        world.humans.positions[idx] = Vec2::new(50.0, 50.0);
+        world.humans.building_skills[idx] = 1.0; // Max skill = 1.0 contribution per tick
+
+        // Create build task
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
+            .with_building(building_id);
+        world.humans.task_queues[idx].push(task);
+
+        // Run 50 ticks (should be at 50% progress for 100-work house)
+        for _ in 0..50 {
+            run_simulation_tick(&mut world);
+        }
+
+        // Check construction progress on the building
+        let building_idx = world.buildings.index_of(building_id).unwrap();
+        let progress = world.buildings.construction_progress[building_idx];
+
+        // With skill 1.0 and no fatigue, contribution is 1.0 per tick
+        // After 50 ticks, should have ~50 progress
+        assert!(progress > 40.0 && progress < 60.0,
+            "Construction progress should be around 50 after 50 ticks, got {}",
+            progress);
+
+        // Building should still be under construction
+        assert_eq!(world.buildings.states[building_idx], BuildingState::UnderConstruction);
     }
 }
