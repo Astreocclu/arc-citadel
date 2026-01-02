@@ -1,6 +1,7 @@
 pub mod armor;
 pub mod body_zone;
 pub mod constants;
+pub mod formation;
 pub mod morale;
 pub mod penetration;
 pub mod resolution;
@@ -20,3 +21,4 @@ pub use stance::{CombatStance, TransitionTrigger, StanceTransitions};
 pub use skill::{SkillLevel, CombatSkill};
 pub use morale::{StressSource, MoraleState, BreakResult};
 pub use resolution::{Combatant, ExchangeResult, resolve_exchange};
+pub use formation::{FormationState, PressureCategory, ShockType};
