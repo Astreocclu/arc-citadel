@@ -7,11 +7,21 @@ use serde::{Deserialize, Serialize};
 use crate::core::types::Vec2;
 
 /// Type of resource available in a zone
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ResourceType {
     Wood,
     Stone,
     Ore,
+    Iron,   // Processed from Ore
+    Cloth,  // From workshops
+    Food,   // Explicit food resource
+}
+
+impl ResourceType {
+    /// Whether this resource requires processing (can't be gathered directly)
+    pub fn requires_processing(&self) -> bool {
+        matches!(self, ResourceType::Iron | ResourceType::Cloth)
+    }
 }
 
 /// A zone where entities can gather resources
@@ -131,5 +141,44 @@ mod tests {
         // Just outside should not be contained
         assert!(!zone.contains(Vec2::new(5.1, 0.0)));
         assert!(!zone.contains(Vec2::new(0.0, 5.1)));
+    }
+
+    #[test]
+    fn test_resource_type_processing() {
+        // Raw resources don't require processing
+        assert!(!ResourceType::Wood.requires_processing());
+        assert!(!ResourceType::Stone.requires_processing());
+        assert!(!ResourceType::Ore.requires_processing());
+        assert!(!ResourceType::Food.requires_processing());
+
+        // Refined resources require processing
+        assert!(ResourceType::Iron.requires_processing());
+        assert!(ResourceType::Cloth.requires_processing());
+    }
+
+    #[test]
+    fn test_resource_type_all_variants_exist() {
+        // Verify all expected resource types exist and can be created
+        let _wood = ResourceType::Wood;
+        let _stone = ResourceType::Stone;
+        let _ore = ResourceType::Ore;
+        let _iron = ResourceType::Iron;
+        let _cloth = ResourceType::Cloth;
+        let _food = ResourceType::Food;
+    }
+
+    #[test]
+    fn test_resource_type_is_hashable() {
+        use std::collections::HashSet;
+
+        let mut set = HashSet::new();
+        set.insert(ResourceType::Wood);
+        set.insert(ResourceType::Stone);
+        set.insert(ResourceType::Iron);
+
+        assert!(set.contains(&ResourceType::Wood));
+        assert!(set.contains(&ResourceType::Stone));
+        assert!(set.contains(&ResourceType::Iron));
+        assert!(!set.contains(&ResourceType::Food));
     }
 }
