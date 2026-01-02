@@ -9,6 +9,7 @@ use crate::aggregate::region::{Region, Terrain, ResourceType};
 use crate::aggregate::polity::{
     Polity, PolityType, CulturalDrift, Relation, SpeciesState,
     HumanState, DwarfState, ElfState, OrcState, CraftType,
+    // CODEGEN: species_state_imports
 };
 use crate::aggregate::simulation::{MapConfig, PolityConfig};
 use crate::aggregate::world::AggregateWorld;
@@ -279,6 +280,7 @@ fn generate_species_polities(
                 if territory.len() > 10 { PolityType::Horde }
                 else { PolityType::Warband }
             }
+            // CODEGEN: species_polity_type
         };
 
         let population = territory.len() as u32 * 500 + rng.gen_range(100..1000);

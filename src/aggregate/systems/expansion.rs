@@ -41,6 +41,7 @@ pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> Expans
                         Species::Elf => matches!(neighbor.terrain, Terrain::Forest) && *fitness > 0.8,
                         Species::Human => *fitness > 0.3,
                         Species::Orc => *fitness > 0.2, // Orcs can survive almost anywhere
+                        // CODEGEN: species_expansion_terrain
                     };
 
                     if neighbor.controller.is_none() && is_valid_terrain {

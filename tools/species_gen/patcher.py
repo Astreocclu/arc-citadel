@@ -217,6 +217,44 @@ pub struct {name}State {{
                     file_path=self.project_root / "src" / "simulation" / "action_select.rs"
                 ))
 
+        # 14. Species values import for action_select.rs
+        patches.append(Patch(
+            marker='species_values_imports',
+            content=f'use crate::entity::species::{module_name}::{name}Values;',
+            file_path=self.project_root / "src" / "simulation" / "action_select.rs"
+        ))
+
+        # 15. Species state import for generation.rs
+        patches.append(Patch(
+            marker='species_state_imports',
+            content=f'    {name}State,',
+            file_path=self.project_root / "src" / "aggregate" / "systems" / "generation.rs"
+        ))
+
+        # 16. Expansion terrain match arm
+        expansion_threshold = spec.get('expansion', {}).get('threshold', 0.3)
+        patches.append(Patch(
+            marker='species_expansion_terrain',
+            content=f'                        Species::{name} => *fitness > {expansion_threshold},',
+            file_path=self.project_root / "src" / "aggregate" / "systems" / "expansion.rs"
+        ))
+
+        # 17. Polity type match arm
+        polity_types = spec.get('polity_types', {})
+        small_type = polity_types.get('small', 'Tribe')
+        medium_type = polity_types.get('medium', 'Tribe')
+        large_type = polity_types.get('large', 'Kingdom')
+        polity_type_arm = f'''            Species::{name} => {{
+                if territory.len() > 10 {{ PolityType::{large_type} }}
+                else if territory.len() > 5 {{ PolityType::{medium_type} }}
+                else {{ PolityType::{small_type} }}
+            }}'''
+        patches.append(Patch(
+            marker='species_polity_type',
+            content=polity_type_arm,
+            file_path=self.project_root / "src" / "aggregate" / "systems" / "generation.rs"
+        ))
+
         return patches
 
     def _render_action_selection(self, spec: Dict[str, Any]) -> str:

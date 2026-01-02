@@ -7,6 +7,7 @@ use crate::entity::needs::{Needs, NeedType};
 use crate::entity::social::Disposition;
 use crate::entity::species::human::HumanValues;
 use crate::entity::species::orc::OrcValues;
+// CODEGEN: species_values_imports
 use crate::entity::tasks::{Task, TaskPriority, TaskSource};
 use crate::entity::thoughts::ThoughtBuffer;
 

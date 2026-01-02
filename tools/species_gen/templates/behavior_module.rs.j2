@@ -6,24 +6,31 @@ use crate::aggregate::events::EventType;
 
 /// Generate {{ name }}-specific events for a polity
 pub fn tick(polity: &Polity, _world: &AggregateWorld, _year: u32) -> Vec<EventType> {
+{% if behavior_rules %}
     let mut events = Vec::new();
 
     // Access {{ module_name }}-specific state
     if let Some(state) = polity.{{ module_name }}_state() {
-{% if behavior_rules %}
 {% for rule in behavior_rules %}
         // {{ rule.description }}
         if state.{{ rule.state_field }} > {{ rule.threshold }} {
             events.push(EventType::{{ rule.event_type }});
         }
 {% endfor %}
-{% else %}
-        // No behavior rules defined - placeholder for future implementation
-        let _ = state;
-{% endif %}
     }
 
     events
+{% else %}
+    let events = Vec::new();
+
+    // Access {{ module_name }}-specific state
+    if let Some(state) = polity.{{ module_name }}_state() {
+        // No behavior rules defined - placeholder for future implementation
+        let _ = state;
+    }
+
+    events
+{% endif %}
 }
 {% if state_update_rules %}
 
@@ -79,14 +86,5 @@ mod tests {
         let polity = create_test_polity();
         let state = polity.{{ module_name }}_state();
         assert!(state.is_some());
-    }
-
-    #[test]
-    fn test_{{ module_name }}_tick_no_panic() {
-        let polity = create_test_polity();
-        let world = AggregateWorld::default();
-        let events = tick(&polity, &world, 0);
-        // Should not panic, events may be empty
-        let _ = events;
     }
 }

@@ -1,0 +1,87 @@
+[metadata]
+name = "Goblin"
+module_name = "goblin"
+
+[entity_values]
+greed = { type = "f32", default = 0.6, description = "Desire to acquire shiny objects and wealth." }
+cowardice = { type = "f32", default = 0.7, description = "Fear of danger and strong opponents." }
+pack_rage = { type = "f32", default = 0.3, description = "Aggressive frenzy triggered by nearby allies." }
+sneakiness = { type = "f32", default = 0.5, description = "Preference for stealth and ambush tactics." }
+hunger = { type = "f32", default = 0.4, description = "Need to scavenge for food." }
+
+[polity_state]
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+hoard_value = { type = "f32", default = "0.0" }
+raid_targets = { type = "Vec<u32>", default = "Vec::new()" }
+war_exhaustion = { type = "f32", default = "0.0" }
+
+[terrain_fitness]
+mountain = 0.8
+hills = 0.9
+forest = 0.7
+plains = 0.4
+marsh = 0.6
+coast = 0.3
+desert = 0.2
+river = 0.5
+
+[growth]
+rate = 1.07
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Snik", "Griz", "Mog", "Krag", "Zog", "Snarl", "Drik", "Fizz", "Glob", "Rikk"]
+suffixes = ["-git", "-snatch", "-grab", "-ear", "-fang", "-claw", "-sneak", "-grin", "-tooth", "-eye"]
+
+[polity_types]
+small = "Clan"
+medium = "Tribe"
+large = "Horde"
+
+[[action_rules]]
+trigger_value = "greed"
+threshold = 0.75
+action = "Gather"
+priority = "High"
+requires_target = true
+description = "Raid a nearby settlement or entity for loot when greed is high."
+
+[[action_rules]]
+trigger_value = "cowardice"
+threshold = 0.8
+action = "Flee"
+priority = "High"
+requires_target = true
+description = "Run from a powerful enemy when fear overcomes greed."
+
+[[action_rules]]
+trigger_value = "pack_rage"
+threshold = 0.7
+action = "Attack"
+priority = "Normal"
+requires_target = true
+description = "Join allies in a frenzied swarm attack when many are nearby."
+
+[[action_rules]]
+trigger_value = "hunger"
+threshold = 0.65
+action = "Eat"
+priority = "Normal"
+requires_target = false
+description = "Scavenge for food when hungry."
+
+[[idle_behaviors]]
+value = "sneakiness"
+threshold = 0.6
+action = "IdleObserve"
+requires_target = false
+description = "Skulk and watch potential targets from hiding."
+
+[[idle_behaviors]]
+value = "cowardice"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "Wander cautiously within perceived safe territory."

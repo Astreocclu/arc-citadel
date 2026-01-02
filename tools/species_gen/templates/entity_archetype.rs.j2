@@ -6,7 +6,7 @@ use crate::entity::needs::Needs;
 use crate::entity::thoughts::ThoughtBuffer;
 use crate::entity::tasks::TaskQueue;
 use crate::entity::body::BodyState;
-use crate::entity::social_memory::SocialMemory;
+use crate::entity::social::SocialMemory;
 
 /// {{ name }}-specific value vocabulary
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -61,7 +61,7 @@ impl {{ name }}Archetype {
         self.positions.push(position);
         self.velocities.push(Vec2::default());
         self.body_states.push(BodyState::default());
-        self.needs.push(Needs::new());
+        self.needs.push(Needs::default());
         self.thoughts.push(ThoughtBuffer::new());
         self.values.push(values);
         self.task_queues.push(TaskQueue::new());
