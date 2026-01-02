@@ -132,7 +132,7 @@ Behavior emerges from the interaction of values, needs, and context:
 
 | Module | Purpose | Key Entry Points |
 |--------|---------|------------------|
-| `core/` | Foundation types and errors | `types.rs`, `error.rs` |
+| `core/` | Foundation types, errors, astronomy | `types.rs`, `error.rs`, `astronomy.rs` |
 | `ecs/` | Entity Component System | `world.rs` |
 | `spatial/` | Spatial queries and grids | `sparse_hash.rs`, `grid.rs` |
 | `entity/` | Entity components | `needs.rs`, `thoughts.rs`, `tasks.rs` |

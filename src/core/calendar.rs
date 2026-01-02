@@ -1,3 +1,11 @@
+//! # Deprecated
+//!
+//! This module is partially deprecated. Use `astronomy::AstronomicalState`
+//! for time tracking. `TimePeriod` is still used for backward compatibility
+//! with the expectations system.
+//!
+//! ---
+//!
 //! Calendar system for time-of-day tracking
 //!
 //! Provides time periods (Morning, Afternoon, Evening, Night) for
