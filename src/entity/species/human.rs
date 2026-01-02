@@ -1,5 +1,6 @@
 //! Human-specific archetype with SoA layout
 
+use crate::combat::CombatState;
 use crate::core::types::{EntityId, Vec2, Tick};
 use crate::entity::body::BodyState;
 use crate::entity::needs::Needs;
@@ -59,6 +60,8 @@ pub struct HumanArchetype {
     pub event_buffers: Vec<EventBuffer>,
     /// Building skill level (0.0 to 1.0)
     pub building_skills: Vec<f32>,
+    /// Combat state for each entity
+    pub combat_states: Vec<CombatState>,
 }
 
 impl HumanArchetype {
@@ -78,6 +81,7 @@ impl HumanArchetype {
             social_memories: Vec::new(),
             event_buffers: Vec::new(),
             building_skills: Vec::new(),
+            combat_states: Vec::new(),
         }
     }
 
@@ -100,6 +104,7 @@ impl HumanArchetype {
         self.social_memories.push(SocialMemory::new());
         self.event_buffers.push(EventBuffer::default());
         self.building_skills.push(0.0);
+        self.combat_states.push(CombatState::default());
     }
 
     pub fn index_of(&self, id: EntityId) -> Option<usize> {
@@ -142,5 +147,15 @@ mod tests {
 
         assert_eq!(archetype.building_skills.len(), 1);
         assert_eq!(archetype.building_skills[0], 0.0);
+    }
+
+    #[test]
+    fn test_human_has_combat_state() {
+        let mut archetype = HumanArchetype::new();
+        let id = EntityId::new();
+        archetype.spawn(id, "Warrior".into(), 0);
+
+        assert_eq!(archetype.combat_states.len(), 1);
+        assert!(archetype.combat_states[0].can_fight());
     }
 }
