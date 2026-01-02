@@ -18,3 +18,4 @@ pub use trauma::{TraumaResult, resolve_trauma};
 pub use wounds::{Wound, combine_results};
 pub use stance::{CombatStance, TransitionTrigger, StanceTransitions};
 pub use skill::{SkillLevel, CombatSkill};
+pub use morale::{StressSource, MoraleState, BreakResult};
