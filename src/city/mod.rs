@@ -2,4 +2,4 @@
 
 pub mod building;
 
-pub use building::BuildingType;
+pub use building::{BuildingId, BuildingState, BuildingType};
