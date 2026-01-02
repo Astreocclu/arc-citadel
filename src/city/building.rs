@@ -1,6 +1,7 @@
 //! Building archetype with SoA layout
 
 use crate::core::types::{Tick, Vec2};
+use crate::simulation::resource_zone::ResourceType;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -49,6 +50,35 @@ impl BuildingType {
             BuildingType::Granary => (3.0, 3.0),
             BuildingType::Wall => (1.0, 1.0),
             BuildingType::Gate => (2.0, 1.0),
+        }
+    }
+
+    /// Materials required to construct this building
+    pub fn required_materials(&self) -> Vec<(ResourceType, u32)> {
+        match self {
+            BuildingType::House => vec![
+                (ResourceType::Wood, 20),
+                (ResourceType::Stone, 10),
+            ],
+            BuildingType::Farm => vec![
+                (ResourceType::Wood, 30),
+            ],
+            BuildingType::Workshop => vec![
+                (ResourceType::Wood, 40),
+                (ResourceType::Stone, 20),
+                (ResourceType::Iron, 5),
+            ],
+            BuildingType::Granary => vec![
+                (ResourceType::Wood, 50),
+                (ResourceType::Stone, 30),
+            ],
+            BuildingType::Wall => vec![
+                (ResourceType::Stone, 25),
+            ],
+            BuildingType::Gate => vec![
+                (ResourceType::Wood, 15),
+                (ResourceType::Iron, 10),
+            ],
         }
     }
 }
@@ -257,5 +287,48 @@ mod tests {
         let under_construction: Vec<_> = arch.iter_under_construction().collect();
         assert_eq!(under_construction.len(), 1);
         assert_eq!(under_construction[0], 1);
+    }
+
+    // Task 9: Material requirements tests
+    #[test]
+    fn test_building_required_materials() {
+        use crate::simulation::resource_zone::ResourceType;
+
+        // House requires Wood and Stone
+        let materials = BuildingType::House.required_materials();
+        assert_eq!(materials.len(), 2);
+        assert!(materials.contains(&(ResourceType::Wood, 20)));
+        assert!(materials.contains(&(ResourceType::Stone, 10)));
+
+        // Workshop needs iron
+        let workshop_mats = BuildingType::Workshop.required_materials();
+        assert!(workshop_mats.iter().any(|(r, _)| *r == ResourceType::Iron));
+
+        // Wall only needs stone
+        let wall_mats = BuildingType::Wall.required_materials();
+        assert_eq!(wall_mats.len(), 1);
+        assert!(wall_mats.contains(&(ResourceType::Stone, 25)));
+    }
+
+    #[test]
+    fn test_all_building_types_have_materials() {
+        // Ensure all building types have material costs defined (non-empty)
+        let building_types = [
+            BuildingType::House,
+            BuildingType::Farm,
+            BuildingType::Workshop,
+            BuildingType::Granary,
+            BuildingType::Wall,
+            BuildingType::Gate,
+        ];
+
+        for bt in building_types {
+            let materials = bt.required_materials();
+            assert!(
+                !materials.is_empty(),
+                "BuildingType {:?} should have material costs defined",
+                bt
+            );
+        }
     }
 }
