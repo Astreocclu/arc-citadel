@@ -2,8 +2,12 @@ pub mod armor;
 pub mod body_zone;
 pub mod constants;
 pub mod morale;
+pub mod penetration;
 pub mod resolution;
 pub mod weapons;
 pub mod wounds;
 
 pub use body_zone::{BodyZone, WoundSeverity};
+pub use weapons::{Edge, Mass, Reach, WeaponProperties, WeaponSpecial};
+pub use armor::{Rigidity, Padding, Coverage, ArmorProperties};
+pub use penetration::{PenetrationResult, resolve_penetration};
