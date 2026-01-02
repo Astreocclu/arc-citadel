@@ -183,6 +183,87 @@ impl CelestialEvent {
 }
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Calculate moon phase for a given day
+///
+/// Returns a value from 0.0 to 1.0 where:
+/// - 0.0 = new moon (dark)
+/// - 0.5 = full moon (bright)
+/// - 1.0 = new moon again (completes the cycle)
+pub fn calculate_moon_phase(day: u32, period: u16) -> f32 {
+    (day % period as u32) as f32 / period as f32
+}
+
+/// Calculate node longitude (precesses over time)
+///
+/// The lunar node is the point where the moon's orbit crosses the ecliptic.
+/// This precesses (moves backward) over a long period.
+///
+/// Returns a value from 0.0 to 360.0 degrees.
+pub fn calculate_node_longitude(day: u32, precession_period: u32) -> f32 {
+    ((day % precession_period) as f32 / precession_period as f32) * 360.0
+}
+
+// ============================================================================
+// MoonState
+// ============================================================================
+
+/// State of a moon at a given point in time
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct MoonState {
+    /// Phase: 0.0 = new, 0.5 = full, 1.0 = new again
+    pub phase: f32,
+    /// Longitude of ascending node (0.0-360.0) for eclipse calculations
+    pub node_longitude: f32,
+}
+
+impl MoonState {
+    /// Create a new moon state for a given day
+    pub fn new(day: u32, period: u16, node_precession: u32) -> Self {
+        Self {
+            phase: calculate_moon_phase(day, period),
+            node_longitude: calculate_node_longitude(day, node_precession),
+        }
+    }
+
+    /// Is the moon full? (phase within 0.05 of 0.5)
+    pub fn is_full(&self) -> bool {
+        (self.phase - 0.5).abs() < 0.05
+    }
+
+    /// Is the moon new? (phase within 0.05 of 0.0 or > 0.95)
+    pub fn is_new(&self) -> bool {
+        self.phase < 0.05 || self.phase > 0.95
+    }
+
+    /// Light contribution at night (0.0-0.15)
+    ///
+    /// Full moon contributes 0.15 to light level, new moon contributes 0.0.
+    /// The contribution smoothly varies based on the illuminated portion.
+    pub fn light_contribution(&self) -> f32 {
+        // Convert phase to illumination (0.0 at new, 1.0 at full)
+        let illumination = if self.phase <= 0.5 {
+            self.phase * 2.0
+        } else {
+            (1.0 - self.phase) * 2.0
+        };
+        illumination * 0.15
+    }
+
+    /// Is eclipse possible? (node aligned with sun within 15 degrees)
+    ///
+    /// An eclipse can only occur when the moon's orbital node is aligned
+    /// with the sun (within about 15 degrees), which happens twice per
+    /// eclipse season.
+    pub fn eclipse_possible(&self, sun_longitude: f32) -> bool {
+        let diff = (self.node_longitude - sun_longitude).abs();
+        diff < 15.0 || diff > 345.0 // Within 15 degrees of node
+    }
+}
+
+// ============================================================================
 // Tests (TDD - written first)
 // ============================================================================
 
@@ -291,5 +372,121 @@ mod tests {
         // Uncommon and rare events are not common
         assert!(!CelestialEvent::NearDoubleFull.is_common());
         assert!(!CelestialEvent::PerfectDoubleFull.is_common());
+    }
+
+    // ========================================================================
+    // Task 2 Tests: MoonState and Phase Calculations (TDD - written first)
+    // ========================================================================
+
+    #[test]
+    fn test_moon_phase_calculation() {
+        // Day 0: new moon (phase = 0.0)
+        let phase = calculate_moon_phase(0, ARGENT_PERIOD);
+        assert!((phase - 0.0).abs() < 0.01);
+
+        // Day 14-15: full moon for Argent (phase ~ 0.5)
+        let phase = calculate_moon_phase(14, ARGENT_PERIOD);
+        assert!((phase - 0.48).abs() < 0.05); // 14/29 ~ 0.48
+
+        // Day 29: back to new (phase ~ 0.0 or 1.0)
+        let phase = calculate_moon_phase(29, ARGENT_PERIOD);
+        assert!(phase < 0.05 || phase > 0.95);
+
+        // Sanguine: Day 41-42 should be full (phase ~ 0.5)
+        let phase = calculate_moon_phase(41, SANGUINE_PERIOD);
+        assert!((phase - 0.49).abs() < 0.05); // 41/83 ~ 0.49
+    }
+
+    #[test]
+    fn test_node_longitude_calculation() {
+        // Day 0: node at 0 degrees
+        let longitude = calculate_node_longitude(0, ARGENT_NODE_PRECESSION);
+        assert!((longitude - 0.0).abs() < 0.01);
+
+        // Halfway through precession: node at 180 degrees
+        let longitude = calculate_node_longitude(ARGENT_NODE_PRECESSION / 2, ARGENT_NODE_PRECESSION);
+        assert!((longitude - 180.0).abs() < 0.1);
+
+        // Full precession: back to 0 degrees
+        let longitude = calculate_node_longitude(ARGENT_NODE_PRECESSION, ARGENT_NODE_PRECESSION);
+        assert!(longitude < 0.1);
+    }
+
+    #[test]
+    fn test_moon_state_new() {
+        // Create a moon state at day 0
+        let moon = MoonState::new(0, ARGENT_PERIOD, ARGENT_NODE_PRECESSION);
+
+        // Should be new moon at day 0
+        assert!(moon.is_new());
+        assert!(!moon.is_full());
+
+        // Create a moon state at full moon (around day 14-15 for Argent)
+        let moon = MoonState::new(14, ARGENT_PERIOD, ARGENT_NODE_PRECESSION);
+        assert!((moon.phase - 0.48).abs() < 0.05);
+    }
+
+    #[test]
+    fn test_moon_state_is_full() {
+        let full_moon = MoonState { phase: 0.5, node_longitude: 0.0 };
+        assert!(full_moon.is_full());
+
+        let new_moon = MoonState { phase: 0.0, node_longitude: 0.0 };
+        assert!(!new_moon.is_full());
+        assert!(new_moon.is_new());
+    }
+
+    #[test]
+    fn test_moon_state_is_new() {
+        // Test phase near 0.0
+        let new_moon = MoonState { phase: 0.0, node_longitude: 0.0 };
+        assert!(new_moon.is_new());
+
+        // Test phase near 1.0
+        let new_moon = MoonState { phase: 0.98, node_longitude: 0.0 };
+        assert!(new_moon.is_new());
+
+        // Test phase at boundary
+        let almost_new = MoonState { phase: 0.04, node_longitude: 0.0 };
+        assert!(almost_new.is_new());
+
+        // Test phase just outside boundary
+        let not_new = MoonState { phase: 0.1, node_longitude: 0.0 };
+        assert!(!not_new.is_new());
+    }
+
+    #[test]
+    fn test_lunar_light_contribution() {
+        // Full moon provides maximum light
+        let full_moon = MoonState { phase: 0.5, node_longitude: 0.0 };
+        assert!((full_moon.light_contribution() - 0.15).abs() < 0.01);
+
+        // New moon provides no light
+        let new_moon = MoonState { phase: 0.0, node_longitude: 0.0 };
+        assert!(new_moon.light_contribution() < 0.01);
+
+        // Half moon (waxing) provides intermediate light
+        let half_moon = MoonState { phase: 0.25, node_longitude: 0.0 };
+        assert!(half_moon.light_contribution() > 0.0);
+        assert!(half_moon.light_contribution() < 0.15);
+
+        // Half moon (waning) provides same intermediate light
+        let waning_half = MoonState { phase: 0.75, node_longitude: 0.0 };
+        let waxing_half = MoonState { phase: 0.25, node_longitude: 0.0 };
+        assert!((waning_half.light_contribution() - waxing_half.light_contribution()).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_eclipse_possible() {
+        // Eclipse possible when node is aligned with sun
+        let moon = MoonState { phase: 0.0, node_longitude: 0.0 };
+        assert!(moon.eclipse_possible(0.0)); // Aligned
+        assert!(moon.eclipse_possible(10.0)); // Within 15 degrees
+        assert!(!moon.eclipse_possible(30.0)); // Too far
+
+        // Test wraparound near 360 degrees
+        let moon = MoonState { phase: 0.0, node_longitude: 355.0 };
+        assert!(moon.eclipse_possible(5.0)); // Within 15 degrees across 0
+        assert!(moon.eclipse_possible(350.0)); // Within 15 degrees on same side
     }
 }
