@@ -470,6 +470,248 @@ impl Default for AstronomicalState {
 }
 
 // ============================================================================
+// FoundingModifiers
+// ============================================================================
+
+/// Modifiers applied to settlements based on founding conditions
+///
+/// When a settlement is founded, the day, season, and any active celestial
+/// events determine its character. These modifiers affect starting resources,
+/// population, cultural traits, and strategic tendencies.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct FoundingModifiers {
+    // Season-based multipliers (default 1.0 for multiplicative, 0.0 for additive)
+    /// Efficiency of stockpile storage (multiplicative, default 1.0)
+    pub stockpile_efficiency: f32,
+    /// Multiplier on initial population (multiplicative, default 1.0)
+    pub initial_population_mult: f32,
+    /// Bonus to growth rate (additive, default 0.0)
+    pub growth_rate: f32,
+    /// Weight toward defensive structures (additive, default 0.0)
+    pub defensive_weight: f32,
+    /// Bonus to trade infrastructure (additive, default 0.0)
+    pub trade_infrastructure: f32,
+    /// Bonus to harvest storage capacity (additive, default 0.0)
+    pub harvest_storage: f32,
+    /// Efficiency of resource usage (additive, default 0.0)
+    pub resource_efficiency: f32,
+
+    // Boolean traits
+    /// Settlement has siege mentality (defensive, insular)
+    pub siege_mentality: bool,
+    /// Settlement has preparation trait (stores resources)
+    pub preparation_trait: bool,
+    /// Settlement is blessed (favorable founding)
+    pub blessed: bool,
+    /// Settlement has secrecy trait (hidden, underground)
+    pub secrecy_trait: bool,
+
+    // Astronomical event bonuses (additive)
+    /// Preference for underground structures
+    pub underground_preference: f32,
+    /// Cultural tendency toward stealth and subterfuge
+    pub stealth_culture: f32,
+    /// Cultural tendency toward martial pursuits
+    pub martial_culture: f32,
+    /// Cultural tendency toward theocracy
+    pub theocratic_tendency: f32,
+    /// Baseline morale modifier (additive)
+    pub morale_baseline: f32,
+    /// Tendency to expand (additive, can be negative)
+    pub expansion_tendency: f32,
+    /// Bonus to fertility/birth rate
+    pub fertility_bonus: f32,
+    /// Weight of superstitious beliefs
+    pub superstition_weight: f32,
+    /// Affinity for supernatural/magical elements
+    pub supernatural_affinity: f32,
+
+    // Bias tags for hex generation and settlement features
+    /// Tags that bias toward certain features (e.g., "defensive", "agricultural")
+    pub bias_tags: Vec<String>,
+    /// Tags that bias against certain features (e.g., "exposed", "fortified")
+    pub bias_against: Vec<String>,
+
+    // Narrative flavor
+    /// Descriptive text about the founding conditions
+    pub flavor_text: String,
+}
+
+impl FoundingModifiers {
+    /// Calculate founding modifiers based on day, season, and active events
+    ///
+    /// This is the main entry point for calculating what modifiers apply
+    /// to a settlement founded under the given conditions.
+    ///
+    /// # Arguments
+    /// * `day_of_year` - The day of the year (1-360)
+    /// * `season` - The current season
+    /// * `events` - Active celestial events on this day
+    pub fn calculate(day_of_year: u16, season: Season, events: &[CelestialEvent]) -> Self {
+        let mut modifiers = Self {
+            stockpile_efficiency: 1.0,
+            initial_population_mult: 1.0,
+            ..Default::default()
+        };
+
+        // Apply season modifiers
+        modifiers.apply_season(day_of_year, season);
+
+        // Apply event modifiers
+        for event in events {
+            modifiers.apply_event(*event);
+        }
+
+        // Generate flavor text
+        modifiers.generate_flavor(season, events);
+
+        modifiers
+    }
+
+    /// Apply season-based modifiers
+    ///
+    /// Each season (and sub-period within seasons) grants different bonuses
+    /// and penalties reflecting the challenges and opportunities of founding
+    /// a settlement in that time of year.
+    fn apply_season(&mut self, day_of_year: u16, season: Season) {
+        match season {
+            Season::Spring => {
+                if day_of_year <= 45 {
+                    // Early spring: renewal, optimism, agricultural focus
+                    self.growth_rate += 0.1;
+                    self.morale_baseline += 0.1;
+                    self.bias_tags.push("agricultural".to_string());
+                    self.bias_tags.push("optimistic".to_string());
+                } else {
+                    // Late spring: expansion, fertility, growth
+                    self.fertility_bonus += 0.15;
+                    self.expansion_tendency += 0.2;
+                    self.bias_tags.push("expanding".to_string());
+                }
+            }
+            Season::Summer => {
+                // Summer: abundance, trade, openness (but less defensive)
+                self.initial_population_mult += 0.15;
+                self.trade_infrastructure += 0.2;
+                self.defensive_weight -= 0.1;
+                self.bias_tags.push("commercial".to_string());
+                self.bias_tags.push("open".to_string());
+                self.bias_against.push("fortified".to_string());
+            }
+            Season::Autumn => {
+                // Autumn: harvest, preparation, balance
+                self.harvest_storage += 0.2;
+                self.preparation_trait = true;
+                self.bias_tags.push("prepared".to_string());
+                self.bias_tags.push("balanced".to_string());
+            }
+            Season::Winter => {
+                if day_of_year >= 300 {
+                    // Deep winter: survival mode, defensive, industrial
+                    self.stockpile_efficiency += 0.15;
+                    self.initial_population_mult -= 0.2;
+                    self.defensive_weight += 0.3;
+                    self.siege_mentality = true;
+                    self.bias_tags.push("defensive".to_string());
+                    self.bias_tags.push("industrial".to_string());
+                    self.bias_against.push("exposed".to_string());
+                } else {
+                    // Early winter: caution, resource efficiency
+                    self.resource_efficiency += 0.1;
+                    self.morale_baseline -= 0.15; // Cautious/pessimistic baseline
+                    self.bias_tags.push("cautious".to_string());
+                }
+            }
+        }
+    }
+
+    /// Apply celestial event modifiers
+    ///
+    /// Rare celestial events at founding leave lasting impressions on
+    /// settlement culture and capabilities.
+    fn apply_event(&mut self, event: CelestialEvent) {
+        match event {
+            CelestialEvent::PerfectDoubleFull | CelestialEvent::NearDoubleFull => {
+                // Double full moon: blessing, prosperity, expansion
+                self.morale_baseline += 0.1;
+                self.expansion_tendency += 0.25;
+                self.blessed = true;
+                self.fertility_bonus += 0.1;
+                self.bias_tags.push("blessed".to_string());
+                self.bias_tags.push("prosperous".to_string());
+            }
+            CelestialEvent::PerfectDoubleNew | CelestialEvent::NearDoubleNew => {
+                // Double new moon (The Dark): underground, secretive
+                self.underground_preference += 0.3;
+                self.stealth_culture += 0.2;
+                self.superstition_weight += 0.2;
+                self.secrecy_trait = true;
+                self.bias_tags.push("underground".to_string());
+                self.bias_tags.push("secretive".to_string());
+                self.bias_against.push("surface".to_string());
+            }
+            CelestialEvent::SilverEclipse => {
+                // Silver eclipse: theocratic, superstitious
+                self.theocratic_tendency += 0.15;
+                self.superstition_weight += 0.3;
+                self.bias_tags.push("theocratic".to_string());
+                self.bias_tags.push("silver".to_string());
+            }
+            CelestialEvent::BloodEclipse => {
+                // Blood eclipse: martial, warlike
+                self.martial_culture += 0.2;
+                self.superstition_weight += 0.25;
+                self.bias_tags.push("martial".to_string());
+                self.bias_tags.push("blood".to_string());
+            }
+            CelestialEvent::DoubleEclipse => {
+                // Double eclipse: mystical, isolated
+                self.supernatural_affinity += 0.3;
+                self.superstition_weight += 0.4;
+                self.expansion_tendency -= 0.2; // Isolation tendency
+                self.bias_tags.push("mystical".to_string());
+                self.bias_tags.push("isolated".to_string());
+            }
+            // Common events don't significantly affect founding
+            _ => {}
+        }
+    }
+
+    /// Generate narrative flavor text for the founding
+    ///
+    /// Creates a descriptive string that can be used in narratives or
+    /// settlement descriptions.
+    fn generate_flavor(&mut self, season: Season, events: &[CelestialEvent]) {
+        let season_desc = match season {
+            Season::Spring => "in the season of renewal",
+            Season::Summer => "under abundant summer skies",
+            Season::Autumn => "as leaves fell and stores filled",
+            Season::Winter => "in the harshest season",
+        };
+
+        let event_desc = if events.iter().any(|e| matches!(e, CelestialEvent::PerfectDoubleFull)) {
+            "under the radiant double full moons"
+        } else if events.iter().any(|e| matches!(e, CelestialEvent::PerfectDoubleNew)) {
+            "under lightless skies"
+        } else if events.iter().any(|e| matches!(e, CelestialEvent::DoubleEclipse)) {
+            "as both moons devoured the sun"
+        } else if events.iter().any(|e| matches!(e, CelestialEvent::BloodEclipse)) {
+            "beneath the blood-darkened sun"
+        } else if events.iter().any(|e| matches!(e, CelestialEvent::SilverEclipse)) {
+            "as silver shadows crossed the sun"
+        } else {
+            ""
+        };
+
+        self.flavor_text = if event_desc.is_empty() {
+            format!("Founded {}", season_desc)
+        } else {
+            format!("Founded {} {}", season_desc, event_desc)
+        };
+    }
+}
+
+// ============================================================================
 // Tests (TDD - written first)
 // ============================================================================
 
@@ -865,5 +1107,161 @@ mod tests {
             state.advance_tick();
         }
         assert_eq!(state.season, Season::Winter);
+    }
+
+    // ========================================================================
+    // Task 4 Tests: FoundingModifiers (TDD - written first)
+    // ========================================================================
+
+    #[test]
+    fn test_founding_modifiers_deep_winter() {
+        let modifiers = FoundingModifiers::calculate(342, Season::Winter, &[]);
+
+        assert!(modifiers.stockpile_efficiency > 1.0);
+        assert!(modifiers.initial_population_mult < 1.0);
+        assert!(modifiers.siege_mentality);
+        assert!(modifiers.bias_tags.contains(&"defensive".to_string()));
+    }
+
+    #[test]
+    fn test_founding_modifiers_summer() {
+        let modifiers = FoundingModifiers::calculate(150, Season::Summer, &[]);
+
+        assert!(modifiers.initial_population_mult > 1.0);
+        assert!(modifiers.trade_infrastructure > 0.0);
+        assert!(!modifiers.siege_mentality);
+    }
+
+    #[test]
+    fn test_founding_modifiers_with_event() {
+        let events = vec![CelestialEvent::PerfectDoubleFull];
+        let modifiers = FoundingModifiers::calculate(150, Season::Summer, &events);
+
+        assert!(modifiers.morale_baseline > 0.0);
+        assert!(modifiers.blessed);
+        assert!(modifiers.bias_tags.contains(&"blessed".to_string()));
+    }
+
+    #[test]
+    fn test_founding_modifiers_the_dark() {
+        let events = vec![CelestialEvent::PerfectDoubleNew];
+        let modifiers = FoundingModifiers::calculate(342, Season::Winter, &events);
+
+        // Combined winter + dark modifiers
+        assert!(modifiers.underground_preference > 0.0);
+        assert!(modifiers.stealth_culture > 0.0);
+        assert!(modifiers.siege_mentality);
+        assert!(modifiers.secrecy_trait);
+    }
+
+    #[test]
+    fn test_founding_modifiers_early_spring() {
+        let modifiers = FoundingModifiers::calculate(30, Season::Spring, &[]);
+
+        // Early spring (days 1-45)
+        assert!(modifiers.growth_rate > 0.0);
+        assert!(modifiers.morale_baseline > 0.0);
+        assert!(modifiers.bias_tags.contains(&"agricultural".to_string()));
+        assert!(modifiers.bias_tags.contains(&"optimistic".to_string()));
+    }
+
+    #[test]
+    fn test_founding_modifiers_late_spring() {
+        let modifiers = FoundingModifiers::calculate(60, Season::Spring, &[]);
+
+        // Late spring (days 46-90)
+        assert!(modifiers.fertility_bonus > 0.0);
+        assert!(modifiers.expansion_tendency > 0.0);
+        assert!(modifiers.bias_tags.contains(&"expanding".to_string()));
+    }
+
+    #[test]
+    fn test_founding_modifiers_autumn() {
+        let modifiers = FoundingModifiers::calculate(200, Season::Autumn, &[]);
+
+        assert!(modifiers.harvest_storage > 0.0);
+        assert!(modifiers.preparation_trait);
+        assert!(modifiers.bias_tags.contains(&"prepared".to_string()));
+        assert!(modifiers.bias_tags.contains(&"balanced".to_string()));
+    }
+
+    #[test]
+    fn test_founding_modifiers_early_winter() {
+        let modifiers = FoundingModifiers::calculate(280, Season::Winter, &[]);
+
+        // Early winter (days 271-299)
+        assert!(modifiers.resource_efficiency > 0.0);
+        assert!(modifiers.morale_baseline < 0.0); // Caution/pessimism
+        assert!(modifiers.bias_tags.contains(&"cautious".to_string()));
+        assert!(!modifiers.siege_mentality); // Not deep winter
+    }
+
+    #[test]
+    fn test_founding_modifiers_silver_eclipse() {
+        let events = vec![CelestialEvent::SilverEclipse];
+        let modifiers = FoundingModifiers::calculate(150, Season::Summer, &events);
+
+        assert!(modifiers.theocratic_tendency > 0.0);
+        assert!(modifiers.superstition_weight > 0.0);
+        assert!(modifiers.bias_tags.contains(&"theocratic".to_string()));
+        assert!(modifiers.bias_tags.contains(&"silver".to_string()));
+    }
+
+    #[test]
+    fn test_founding_modifiers_blood_eclipse() {
+        let events = vec![CelestialEvent::BloodEclipse];
+        let modifiers = FoundingModifiers::calculate(150, Season::Summer, &events);
+
+        assert!(modifiers.martial_culture > 0.0);
+        assert!(modifiers.superstition_weight > 0.0);
+        assert!(modifiers.bias_tags.contains(&"martial".to_string()));
+        assert!(modifiers.bias_tags.contains(&"blood".to_string()));
+    }
+
+    #[test]
+    fn test_founding_modifiers_double_eclipse() {
+        let events = vec![CelestialEvent::DoubleEclipse];
+        let modifiers = FoundingModifiers::calculate(150, Season::Summer, &events);
+
+        assert!(modifiers.supernatural_affinity > 0.0);
+        assert!(modifiers.superstition_weight > 0.0);
+        assert!(modifiers.expansion_tendency < 0.0); // Isolation
+        assert!(modifiers.bias_tags.contains(&"mystical".to_string()));
+        assert!(modifiers.bias_tags.contains(&"isolated".to_string()));
+    }
+
+    #[test]
+    fn test_founding_modifiers_flavor_text_summer() {
+        let modifiers = FoundingModifiers::calculate(150, Season::Summer, &[]);
+
+        assert!(modifiers.flavor_text.contains("summer"));
+    }
+
+    #[test]
+    fn test_founding_modifiers_flavor_text_with_event() {
+        let events = vec![CelestialEvent::PerfectDoubleFull];
+        let modifiers = FoundingModifiers::calculate(150, Season::Summer, &events);
+
+        assert!(modifiers.flavor_text.contains("double full moons"));
+    }
+
+    #[test]
+    fn test_founding_modifiers_default_values() {
+        // Create a default instance to verify baseline values
+        let modifiers = FoundingModifiers::default();
+
+        assert_eq!(modifiers.stockpile_efficiency, 0.0);
+        assert_eq!(modifiers.initial_population_mult, 0.0);
+        assert!(!modifiers.siege_mentality);
+        assert!(!modifiers.blessed);
+        assert!(modifiers.bias_tags.is_empty());
+    }
+
+    #[test]
+    fn test_founding_modifiers_summer_bias_against() {
+        let modifiers = FoundingModifiers::calculate(150, Season::Summer, &[]);
+
+        // Summer settlements bias against fortified structures
+        assert!(modifiers.bias_against.contains(&"fortified".to_string()));
     }
 }
