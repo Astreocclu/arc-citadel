@@ -1,3 +1,4 @@
+pub mod constants;
 pub mod resolution;
 pub mod weapons;
 pub mod armor;
