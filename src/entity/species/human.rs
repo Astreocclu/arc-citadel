@@ -57,6 +57,8 @@ pub struct HumanArchetype {
     pub alive: Vec<bool>,
     pub social_memories: Vec<SocialMemory>,
     pub event_buffers: Vec<EventBuffer>,
+    /// Building skill level (0.0 to 1.0)
+    pub building_skills: Vec<f32>,
 }
 
 impl HumanArchetype {
@@ -75,6 +77,7 @@ impl HumanArchetype {
             alive: Vec::new(),
             social_memories: Vec::new(),
             event_buffers: Vec::new(),
+            building_skills: Vec::new(),
         }
     }
 
@@ -96,6 +99,7 @@ impl HumanArchetype {
         self.alive.push(true);
         self.social_memories.push(SocialMemory::new());
         self.event_buffers.push(EventBuffer::default());
+        self.building_skills.push(0.0);
     }
 
     pub fn index_of(&self, id: EntityId) -> Option<usize> {
@@ -128,5 +132,15 @@ mod tests {
 
         assert_eq!(archetype.social_memories.len(), 1);
         assert_eq!(archetype.social_memories[0].slots.len(), 0); // Empty initially
+    }
+
+    #[test]
+    fn test_human_has_building_skill() {
+        let mut archetype = HumanArchetype::new();
+        let id = EntityId::new();
+        archetype.spawn(id, "Builder Bob".into(), 0);
+
+        assert_eq!(archetype.building_skills.len(), 1);
+        assert_eq!(archetype.building_skills[0], 0.0);
     }
 }
