@@ -1264,4 +1264,119 @@ mod tests {
         // Summer settlements bias against fortified structures
         assert!(modifiers.bias_against.contains(&"fortified".to_string()));
     }
+
+    // ========================================================================
+    // Task 6 Tests: Expectations System Compatibility
+    // ========================================================================
+
+    #[test]
+    fn test_expectations_system_compatibility_with_astronomy() {
+        use crate::core::types::EntityId;
+        use crate::entity::social::expectations::{BehaviorPattern, PatternType};
+
+        // Step 1: Create an AstronomicalState
+        let mut state = AstronomicalState::default();
+
+        // Step 2: Get the TimePeriod from it via state.time_period()
+        let time_period = state.time_period();
+
+        // Step 3: Create a PatternType::LocationDuring using that TimePeriod
+        let location_id = EntityId::new();
+        let pattern = PatternType::LocationDuring {
+            location_id,
+            time_period,
+        };
+
+        // Step 4: Verify the pattern works correctly
+        match &pattern {
+            PatternType::LocationDuring { location_id: loc, time_period: tp } => {
+                assert_eq!(*loc, location_id);
+                assert_eq!(*tp, time_period);
+            }
+            _ => panic!("Expected LocationDuring pattern"),
+        }
+
+        // Verify we can create a BehaviorPattern with it
+        let behavior_pattern = BehaviorPattern::new(pattern.clone(), state.tick);
+        assert_eq!(behavior_pattern.observation_count, 1);
+        assert!(behavior_pattern.confidence > 0.0);
+
+        // Advance time and verify time_period changes appropriately
+        // Advance to midday (tick 500 = hour 12)
+        for _ in 0..500 {
+            state.advance_tick();
+        }
+        let afternoon_time_period = state.time_period();
+        assert_eq!(afternoon_time_period, TimePeriod::Afternoon);
+
+        // Create another pattern with the updated time period
+        let afternoon_pattern = PatternType::LocationDuring {
+            location_id,
+            time_period: afternoon_time_period,
+        };
+
+        // Verify the patterns are different (demonstrating time-based expectations)
+        match (&pattern, &afternoon_pattern) {
+            (
+                PatternType::LocationDuring { time_period: tp1, .. },
+                PatternType::LocationDuring { time_period: tp2, .. },
+            ) => {
+                // Initial was Night (hour 0), now it's Afternoon (hour 12)
+                assert_ne!(*tp1, *tp2, "Time periods should be different after advancing time");
+            }
+            _ => panic!("Expected LocationDuring patterns"),
+        }
+    }
+
+    #[test]
+    fn test_time_period_from_solar_phase_all_mappings() {
+        // Verify all SolarPhase values correctly map to TimePeriod
+        // This ensures the From<SolarPhase> for TimePeriod implementation is complete
+
+        // Night time phases -> Night
+        assert_eq!(TimePeriod::from(SolarPhase::DeepNight), TimePeriod::Night);
+        assert_eq!(TimePeriod::from(SolarPhase::PreDawn), TimePeriod::Night);
+        assert_eq!(TimePeriod::from(SolarPhase::Night), TimePeriod::Night);
+
+        // Morning phases -> Morning
+        assert_eq!(TimePeriod::from(SolarPhase::Dawn), TimePeriod::Morning);
+        assert_eq!(TimePeriod::from(SolarPhase::Morning), TimePeriod::Morning);
+
+        // Afternoon phases -> Afternoon
+        assert_eq!(TimePeriod::from(SolarPhase::Midday), TimePeriod::Afternoon);
+        assert_eq!(TimePeriod::from(SolarPhase::Afternoon), TimePeriod::Afternoon);
+
+        // Evening phases -> Evening
+        assert_eq!(TimePeriod::from(SolarPhase::Dusk), TimePeriod::Evening);
+        assert_eq!(TimePeriod::from(SolarPhase::Evening), TimePeriod::Evening);
+    }
+
+    #[test]
+    fn test_astronomical_state_time_period_consistency_throughout_day() {
+        // Verify time_period() returns consistent values throughout a full day
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        let mut found_morning = false;
+        let mut found_afternoon = false;
+        let mut found_evening = false;
+        let mut found_night = false;
+
+        // Advance through one full day
+        for _ in 0..TICKS_PER_DAY {
+            let tp = state.time_period();
+            match tp {
+                TimePeriod::Morning => found_morning = true,
+                TimePeriod::Afternoon => found_afternoon = true,
+                TimePeriod::Evening => found_evening = true,
+                TimePeriod::Night => found_night = true,
+            }
+            state.advance_tick();
+        }
+
+        // All four time periods should occur during a day
+        assert!(found_morning, "Morning should occur during the day");
+        assert!(found_afternoon, "Afternoon should occur during the day");
+        assert!(found_evening, "Evening should occur during the day");
+        assert!(found_night, "Night should occur during the day");
+    }
 }
