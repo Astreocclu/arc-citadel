@@ -2,6 +2,7 @@
 
 pub mod building;
 pub mod construction;
+pub mod production;
 pub mod recipe;
 pub mod stockpile;
 
@@ -10,5 +11,6 @@ pub use construction::{
     apply_construction_work, calculate_team_contribution, calculate_worker_contribution,
     ContributionResult,
 };
+pub use production::{tick_production, ProductionResult};
 pub use recipe::{Recipe, RecipeCatalog, RecipeLoadError};
 pub use stockpile::Stockpile;

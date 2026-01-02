@@ -52,6 +52,13 @@ pub fn run_simulation_tick(world: &mut World) {
     select_actions(world);
     execute_tasks(world);
     regenerate_food_zones(world);
+
+    // TODO: Run production tick for buildings
+    // This requires a stockpile per settlement - for MVP, use a global stockpile
+    // Example integration:
+    //   let results = tick_production(&mut world.buildings, &recipes, &mut stockpile);
+    // See src/city/production.rs for implementation
+
     world.tick();
     decay_social_memories(world);
     decay_expectations(world);
