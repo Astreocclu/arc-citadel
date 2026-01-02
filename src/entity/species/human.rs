@@ -5,7 +5,7 @@ use crate::entity::body::BodyState;
 use crate::entity::needs::Needs;
 use crate::entity::thoughts::ThoughtBuffer;
 use crate::entity::tasks::TaskQueue;
-use crate::entity::social::SocialMemory;
+use crate::entity::social::{SocialMemory, EventBuffer};
 
 /// Human-specific value vocabulary
 #[derive(Debug, Clone, Default)]
@@ -56,6 +56,7 @@ pub struct HumanArchetype {
     pub task_queues: Vec<TaskQueue>,
     pub alive: Vec<bool>,
     pub social_memories: Vec<SocialMemory>,
+    pub event_buffers: Vec<EventBuffer>,
 }
 
 impl HumanArchetype {
@@ -73,6 +74,7 @@ impl HumanArchetype {
             task_queues: Vec::new(),
             alive: Vec::new(),
             social_memories: Vec::new(),
+            event_buffers: Vec::new(),
         }
     }
 
@@ -93,6 +95,7 @@ impl HumanArchetype {
         self.task_queues.push(TaskQueue::new());
         self.alive.push(true);
         self.social_memories.push(SocialMemory::new());
+        self.event_buffers.push(EventBuffer::default());
     }
 
     pub fn index_of(&self, id: EntityId) -> Option<usize> {
