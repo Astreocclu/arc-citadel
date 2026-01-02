@@ -1,3 +1,12 @@
+//! Combat resolution system
+//!
+//! Philosophy: Property interaction, not percentage modifiers.
+//! NO multiplicative stacking. Categorical outcomes from comparisons.
+//!
+//! Two victory paths:
+//! 1. DAMAGE PATH: Inflict wounds until they can't fight
+//! 2. MORALE PATH: Inflict stress until they break and flee
+
 pub mod armor;
 pub mod body_zone;
 pub mod constants;
