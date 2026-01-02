@@ -2,6 +2,7 @@
 //!
 //! This module provides the core enums and constants for the astronomical system.
 
+use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
 use crate::core::calendar::TimePeriod;
 
@@ -264,6 +265,211 @@ impl MoonState {
 }
 
 // ============================================================================
+// AstronomicalState
+// ============================================================================
+
+/// Main astronomical state - tracks time, celestial bodies, and events
+///
+/// This struct replaces the old Calendar system and provides:
+/// - Tick-based time tracking
+/// - Day/year calculations with seasonal changes
+/// - Dual moon phase tracking (Argent and Sanguine)
+/// - Solar phase and light level calculations
+/// - Celestial event detection
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AstronomicalState {
+    // Time tracking
+    /// Current simulation tick
+    pub tick: u64,
+    /// Number of ticks per day
+    pub ticks_per_day: u64,
+
+    // Derived values (cached, updated when day changes)
+    /// Total days since epoch (day 0)
+    pub current_day: u32,
+    /// Day within the current year (1-360)
+    pub day_of_year: u16,
+    /// Current year (starts at 1)
+    pub year: i32,
+    /// Current season based on day_of_year
+    pub season: Season,
+    /// Current solar phase based on time of day
+    pub solar_phase: SolarPhase,
+    /// Current light level (0.0-1.0) including lunar contribution
+    pub light_level: f32,
+
+    // Moon states
+    /// Silver Moon (Argent) state
+    pub argent: MoonState,
+    /// Blood Moon (Sanguine) state
+    pub sanguine: MoonState,
+
+    // Events
+    /// Currently active celestial events
+    pub active_events: Vec<CelestialEvent>,
+    /// Pre-computed event calendar (day -> events)
+    pub event_calendar: AHashMap<u32, Vec<CelestialEvent>>,
+
+    // Cache for expensive calculations
+    last_updated_day: u32,
+}
+
+impl AstronomicalState {
+    /// Create a new astronomical state with the given ticks per day
+    pub fn new(ticks_per_day: u64) -> Self {
+        let mut state = Self {
+            tick: 0,
+            ticks_per_day,
+            current_day: 0,
+            day_of_year: 1,
+            year: 1,
+            season: Season::Spring,
+            solar_phase: SolarPhase::DeepNight,
+            light_level: 0.0,
+            argent: MoonState::default(),
+            sanguine: MoonState::default(),
+            active_events: Vec::new(),
+            event_calendar: AHashMap::new(),
+            last_updated_day: u32::MAX, // Force initial update
+        };
+        state.update_daily();
+        state.update_light_level();
+        state
+    }
+
+    /// Advance simulation by one tick
+    pub fn advance_tick(&mut self) {
+        self.tick += 1;
+
+        let new_day = (self.tick / self.ticks_per_day) as u32;
+
+        // Update solar phase (changes within day)
+        let tick_in_day = self.tick % self.ticks_per_day;
+        let hour = ((tick_in_day * 24) / self.ticks_per_day) as u32;
+        self.solar_phase = SolarPhase::from_hour(hour);
+
+        // Update light level
+        self.update_light_level();
+
+        // Update daily values if day changed
+        if new_day != self.current_day {
+            self.current_day = new_day;
+            self.update_daily();
+        }
+    }
+
+    /// Update values that change daily (called when day changes)
+    pub fn update_daily(&mut self) {
+        if self.last_updated_day == self.current_day {
+            return;
+        }
+        self.last_updated_day = self.current_day;
+
+        // Calculate day of year and year
+        self.day_of_year = ((self.current_day % YEAR_LENGTH as u32) + 1) as u16;
+        self.year = (self.current_day / YEAR_LENGTH as u32) as i32 + 1;
+
+        // Update season
+        self.season = Season::from_day_of_year(self.day_of_year);
+
+        // Update moon states
+        self.argent = MoonState::new(self.current_day, ARGENT_PERIOD, ARGENT_NODE_PRECESSION);
+        self.sanguine = MoonState::new(self.current_day, SANGUINE_PERIOD, SANGUINE_NODE_PRECESSION);
+
+        // Detect active events
+        self.detect_events();
+    }
+
+    /// Update light level based on solar phase and moons
+    pub fn update_light_level(&mut self) {
+        let base = self.solar_phase.base_light_level();
+
+        // Add lunar contribution only at night (when base light is low)
+        let lunar = if base < 0.3 {
+            self.argent.light_contribution() + self.sanguine.light_contribution()
+        } else {
+            0.0
+        };
+
+        self.light_level = (base + lunar).min(1.0);
+    }
+
+    /// Detect celestial events for current day
+    pub fn detect_events(&mut self) {
+        self.active_events.clear();
+
+        // Check moon phases
+        if self.argent.is_full() {
+            self.active_events.push(CelestialEvent::FullArgent);
+        }
+        if self.argent.is_new() {
+            self.active_events.push(CelestialEvent::NewArgent);
+        }
+        if self.sanguine.is_full() {
+            self.active_events.push(CelestialEvent::FullSanguine);
+        }
+        if self.sanguine.is_new() {
+            self.active_events.push(CelestialEvent::NewSanguine);
+        }
+
+        // Check double events
+        if self.argent.is_full() && self.sanguine.is_full() {
+            // Check if perfect (both exactly at 0.5)
+            if (self.argent.phase - 0.5).abs() < 0.02 && (self.sanguine.phase - 0.5).abs() < 0.02 {
+                self.active_events.push(CelestialEvent::PerfectDoubleFull);
+            } else {
+                self.active_events.push(CelestialEvent::NearDoubleFull);
+            }
+        }
+        if self.argent.is_new() && self.sanguine.is_new() {
+            if self.argent.phase < 0.02 && self.sanguine.phase < 0.02 {
+                self.active_events.push(CelestialEvent::PerfectDoubleNew);
+            } else {
+                self.active_events.push(CelestialEvent::NearDoubleNew);
+            }
+        }
+
+        // Check eclipses (simplified: eclipse when new moon + node aligned)
+        let sun_longitude = (self.day_of_year as f32 / YEAR_LENGTH as f32) * 360.0;
+        if self.argent.is_new() && self.argent.eclipse_possible(sun_longitude) {
+            self.active_events.push(CelestialEvent::SilverEclipse);
+        }
+        if self.sanguine.is_new() && self.sanguine.eclipse_possible(sun_longitude) {
+            self.active_events.push(CelestialEvent::BloodEclipse);
+        }
+
+        // Double eclipse
+        if self.active_events.contains(&CelestialEvent::SilverEclipse)
+            && self.active_events.contains(&CelestialEvent::BloodEclipse)
+        {
+            self.active_events.push(CelestialEvent::DoubleEclipse);
+        }
+    }
+
+    /// Get current hour (0-23)
+    pub fn hour(&self) -> u32 {
+        let tick_in_day = self.tick % self.ticks_per_day;
+        ((tick_in_day * 24) / self.ticks_per_day) as u32
+    }
+
+    /// Get TimePeriod for backward compatibility with expectations system
+    pub fn time_period(&self) -> TimePeriod {
+        TimePeriod::from(self.solar_phase)
+    }
+
+    /// Check if a specific event is active today
+    pub fn has_event(&self, event: CelestialEvent) -> bool {
+        self.active_events.contains(&event)
+    }
+}
+
+impl Default for AstronomicalState {
+    fn default() -> Self {
+        Self::new(TICKS_PER_DAY)
+    }
+}
+
+// ============================================================================
 // Tests (TDD - written first)
 // ============================================================================
 
@@ -488,5 +694,176 @@ mod tests {
         let moon = MoonState { phase: 0.0, node_longitude: 355.0 };
         assert!(moon.eclipse_possible(5.0)); // Within 15 degrees across 0
         assert!(moon.eclipse_possible(350.0)); // Within 15 degrees on same side
+    }
+
+    // ========================================================================
+    // Task 3 Tests: AstronomicalState Core (TDD - written first)
+    // ========================================================================
+
+    #[test]
+    fn test_astronomical_state_new() {
+        let state = AstronomicalState::new(TICKS_PER_DAY);
+
+        assert_eq!(state.tick, 0);
+        assert_eq!(state.current_day, 0);
+        assert_eq!(state.day_of_year, 1);
+        assert_eq!(state.year, 1);
+        assert_eq!(state.season, Season::Spring);
+    }
+
+    #[test]
+    fn test_astronomical_state_advance_day() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // Advance one full day
+        for _ in 0..TICKS_PER_DAY {
+            state.advance_tick();
+        }
+
+        assert_eq!(state.current_day, 1);
+        assert_eq!(state.day_of_year, 2);
+    }
+
+    #[test]
+    fn test_astronomical_state_year_rollover() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // Advance to end of year
+        for _ in 0..(YEAR_LENGTH as u64 * TICKS_PER_DAY) {
+            state.advance_tick();
+        }
+
+        assert_eq!(state.year, 2);
+        assert_eq!(state.day_of_year, 1);
+        assert_eq!(state.season, Season::Spring);
+    }
+
+    #[test]
+    fn test_solar_phase_from_tick() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // At tick 0, hour = 0, phase = DeepNight
+        assert_eq!(state.solar_phase, SolarPhase::DeepNight);
+
+        // Advance to midday (tick 500 = hour 12)
+        for _ in 0..500 {
+            state.advance_tick();
+        }
+        assert_eq!(state.solar_phase, SolarPhase::Midday);
+    }
+
+    #[test]
+    fn test_astronomical_state_hour() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // At tick 0, hour = 0
+        assert_eq!(state.hour(), 0);
+
+        // Advance to tick 500 (hour 12)
+        for _ in 0..500 {
+            state.advance_tick();
+        }
+        assert_eq!(state.hour(), 12);
+
+        // Advance to tick 750 (hour 18)
+        for _ in 0..250 {
+            state.advance_tick();
+        }
+        assert_eq!(state.hour(), 18);
+    }
+
+    #[test]
+    fn test_astronomical_state_time_period() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // At midnight, should be Night
+        assert_eq!(state.time_period(), TimePeriod::Night);
+
+        // Advance to morning (tick 333 = hour 8)
+        for _ in 0..333 {
+            state.advance_tick();
+        }
+        assert_eq!(state.time_period(), TimePeriod::Morning);
+
+        // Advance to midday (tick 500 = hour 12)
+        for _ in 0..167 {
+            state.advance_tick();
+        }
+        assert_eq!(state.time_period(), TimePeriod::Afternoon);
+    }
+
+    #[test]
+    fn test_astronomical_state_has_event() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // At day 0, Argent should be new (phase = 0)
+        assert!(state.has_event(CelestialEvent::NewArgent));
+        assert!(!state.has_event(CelestialEvent::FullArgent));
+
+        // Advance to day 14-15 for Argent full moon
+        for _ in 0..(14 * TICKS_PER_DAY) {
+            state.advance_tick();
+        }
+        assert!(state.has_event(CelestialEvent::FullArgent));
+    }
+
+    #[test]
+    fn test_astronomical_state_light_level() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // At midnight (DeepNight), light should be low
+        assert!(state.light_level < 0.3);
+
+        // Advance to midday (tick 500)
+        for _ in 0..500 {
+            state.advance_tick();
+        }
+        // At midday, light should be high
+        assert!(state.light_level > 0.9);
+    }
+
+    #[test]
+    fn test_astronomical_state_moon_states() {
+        let state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // At day 0, both moons should be in their initial phase
+        assert!(state.argent.is_new());  // Argent starts at new moon
+        assert!(state.sanguine.is_new()); // Sanguine starts at new moon
+    }
+
+    #[test]
+    fn test_astronomical_state_default() {
+        let state = AstronomicalState::default();
+
+        // Default should use TICKS_PER_DAY
+        assert_eq!(state.ticks_per_day, TICKS_PER_DAY);
+        assert_eq!(state.tick, 0);
+        assert_eq!(state.year, 1);
+    }
+
+    #[test]
+    fn test_astronomical_state_season_changes() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // Start in Spring
+        assert_eq!(state.season, Season::Spring);
+
+        // Advance to day 91 (Summer)
+        for _ in 0..(91 * TICKS_PER_DAY) {
+            state.advance_tick();
+        }
+        assert_eq!(state.season, Season::Summer);
+
+        // Advance to day 181 (Autumn)
+        for _ in 0..(90 * TICKS_PER_DAY) {
+            state.advance_tick();
+        }
+        assert_eq!(state.season, Season::Autumn);
+
+        // Advance to day 271 (Winter)
+        for _ in 0..(90 * TICKS_PER_DAY) {
+            state.advance_tick();
+        }
+        assert_eq!(state.season, Season::Winter);
     }
 }
