@@ -27,7 +27,7 @@ pub enum ActionId {
     IdleObserve,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionCategory {
     Movement,
     Survival,
