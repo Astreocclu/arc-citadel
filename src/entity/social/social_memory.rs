@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use crate::core::types::EntityId;
+use crate::core::calendar::TimePeriod;
 use super::memory::RelationshipMemory;
 use super::event_types::{EventType, Valence};
+use super::expectations::{BehaviorPattern, PatternType, MAX_PATTERNS_PER_SLOT, SALIENCE_FLOOR};
+use super::service_types::{ServiceType, TraitIndicator};
 
 /// How an entity feels about another based on memories
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -27,6 +30,8 @@ pub struct RelationshipSlot {
     pub last_contact: u64,
     /// Total interactions ever (even if memories evicted)
     pub interaction_count: u32,
+    /// Behavioral expectations about this entity
+    pub expectations: Vec<BehaviorPattern>,
 }
 
 impl RelationshipSlot {
@@ -39,6 +44,7 @@ impl RelationshipSlot {
             first_contact,
             last_contact: first_contact,
             interaction_count: 0,
+            expectations: Vec::new(),
         }
     }
 
@@ -116,6 +122,69 @@ impl RelationshipSlot {
         recency_score * params.recency_weight +
         intensity_score * params.intensity_weight +
         depth_score * params.interaction_count_weight
+    }
+
+    // ===== Expectation Methods =====
+
+    /// Add an expectation, strengthening if similar exists, evicting lowest salience if at capacity
+    pub fn add_expectation(&mut self, pattern: BehaviorPattern) {
+        // Check if similar pattern exists - strengthen it instead
+        if let Some(existing) = self.find_expectation_mut(&pattern.pattern_type) {
+            existing.record_observation(pattern.last_confirmed);
+            return;
+        }
+
+        // Evict lowest salience if at capacity
+        if self.expectations.len() >= MAX_PATTERNS_PER_SLOT {
+            if let Some(min_idx) = self.expectations
+                .iter()
+                .enumerate()
+                .min_by(|(_, a), (_, b)| a.salience.partial_cmp(&b.salience).unwrap())
+                .map(|(i, _)| i)
+            {
+                self.expectations.remove(min_idx);
+            }
+        }
+
+        self.expectations.push(pattern);
+    }
+
+    /// Find an expectation by pattern type
+    pub fn find_expectation(&self, pattern_type: &PatternType) -> Option<&BehaviorPattern> {
+        self.expectations.iter().find(|p| Self::pattern_matches(&p.pattern_type, pattern_type))
+    }
+
+    /// Find an expectation by pattern type (mutable)
+    pub fn find_expectation_mut(&mut self, pattern_type: &PatternType) -> Option<&mut BehaviorPattern> {
+        self.expectations.iter_mut().find(|p| Self::pattern_matches(&p.pattern_type, pattern_type))
+    }
+
+    /// Compare PatternType variants, matching on key fields (not all fields)
+    ///
+    /// - ProvidesWhenAsked: matches if service_type matches
+    /// - BehavesWithTrait: matches if trait_indicator matches
+    /// - LocationDuring: matches if location_id AND time_period match
+    /// - RespondsToEvent: matches if event_type matches (response can differ)
+    pub fn pattern_matches(a: &PatternType, b: &PatternType) -> bool {
+        match (a, b) {
+            (PatternType::ProvidesWhenAsked { service_type: s1 },
+             PatternType::ProvidesWhenAsked { service_type: s2 }) => s1 == s2,
+            (PatternType::BehavesWithTrait { trait_indicator: t1 },
+             PatternType::BehavesWithTrait { trait_indicator: t2 }) => t1 == t2,
+            (PatternType::LocationDuring { location_id: l1, time_period: tp1 },
+             PatternType::LocationDuring { location_id: l2, time_period: tp2 }) => l1 == l2 && tp1 == tp2,
+            (PatternType::RespondsToEvent { event_type: e1, .. },
+             PatternType::RespondsToEvent { event_type: e2, .. }) => e1 == e2,
+            _ => false,
+        }
+    }
+
+    /// Decay all expectations and remove stale ones
+    pub fn decay_expectations(&mut self, decay_rate: f32) {
+        for pattern in &mut self.expectations {
+            pattern.apply_decay(decay_rate);
+        }
+        self.expectations.retain(|p| !p.is_stale(SALIENCE_FLOOR));
     }
 }
 
@@ -787,5 +856,290 @@ mod critical_edge_case_tests {
             "Oldest encounter (t1) should be evicted");
         assert!(memory.encounter_buffer.iter().any(|e| e.target_id == t4),
             "Newest encounter (t4) should be present");
+    }
+}
+
+#[cfg(test)]
+mod expectation_tests {
+    use super::*;
+
+    #[test]
+    fn test_relationship_slot_expectations() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+
+        assert!(slot.expectations.is_empty());
+
+        // Add expectation
+        let pattern = BehaviorPattern::new(
+            PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            100,
+        );
+        slot.add_expectation(pattern);
+
+        assert_eq!(slot.expectations.len(), 1);
+
+        // Find expectation
+        let found = slot.find_expectation(&PatternType::ProvidesWhenAsked {
+            service_type: ServiceType::Crafting
+        });
+        assert!(found.is_some());
+    }
+
+    #[test]
+    fn test_expectations_bounded() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+
+        // Add more than MAX_PATTERNS_PER_SLOT
+        for i in 0..12 {
+            let pattern = BehaviorPattern::new(
+                PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+                i as u64 * 100,
+            );
+            slot.add_expectation(pattern);
+        }
+
+        // Should be bounded
+        assert!(slot.expectations.len() <= MAX_PATTERNS_PER_SLOT);
+    }
+
+    #[test]
+    fn test_add_expectation_strengthens_existing() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+
+        // Add initial expectation
+        let pattern1 = BehaviorPattern::new(
+            PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            100,
+        );
+        slot.add_expectation(pattern1);
+
+        let initial_obs = slot.expectations[0].observation_count;
+        let initial_salience = slot.expectations[0].salience;
+
+        // Add same type again - should strengthen, not add new
+        let pattern2 = BehaviorPattern::new(
+            PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            200,
+        );
+        slot.add_expectation(pattern2);
+
+        // Should still have just 1 expectation
+        assert_eq!(slot.expectations.len(), 1);
+        // But observation count should be higher
+        assert!(slot.expectations[0].observation_count > initial_obs);
+        // And salience should be higher
+        assert!(slot.expectations[0].salience > initial_salience);
+    }
+
+    #[test]
+    fn test_find_expectation_mut() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+
+        let pattern = BehaviorPattern::new(
+            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous },
+            100,
+        );
+        slot.add_expectation(pattern);
+
+        // Find and modify
+        let found = slot.find_expectation_mut(&PatternType::BehavesWithTrait {
+            trait_indicator: TraitIndicator::Generous
+        });
+        assert!(found.is_some());
+
+        let pattern_mut = found.unwrap();
+        pattern_mut.record_violation(200);
+
+        // Verify the change persisted
+        let found_again = slot.find_expectation(&PatternType::BehavesWithTrait {
+            trait_indicator: TraitIndicator::Generous
+        }).unwrap();
+        assert_eq!(found_again.violation_count, 1);
+    }
+
+    #[test]
+    fn test_pattern_matches_provides_when_asked() {
+        // Same service type should match
+        assert!(RelationshipSlot::pattern_matches(
+            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting }
+        ));
+
+        // Different service type should not match
+        assert!(!RelationshipSlot::pattern_matches(
+            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Trading }
+        ));
+    }
+
+    #[test]
+    fn test_pattern_matches_behaves_with_trait() {
+        // Same trait should match
+        assert!(RelationshipSlot::pattern_matches(
+            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous },
+            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous }
+        ));
+
+        // Different trait should not match
+        assert!(!RelationshipSlot::pattern_matches(
+            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous },
+            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Aggressive }
+        ));
+    }
+
+    #[test]
+    fn test_pattern_matches_location_during() {
+        let loc1 = EntityId::new();
+        let loc2 = EntityId::new();
+
+        // Same location and time should match
+        assert!(RelationshipSlot::pattern_matches(
+            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Morning },
+            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Morning }
+        ));
+
+        // Different location should not match
+        assert!(!RelationshipSlot::pattern_matches(
+            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Morning },
+            &PatternType::LocationDuring { location_id: loc2, time_period: TimePeriod::Morning }
+        ));
+
+        // Different time period should not match
+        assert!(!RelationshipSlot::pattern_matches(
+            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Morning },
+            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Evening }
+        ));
+    }
+
+    #[test]
+    fn test_pattern_matches_responds_to_event() {
+        use crate::actions::catalog::ActionCategory;
+
+        // Same event type should match even with different response
+        assert!(RelationshipSlot::pattern_matches(
+            &PatternType::RespondsToEvent {
+                event_type: EventType::HarmReceived,
+                typical_response: ActionCategory::Combat
+            },
+            &PatternType::RespondsToEvent {
+                event_type: EventType::HarmReceived,
+                typical_response: ActionCategory::Movement
+            }
+        ));
+
+        // Different event type should not match
+        assert!(!RelationshipSlot::pattern_matches(
+            &PatternType::RespondsToEvent {
+                event_type: EventType::HarmReceived,
+                typical_response: ActionCategory::Combat
+            },
+            &PatternType::RespondsToEvent {
+                event_type: EventType::AidReceived,
+                typical_response: ActionCategory::Combat
+            }
+        ));
+    }
+
+    #[test]
+    fn test_pattern_matches_different_variants() {
+        // Different pattern variants should never match
+        assert!(!RelationshipSlot::pattern_matches(
+            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable }
+        ));
+    }
+
+    #[test]
+    fn test_decay_expectations() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+
+        let pattern = BehaviorPattern::new(
+            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+            0,
+        );
+        slot.add_expectation(pattern);
+
+        let initial_salience = slot.expectations[0].salience;
+
+        // Apply decay
+        slot.decay_expectations(0.1);
+
+        // Salience should have decayed
+        assert!(slot.expectations[0].salience < initial_salience);
+    }
+
+    #[test]
+    fn test_decay_removes_stale_expectations() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+
+        let pattern = BehaviorPattern::new(
+            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+            0,
+        );
+        slot.add_expectation(pattern);
+
+        // Apply heavy decay multiple times to make it stale
+        for _ in 0..50 {
+            slot.decay_expectations(0.2);
+        }
+
+        // Expectation should have been removed due to falling below SALIENCE_FLOOR
+        assert!(slot.expectations.is_empty());
+    }
+
+    #[test]
+    fn test_eviction_removes_lowest_salience() {
+        let target = EntityId::new();
+        let mut slot = RelationshipSlot::new(target, 0);
+
+        // Add MAX_PATTERNS_PER_SLOT patterns with varying salience
+        // Note: They all start with same salience, so we need to modify them
+        for i in 0..MAX_PATTERNS_PER_SLOT {
+            let mut pattern = BehaviorPattern::new(
+                PatternType::LocationDuring {
+                    location_id: EntityId::new(),
+                    time_period: TimePeriod::Morning
+                },
+                i as u64 * 100,
+            );
+            // Boost salience of later patterns by recording observations
+            for _ in 0..i {
+                pattern.record_observation((i * 100) as u64);
+            }
+            slot.expectations.push(pattern);
+        }
+
+        assert_eq!(slot.expectations.len(), MAX_PATTERNS_PER_SLOT);
+
+        // Find the current minimum salience
+        let min_salience_before = slot.expectations.iter()
+            .map(|p| p.salience)
+            .fold(f32::MAX, f32::min);
+
+        // Add one more pattern - should evict lowest salience
+        let new_pattern = BehaviorPattern::new(
+            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Punctual },
+            1000,
+        );
+        let new_pattern_salience = new_pattern.salience;
+        slot.add_expectation(new_pattern);
+
+        // Should still be bounded
+        assert_eq!(slot.expectations.len(), MAX_PATTERNS_PER_SLOT);
+
+        // The new minimum salience should be >= the old minimum
+        // (because we evicted the lowest)
+        let min_salience_after = slot.expectations.iter()
+            .map(|p| p.salience)
+            .fold(f32::MAX, f32::min);
+        assert!(min_salience_after >= min_salience_before ||
+                min_salience_after == new_pattern_salience,
+            "Lowest salience pattern should have been evicted");
     }
 }
