@@ -1,5 +1,6 @@
 //! Building archetype with SoA layout
 
+use crate::core::types::{Tick, Vec2};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -80,9 +81,86 @@ impl Default for BuildingId {
     }
 }
 
+/// Structure of Arrays for building entities
+#[derive(Debug, Clone, Default)]
+pub struct BuildingArchetype {
+    /// Unique identifiers
+    pub ids: Vec<BuildingId>,
+    /// Type of each building
+    pub building_types: Vec<BuildingType>,
+    /// Current state
+    pub states: Vec<BuildingState>,
+    /// Position in world
+    pub positions: Vec<Vec2>,
+    /// Construction progress (0.0 to work_required)
+    pub construction_progress: Vec<f32>,
+    /// Currently assigned worker count
+    pub assigned_workers: Vec<u32>,
+    /// Owning polity (optional)
+    pub polity_ids: Vec<Option<u32>>,
+    /// Tick when construction started
+    pub started_ticks: Vec<Tick>,
+    /// Tick when completed (0 if not complete)
+    pub completed_ticks: Vec<Tick>,
+}
+
+impl BuildingArchetype {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn count(&self) -> usize {
+        self.ids.len()
+    }
+
+    /// Spawn a new building (starts as construction site)
+    pub fn spawn(
+        &mut self,
+        id: BuildingId,
+        building_type: BuildingType,
+        position: Vec2,
+        tick: Tick,
+    ) -> usize {
+        let index = self.ids.len();
+        self.ids.push(id);
+        self.building_types.push(building_type);
+        self.states.push(BuildingState::UnderConstruction);
+        self.positions.push(position);
+        self.construction_progress.push(0.0);
+        self.assigned_workers.push(0);
+        self.polity_ids.push(None);
+        self.started_ticks.push(tick);
+        self.completed_ticks.push(0);
+        index
+    }
+
+    pub fn index_of(&self, id: BuildingId) -> Option<usize> {
+        self.ids.iter().position(|&b| b == id)
+    }
+
+    /// Iterate over buildings under construction
+    pub fn iter_under_construction(&self) -> impl Iterator<Item = usize> + '_ {
+        self.states
+            .iter()
+            .enumerate()
+            .filter(|(_, state)| **state == BuildingState::UnderConstruction)
+            .map(|(i, _)| i)
+    }
+
+    /// Iterate over completed buildings
+    pub fn iter_complete(&self) -> impl Iterator<Item = usize> + '_ {
+        self.states
+            .iter()
+            .enumerate()
+            .filter(|(_, state)| **state == BuildingState::Complete)
+            .map(|(i, _)| i)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::types::Vec2;
 
     #[test]
     fn test_building_type_exists() {
@@ -131,5 +209,53 @@ mod tests {
 
         let (w, h) = BuildingType::Farm.size();
         assert_eq!((w, h), (4.0, 4.0));
+    }
+
+    // Task 3: BuildingArchetype tests
+    #[test]
+    fn test_building_archetype_spawn() {
+        let mut arch = BuildingArchetype::new();
+        assert_eq!(arch.count(), 0);
+
+        let id = BuildingId::new();
+        let idx = arch.spawn(id, BuildingType::House, Vec2::new(10.0, 20.0), 100);
+
+        assert_eq!(arch.count(), 1);
+        assert_eq!(idx, 0);
+        assert_eq!(arch.building_types[0], BuildingType::House);
+        assert_eq!(arch.states[0], BuildingState::UnderConstruction);
+        assert_eq!(arch.construction_progress[0], 0.0);
+    }
+
+    #[test]
+    fn test_building_archetype_index_of() {
+        let mut arch = BuildingArchetype::new();
+        let id1 = BuildingId::new();
+        let id2 = BuildingId::new();
+
+        arch.spawn(id1, BuildingType::House, Vec2::new(0.0, 0.0), 0);
+        arch.spawn(id2, BuildingType::Farm, Vec2::new(10.0, 0.0), 0);
+
+        assert_eq!(arch.index_of(id1), Some(0));
+        assert_eq!(arch.index_of(id2), Some(1));
+        assert_eq!(arch.index_of(BuildingId::new()), None);
+    }
+
+    #[test]
+    fn test_building_archetype_iter_under_construction() {
+        let mut arch = BuildingArchetype::new();
+        arch.spawn(BuildingId::new(), BuildingType::House, Vec2::new(0.0, 0.0), 0);
+        arch.spawn(BuildingId::new(), BuildingType::Farm, Vec2::new(10.0, 0.0), 0);
+
+        // Both are under construction
+        let under_construction: Vec<_> = arch.iter_under_construction().collect();
+        assert_eq!(under_construction.len(), 2);
+
+        // Complete one
+        arch.states[0] = BuildingState::Complete;
+
+        let under_construction: Vec<_> = arch.iter_under_construction().collect();
+        assert_eq!(under_construction.len(), 1);
+        assert_eq!(under_construction[0], 1);
     }
 }
