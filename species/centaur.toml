@@ -1,0 +1,79 @@
+[metadata]
+name = "Centaur"
+module_name = "centaur"
+
+[entity_values]
+honor = { type = "f32", default = 0.75, description = "Adherence to warrior traditions." }
+wanderlust = { type = "f32", default = 0.7, description = "Need to roam free." }
+pride = { type = "f32", default = 0.6, description = "Dignity and self-respect." }
+loyalty = { type = "f32", default = 0.65, description = "Bond to herd and allies." }
+wrath = { type = "f32", default = 0.4, description = "Fury when honor is slighted." }
+
+[polity_state]
+sacred_grounds = { type = "Vec<u32>", default = "Vec::new()" }
+herd_bonds = { type = "f32", default = "0.5" }
+star_wisdom = { type = "f32", default = "0.3" }
+oaths_sworn = { type = "Vec<String>", default = "Vec::new()" }
+
+[terrain_fitness]
+mountain = 0.3
+hills = 0.6
+forest = 0.7
+plains = 0.95
+marsh = 0.2
+coast = 0.4
+desert = 0.5
+river = 0.5
+
+[growth]
+rate = 1.02
+
+[expansion]
+threshold = 0.4
+
+[naming]
+prefixes = ["Chir", "Nes", "Phol", "Sag", "Ther", "Rix", "Gal", "Oran", "Stell", "Vor"]
+suffixes = ["-on", "-us", "-ax", "-ion", "-or", "-an", "-is", "-eus", "-os", "-ar"]
+
+[polity_types]
+small = "Clan"
+medium = "Tribe"
+large = "Kingdom"
+
+[[action_rules]]
+trigger_value = "honor"
+threshold = 0.8
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Challenge those who insult the herd."
+
+[[action_rules]]
+trigger_value = "loyalty"
+threshold = 0.7
+action = "Follow"
+priority = "Normal"
+requires_target = true
+description = "Stand with allies in battle."
+
+[[action_rules]]
+trigger_value = "wanderlust"
+threshold = 0.6
+action = "IdleWander"
+priority = "Normal"
+requires_target = false
+description = "Travel to new grazing lands."
+
+[[idle_behaviors]]
+value = "wanderlust"
+threshold = 0.5
+action = "IdleWander"
+requires_target = false
+description = "Roam the plains freely."
+
+[[idle_behaviors]]
+value = "pride"
+threshold = 0.4
+action = "IdleObserve"
+requires_target = false
+description = "Survey domain with noble bearing."

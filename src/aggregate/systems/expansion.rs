@@ -41,6 +41,18 @@ pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> Expans
                         Species::Elf => matches!(neighbor.terrain, Terrain::Forest) && *fitness > 0.8,
                         Species::Human => *fitness > 0.3,
                         Species::Orc => *fitness > 0.2, // Orcs can survive almost anywhere
+                        Species::Kobold => *fitness > 0.4,
+                        Species::Gnoll => *fitness > 0.25,
+                        Species::Lizardfolk => *fitness > 0.35,
+                        Species::Hobgoblin => *fitness > 0.3,
+                        Species::Ogre => *fitness > 0.4,
+                        Species::Harpy => *fitness > 0.5,
+                        Species::Centaur => *fitness > 0.4,
+                        Species::Minotaur => *fitness > 0.6,
+                        Species::Satyr => *fitness > 0.5,
+                        Species::Dryad => *fitness > 0.7,
+                        Species::Goblin => *fitness > 0.3,
+                        Species::Troll => *fitness > 0.25,
                         // CODEGEN: species_expansion_terrain
                     };
 

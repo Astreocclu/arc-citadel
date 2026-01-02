@@ -1,4 +1,4 @@
-//! {{ name }} entity archetype and values
+//! Hobgoblin entity archetype and values
 
 use serde::{Deserialize, Serialize};
 use crate::core::types::{EntityId, Vec2};
@@ -8,34 +8,40 @@ use crate::entity::tasks::TaskQueue;
 use crate::entity::body::BodyState;
 use crate::entity::social::SocialMemory;
 
-/// {{ name }}-specific value vocabulary
+/// Hobgoblin-specific value vocabulary
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct {{ name }}Values {
-{% for value_name, default in entity_values.items() %}
-    pub {{ value_name }}: f32,
-{% endfor %}
+pub struct HobgoblinValues {
+    pub discipline: f32,
+    pub ambition: f32,
+    pub honor: f32,
+    pub pragmatism: f32,
+    pub cruelty: f32,
 }
 
-impl {{ name }}Values {
+impl HobgoblinValues {
     pub fn new() -> Self {
         Self {
-{% for value_name, value_def in entity_values.items() %}
-            {{ value_name }}: {{ value_def.default }},
-{% endfor %}
+            discipline: 0.85,
+            ambition: 0.6,
+            honor: 0.5,
+            pragmatism: 0.7,
+            cruelty: 0.4,
         }
     }
 
     /// Randomize values within reasonable bounds
     pub fn randomize(&mut self, rng: &mut impl rand::Rng) {
-{% for value_name, _ in entity_values.items() %}
-        self.{{ value_name }} = rng.gen_range(0.2..0.8);
-{% endfor %}
+        self.discipline = rng.gen_range(0.2..0.8);
+        self.ambition = rng.gen_range(0.2..0.8);
+        self.honor = rng.gen_range(0.2..0.8);
+        self.pragmatism = rng.gen_range(0.2..0.8);
+        self.cruelty = rng.gen_range(0.2..0.8);
     }
 }
 
-/// {{ name }} archetype using Structure of Arrays layout
+/// Hobgoblin archetype using Structure of Arrays layout
 #[derive(Debug, Default)]
-pub struct {{ name }}Archetype {
+pub struct HobgoblinArchetype {
     pub ids: Vec<EntityId>,
     pub names: Vec<String>,
     pub positions: Vec<Vec2>,
@@ -43,18 +49,18 @@ pub struct {{ name }}Archetype {
     pub body_states: Vec<BodyState>,
     pub needs: Vec<Needs>,
     pub thoughts: Vec<ThoughtBuffer>,
-    pub values: Vec<{{ name }}Values>,
+    pub values: Vec<HobgoblinValues>,
     pub task_queues: Vec<TaskQueue>,
     pub alive: Vec<bool>,
     pub social_memories: Vec<SocialMemory>,
 }
 
-impl {{ name }}Archetype {
+impl HobgoblinArchetype {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn spawn(&mut self, name: String, position: Vec2, values: {{ name }}Values) -> EntityId {
+    pub fn spawn(&mut self, name: String, position: Vec2, values: HobgoblinValues) -> EntityId {
         let id = EntityId::new();
         self.ids.push(id);
         self.names.push(name);
@@ -92,20 +98,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_{{ module_name }}_values_creation() {
-        let values = {{ name }}Values::new();
-{% for value_name, value_def in entity_values.items() %}
-        assert!((values.{{ value_name }} - {{ value_def.default }}).abs() < 0.01);
-{% endfor %}
+    fn test_hobgoblin_values_creation() {
+        let values = HobgoblinValues::new();
+        assert!((values.discipline - 0.85).abs() < 0.01);
+        assert!((values.ambition - 0.6).abs() < 0.01);
+        assert!((values.honor - 0.5).abs() < 0.01);
+        assert!((values.pragmatism - 0.7).abs() < 0.01);
+        assert!((values.cruelty - 0.4).abs() < 0.01);
     }
 
     #[test]
-    fn test_{{ module_name }}_archetype_spawn() {
-        let mut archetype = {{ name }}Archetype::new();
+    fn test_hobgoblin_archetype_spawn() {
+        let mut archetype = HobgoblinArchetype::new();
         let id = archetype.spawn(
-            "Test {{ name }}".to_string(),
+            "Test Hobgoblin".to_string(),
             Vec2::new(10.0, 20.0),
-            {{ name }}Values::new(),
+            HobgoblinValues::new(),
         );
         assert_eq!(archetype.len(), 1);
         assert_eq!(archetype.index_of(id), Some(0));

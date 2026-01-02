@@ -10,7 +10,7 @@ patience = { type = "f32", default = 0.65, description = "Capacity to wait for t
 recklessness = { type = "f32", default = 0.75, description = "Tendency to ignore danger, fueled by regeneration." }
 
 [polity_state]
-grudge_list = { type = "Vec<u32>", default = "[]" }
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
 hoard_value = { type = "f32", default = "0.0" }
 war_exhaustion = { type = "f32", default = "0.0" }
 

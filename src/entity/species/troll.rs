@@ -1,4 +1,4 @@
-//! {{ name }} entity archetype and values
+//! Troll entity archetype and values
 
 use serde::{Deserialize, Serialize};
 use crate::core::types::{EntityId, Vec2};
@@ -8,34 +8,40 @@ use crate::entity::tasks::TaskQueue;
 use crate::entity::body::BodyState;
 use crate::entity::social::SocialMemory;
 
-/// {{ name }}-specific value vocabulary
+/// Troll-specific value vocabulary
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct {{ name }}Values {
-{% for value_name, default in entity_values.items() %}
-    pub {{ value_name }}: f32,
-{% endfor %}
+pub struct TrollValues {
+    pub territoriality: f32,
+    pub hunger: f32,
+    pub rage: f32,
+    pub patience: f32,
+    pub recklessness: f32,
 }
 
-impl {{ name }}Values {
+impl TrollValues {
     pub fn new() -> Self {
         Self {
-{% for value_name, value_def in entity_values.items() %}
-            {{ value_name }}: {{ value_def.default }},
-{% endfor %}
+            territoriality: 0.85,
+            hunger: 0.3,
+            rage: 0.2,
+            patience: 0.65,
+            recklessness: 0.75,
         }
     }
 
     /// Randomize values within reasonable bounds
     pub fn randomize(&mut self, rng: &mut impl rand::Rng) {
-{% for value_name, _ in entity_values.items() %}
-        self.{{ value_name }} = rng.gen_range(0.2..0.8);
-{% endfor %}
+        self.territoriality = rng.gen_range(0.2..0.8);
+        self.hunger = rng.gen_range(0.2..0.8);
+        self.rage = rng.gen_range(0.2..0.8);
+        self.patience = rng.gen_range(0.2..0.8);
+        self.recklessness = rng.gen_range(0.2..0.8);
     }
 }
 
-/// {{ name }} archetype using Structure of Arrays layout
+/// Troll archetype using Structure of Arrays layout
 #[derive(Debug, Default)]
-pub struct {{ name }}Archetype {
+pub struct TrollArchetype {
     pub ids: Vec<EntityId>,
     pub names: Vec<String>,
     pub positions: Vec<Vec2>,
@@ -43,18 +49,18 @@ pub struct {{ name }}Archetype {
     pub body_states: Vec<BodyState>,
     pub needs: Vec<Needs>,
     pub thoughts: Vec<ThoughtBuffer>,
-    pub values: Vec<{{ name }}Values>,
+    pub values: Vec<TrollValues>,
     pub task_queues: Vec<TaskQueue>,
     pub alive: Vec<bool>,
     pub social_memories: Vec<SocialMemory>,
 }
 
-impl {{ name }}Archetype {
+impl TrollArchetype {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn spawn(&mut self, name: String, position: Vec2, values: {{ name }}Values) -> EntityId {
+    pub fn spawn(&mut self, name: String, position: Vec2, values: TrollValues) -> EntityId {
         let id = EntityId::new();
         self.ids.push(id);
         self.names.push(name);
@@ -92,20 +98,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_{{ module_name }}_values_creation() {
-        let values = {{ name }}Values::new();
-{% for value_name, value_def in entity_values.items() %}
-        assert!((values.{{ value_name }} - {{ value_def.default }}).abs() < 0.01);
-{% endfor %}
+    fn test_troll_values_creation() {
+        let values = TrollValues::new();
+        assert!((values.territoriality - 0.85).abs() < 0.01);
+        assert!((values.hunger - 0.3).abs() < 0.01);
+        assert!((values.rage - 0.2).abs() < 0.01);
+        assert!((values.patience - 0.65).abs() < 0.01);
+        assert!((values.recklessness - 0.75).abs() < 0.01);
     }
 
     #[test]
-    fn test_{{ module_name }}_archetype_spawn() {
-        let mut archetype = {{ name }}Archetype::new();
+    fn test_troll_archetype_spawn() {
+        let mut archetype = TrollArchetype::new();
         let id = archetype.spawn(
-            "Test {{ name }}".to_string(),
+            "Test Troll".to_string(),
             Vec2::new(10.0, 20.0),
-            {{ name }}Values::new(),
+            TrollValues::new(),
         );
         assert_eq!(archetype.len(), 1);
         assert_eq!(archetype.index_of(id), Some(0));

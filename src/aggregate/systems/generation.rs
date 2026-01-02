@@ -9,6 +9,18 @@ use crate::aggregate::region::{Region, Terrain, ResourceType};
 use crate::aggregate::polity::{
     Polity, PolityType, CulturalDrift, Relation, SpeciesState,
     HumanState, DwarfState, ElfState, OrcState, CraftType,
+    KoboldState,
+    GnollState,
+    LizardfolkState,
+    HobgoblinState,
+    OgreState,
+    HarpyState,
+    CentaurState,
+    MinotaurState,
+    SatyrState,
+    DryadState,
+    GoblinState,
+    TrollState,
     // CODEGEN: species_state_imports
 };
 use crate::aggregate::simulation::{MapConfig, PolityConfig};
@@ -280,6 +292,66 @@ fn generate_species_polities(
                 if territory.len() > 10 { PolityType::Horde }
                 else { PolityType::Warband }
             }
+            Species::Kobold => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Clan }
+            }
+            Species::Gnoll => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Warband }
+            }
+            Species::Lizardfolk => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Clan }
+            }
+            Species::Hobgoblin => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Hold }
+                else { PolityType::Warband }
+            }
+            Species::Ogre => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Clan }
+            }
+            Species::Harpy => {
+                if territory.len() > 10 { PolityType::Court }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Clan }
+            }
+            Species::Centaur => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Clan }
+            }
+            Species::Minotaur => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Hold }
+                else { PolityType::Clan }
+            }
+            Species::Satyr => {
+                if territory.len() > 10 { PolityType::Court }
+                else if territory.len() > 5 { PolityType::Court }
+                else { PolityType::Grove }
+            }
+            Species::Dryad => {
+                if territory.len() > 10 { PolityType::Court }
+                else if territory.len() > 5 { PolityType::Grove }
+                else { PolityType::Grove }
+            }
+            Species::Goblin => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Clan }
+            }
+            Species::Troll => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Clan }
+            }
             // CODEGEN: species_polity_type
         };
 
@@ -311,6 +383,77 @@ fn generate_species_polities(
                 raid_targets: Vec::new(),
                 blood_feuds: Vec::new(),
                 tribal_strength: 0.5,
+            }),
+            Species::Kobold => SpeciesState::Kobold(KoboldState {
+                trap_density: 0.0,
+                tunnel_network: 0,
+                dragon_worship: 0.3,
+                grudge_targets: Vec::new(),
+            }),
+            Species::Gnoll => SpeciesState::Gnoll(GnollState {
+                pack_frenzy: 0.0,
+                hunting_grounds: Vec::new(),
+                demon_taint: 0.1,
+                slave_count: 0,
+            }),
+            Species::Lizardfolk => SpeciesState::Lizardfolk(LizardfolkState {
+                spawning_pools: 1,
+                food_stores: 0.5,
+                tribal_memory: Vec::new(),
+                alliance_pragmatism: 0.5,
+            }),
+            Species::Hobgoblin => SpeciesState::Hobgoblin(HobgoblinState {
+                military_doctrine: 0.5,
+                legion_strength: 100,
+                conquered_territories: Vec::new(),
+                war_machine: 0.3,
+            }),
+            Species::Ogre => SpeciesState::Ogre(OgreState {
+                meat_stores: 0.0,
+                territory_size: 1,
+                dominated_tribes: Vec::new(),
+                giant_blood: 0.2,
+            }),
+            Species::Harpy => SpeciesState::Harpy(HarpyState {
+                nesting_sites: Vec::new(),
+                trinket_hoard: 0.0,
+                cursed_ones: 0,
+                flock_unity: 0.5,
+            }),
+            Species::Centaur => SpeciesState::Centaur(CentaurState {
+                sacred_grounds: Vec::new(),
+                herd_bonds: 0.5,
+                star_wisdom: 0.3,
+                oaths_sworn: Vec::new(),
+            }),
+            Species::Minotaur => SpeciesState::Minotaur(MinotaurState {
+                labyrinth_depth: 1,
+                sacrifices_claimed: 0,
+                cursed_bloodline: 0.5,
+                territorial_markers: Vec::new(),
+            }),
+            Species::Satyr => SpeciesState::Satyr(SatyrState {
+                revelry_level: 0.3,
+                wine_stores: 0.5,
+                charmed_mortals: Vec::new(),
+                fey_connection: 0.4,
+            }),
+            Species::Dryad => SpeciesState::Dryad(DryadState {
+                sacred_trees: 1,
+                forest_health: 1.0,
+                corrupted_lands: Vec::new(),
+                fey_pacts: Vec::new(),
+            }),
+            Species::Goblin => SpeciesState::Goblin(GoblinState {
+                grudge_list: Vec::new(),
+                hoard_value: 0.0,
+                raid_targets: Vec::new(),
+                war_exhaustion: 0.0,
+            }),
+            Species::Troll => SpeciesState::Troll(TrollState {
+                grudge_list: Vec::new(),
+                hoard_value: 0.0,
+                war_exhaustion: 0.0,
             }),
             // CODEGEN: species_state_generation
         };
@@ -359,6 +502,18 @@ fn generate_polity_name(species: Species, rng: &mut ChaCha8Rng) -> String {
         Species::Dwarf => ["Kaz", "Dun", "Bel", "Thor", "Grun", "Mor", "Dur", "Bal", "Khor", "Zar"],
         Species::Elf => ["Aen", "Cel", "Ith", "Lor", "Mel", "Sil", "Thal", "Val", "Yen", "Zeph"],
         Species::Orc => ["Grak", "Thok", "Zug", "Mog", "Gor", "Skul", "Nar", "Krag", "Urg", "Drak"],
+        Species::Kobold => ["Mik", "Pok", "Sniv", "Krik", "Yik", "Drak", "Snik", "Tik", "Rik", "Zik"],
+        Species::Gnoll => ["Gnar", "Yeen", "Rip", "Shak", "Kro", "Fang", "Howl", "Pak", "Gor", "Snarl"],
+        Species::Lizardfolk => ["Ssi", "Keth", "Ras", "Vex", "Zal", "Thresh", "Sek", "Kar", "Nax", "Ish"],
+        Species::Hobgoblin => ["Karg", "Dur", "Maz", "Gol", "Tar", "Brak", "Vor", "Zog", "Nar", "Kul"],
+        Species::Ogre => ["Grug", "Mog", "Thud", "Krag", "Bonk", "Smash", "Grub", "Lunk", "Durg", "Glob"],
+        Species::Harpy => ["Shri", "Kee", "Scr", "Wail", "Sky", "Tal", "Fea", "Wing", "Caw", "Rav"],
+        Species::Centaur => ["Chir", "Nes", "Phol", "Sag", "Ther", "Rix", "Gal", "Oran", "Stell", "Vor"],
+        Species::Minotaur => ["Ast", "Bov", "Kron", "Maz", "Thor", "Gor", "Bel", "Tar", "Vor", "Krag"],
+        Species::Satyr => ["Pan", "Sil", "Bac", "Fen", "Riv", "Glen", "Pip", "Mer", "Fawn", "Tyl"],
+        Species::Dryad => ["Oak", "Wil", "Ash", "Elm", "Bir", "Ivy", "Fern", "Moss", "Haze", "Mist"],
+        Species::Goblin => ["Snik", "Griz", "Mog", "Krag", "Zog", "Snarl", "Drik", "Fizz", "Glob", "Rikk"],
+        Species::Troll => ["Stone", "Mire", "River", "Bog", "Moss", "Crag", "Deep", "Old", "Grim", "Silent"],
         // CODEGEN: species_name_prefixes
     };
 
@@ -367,6 +522,18 @@ fn generate_polity_name(species: Species, rng: &mut ChaCha8Rng) -> String {
         Species::Dwarf => ["heim", "hold", "delve", "deep", "forge", "gard", "mount", "hall", "peak", "stone"],
         Species::Elf => ["wen", "dor", "las", "iel", "ion", "eth", "ath", "oth", "ril", "dal"],
         Species::Orc => ["gash", "gore", "skull", "bone", "rot", "maw", "fang", "claw", "blood", "war"],
+        Species::Kobold => ["-nak", "-pik", "-snit", "-krak", "-yap", "-dig", "-trap", "-claw", "-scale", "-tail"],
+        Species::Gnoll => ["-ak", "-ul", "-ek", "-maw", "-fang", "-claw", "-blood", "-bone", "-pack", "-hunt"],
+        Species::Lizardfolk => ["-ith", "-ax", "-ul", "-ek", "-os", "-ar", "-ix", "-eth", "-ak", "-is"],
+        Species::Hobgoblin => ["-oth", "-uk", "-ar", "-ash", "-or", "-az", "-ul", "-ek", "-os", "-ag"],
+        Species::Ogre => ["-ug", "-ash", "-uk", "-og", "-unk", "-ag", "-ulk", "-ub", "-ok", "-um"],
+        Species::Harpy => ["-iek", "-eek", "-aal", "-iss", "-ara", "-ina", "-ona", "-yx", "-ia", "-ela"],
+        Species::Centaur => ["-on", "-us", "-ax", "-ion", "-or", "-an", "-is", "-eus", "-os", "-ar"],
+        Species::Minotaur => ["-ion", "-os", "-ax", "-ur", "-oth", "-an", "-is", "-uk", "-ar", "-ul"],
+        Species::Satyr => ["-us", "-an", "-os", "-ix", "-el", "-ion", "-yr", "-is", "-eon", "-as"],
+        Species::Dryad => ["-ara", "-iel", "-yn", "-wen", "-eth", "-ia", "-ora", "-ine", "-ana", "-ina"],
+        Species::Goblin => ["-git", "-snatch", "-grab", "-ear", "-fang", "-claw", "-sneak", "-grin", "-tooth", "-eye"],
+        Species::Troll => ["Gut", "Hide", "Fang", "Claw", "Bone", "Tusk", "Maw", "Scale", "Wart", "Spine"],
         // CODEGEN: species_name_suffixes
     };
 

@@ -1,0 +1,79 @@
+[metadata]
+name = "Kobold"
+module_name = "kobold"
+
+[entity_values]
+cunning = { type = "f32", default = 0.7, description = "Cleverness in setting traps and ambushes." }
+cowardice = { type = "f32", default = 0.8, description = "Fear of direct confrontation." }
+industriousness = { type = "f32", default = 0.6, description = "Drive to dig, build, and hoard." }
+pack_loyalty = { type = "f32", default = 0.5, description = "Devotion to the warren and its members." }
+spite = { type = "f32", default = 0.4, description = "Desire to harm those who wronged the warren." }
+
+[polity_state]
+trap_density = { type = "f32", default = "0.0" }
+tunnel_network = { type = "u32", default = "0" }
+dragon_worship = { type = "f32", default = "0.3" }
+grudge_targets = { type = "Vec<u32>", default = "Vec::new()" }
+
+[terrain_fitness]
+mountain = 0.9
+hills = 0.8
+forest = 0.5
+plains = 0.2
+marsh = 0.4
+coast = 0.1
+desert = 0.3
+river = 0.3
+
+[growth]
+rate = 1.08
+
+[expansion]
+threshold = 0.4
+
+[naming]
+prefixes = ["Mik", "Pok", "Sniv", "Krik", "Yik", "Drak", "Snik", "Tik", "Rik", "Zik"]
+suffixes = ["-nak", "-pik", "-snit", "-krak", "-yap", "-dig", "-trap", "-claw", "-scale", "-tail"]
+
+[polity_types]
+small = "Clan"
+medium = "Tribe"
+large = "Horde"
+
+[[action_rules]]
+trigger_value = "cunning"
+threshold = 0.7
+action = "IdleObserve"
+priority = "Normal"
+requires_target = false
+description = "Scout and plan ambush locations."
+
+[[action_rules]]
+trigger_value = "cowardice"
+threshold = 0.75
+action = "Flee"
+priority = "High"
+requires_target = true
+description = "Run when threatened by stronger foes."
+
+[[action_rules]]
+trigger_value = "industriousness"
+threshold = 0.6
+action = "Gather"
+priority = "Normal"
+requires_target = true
+description = "Collect resources for the warren."
+
+[[idle_behaviors]]
+value = "cunning"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "Watch for threats and opportunities."
+
+[[idle_behaviors]]
+value = "pack_loyalty"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "Patrol near other kobolds."

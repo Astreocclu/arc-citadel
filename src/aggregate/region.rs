@@ -62,6 +62,18 @@ impl Region {
                 fitness.insert(Species::Elf, 0.1);
                 fitness.insert(Species::Human, 0.2);
                 fitness.insert(Species::Orc, 0.6);
+                fitness.insert(Species::Kobold, 0.9);
+                fitness.insert(Species::Gnoll, 0.3);
+                fitness.insert(Species::Lizardfolk, 0.1);
+                fitness.insert(Species::Hobgoblin, 0.5);
+                fitness.insert(Species::Ogre, 0.7);
+                fitness.insert(Species::Harpy, 0.95);
+                fitness.insert(Species::Centaur, 0.3);
+                fitness.insert(Species::Minotaur, 0.8);
+                fitness.insert(Species::Satyr, 0.4);
+                fitness.insert(Species::Dryad, 0.1);
+                fitness.insert(Species::Goblin, 0.8);
+                fitness.insert(Species::Troll, 0.4);
                 // CODEGEN: species_fitness_mountain
             }
             Terrain::Hills => {
@@ -69,6 +81,18 @@ impl Region {
                 fitness.insert(Species::Elf, 0.5);
                 fitness.insert(Species::Human, 0.7);
                 fitness.insert(Species::Orc, 0.8);
+                fitness.insert(Species::Kobold, 0.8);
+                fitness.insert(Species::Gnoll, 0.6);
+                fitness.insert(Species::Lizardfolk, 0.2);
+                fitness.insert(Species::Hobgoblin, 0.7);
+                fitness.insert(Species::Ogre, 0.8);
+                fitness.insert(Species::Harpy, 0.8);
+                fitness.insert(Species::Centaur, 0.6);
+                fitness.insert(Species::Minotaur, 0.7);
+                fitness.insert(Species::Satyr, 0.6);
+                fitness.insert(Species::Dryad, 0.3);
+                fitness.insert(Species::Goblin, 0.9);
+                fitness.insert(Species::Troll, 0.7);
                 // CODEGEN: species_fitness_hills
             }
             Terrain::Forest => {
@@ -76,6 +100,18 @@ impl Region {
                 fitness.insert(Species::Elf, 1.0);
                 fitness.insert(Species::Human, 0.5);
                 fitness.insert(Species::Orc, 0.5);
+                fitness.insert(Species::Kobold, 0.5);
+                fitness.insert(Species::Gnoll, 0.5);
+                fitness.insert(Species::Lizardfolk, 0.5);
+                fitness.insert(Species::Hobgoblin, 0.4);
+                fitness.insert(Species::Ogre, 0.6);
+                fitness.insert(Species::Harpy, 0.3);
+                fitness.insert(Species::Centaur, 0.7);
+                fitness.insert(Species::Minotaur, 0.4);
+                fitness.insert(Species::Satyr, 0.9);
+                fitness.insert(Species::Dryad, 0.99);
+                fitness.insert(Species::Goblin, 0.7);
+                fitness.insert(Species::Troll, 0.8);
                 // CODEGEN: species_fitness_forest
             }
             Terrain::Plains => {
@@ -83,6 +119,18 @@ impl Region {
                 fitness.insert(Species::Elf, 0.3);
                 fitness.insert(Species::Human, 0.9);
                 fitness.insert(Species::Orc, 0.7);
+                fitness.insert(Species::Kobold, 0.2);
+                fitness.insert(Species::Gnoll, 0.9);
+                fitness.insert(Species::Lizardfolk, 0.3);
+                fitness.insert(Species::Hobgoblin, 0.8);
+                fitness.insert(Species::Ogre, 0.5);
+                fitness.insert(Species::Harpy, 0.4);
+                fitness.insert(Species::Centaur, 0.95);
+                fitness.insert(Species::Minotaur, 0.3);
+                fitness.insert(Species::Satyr, 0.5);
+                fitness.insert(Species::Dryad, 0.2);
+                fitness.insert(Species::Goblin, 0.4);
+                fitness.insert(Species::Troll, 0.3);
                 // CODEGEN: species_fitness_plains
             }
             Terrain::Marsh => {
@@ -90,6 +138,18 @@ impl Region {
                 fitness.insert(Species::Elf, 0.2);
                 fitness.insert(Species::Human, 0.3);
                 fitness.insert(Species::Orc, 0.6);
+                fitness.insert(Species::Kobold, 0.4);
+                fitness.insert(Species::Gnoll, 0.4);
+                fitness.insert(Species::Lizardfolk, 0.95);
+                fitness.insert(Species::Hobgoblin, 0.3);
+                fitness.insert(Species::Ogre, 0.7);
+                fitness.insert(Species::Harpy, 0.2);
+                fitness.insert(Species::Centaur, 0.2);
+                fitness.insert(Species::Minotaur, 0.3);
+                fitness.insert(Species::Satyr, 0.3);
+                fitness.insert(Species::Dryad, 0.4);
+                fitness.insert(Species::Goblin, 0.6);
+                fitness.insert(Species::Troll, 0.9);
                 // CODEGEN: species_fitness_marsh
             }
             Terrain::Coast => {
@@ -97,6 +157,18 @@ impl Region {
                 fitness.insert(Species::Elf, 0.4);
                 fitness.insert(Species::Human, 0.9);
                 fitness.insert(Species::Orc, 0.3);
+                fitness.insert(Species::Kobold, 0.1);
+                fitness.insert(Species::Gnoll, 0.3);
+                fitness.insert(Species::Lizardfolk, 0.8);
+                fitness.insert(Species::Hobgoblin, 0.5);
+                fitness.insert(Species::Ogre, 0.3);
+                fitness.insert(Species::Harpy, 0.7);
+                fitness.insert(Species::Centaur, 0.4);
+                fitness.insert(Species::Minotaur, 0.2);
+                fitness.insert(Species::Satyr, 0.5);
+                fitness.insert(Species::Dryad, 0.2);
+                fitness.insert(Species::Goblin, 0.3);
+                fitness.insert(Species::Troll, 0.8);
                 // CODEGEN: species_fitness_coast
             }
             Terrain::Desert => {
@@ -104,6 +176,18 @@ impl Region {
                 fitness.insert(Species::Elf, 0.1);
                 fitness.insert(Species::Human, 0.4);
                 fitness.insert(Species::Orc, 0.5);
+                fitness.insert(Species::Kobold, 0.3);
+                fitness.insert(Species::Gnoll, 0.7);
+                fitness.insert(Species::Lizardfolk, 0.2);
+                fitness.insert(Species::Hobgoblin, 0.6);
+                fitness.insert(Species::Ogre, 0.4);
+                fitness.insert(Species::Harpy, 0.5);
+                fitness.insert(Species::Centaur, 0.5);
+                fitness.insert(Species::Minotaur, 0.5);
+                fitness.insert(Species::Satyr, 0.1);
+                fitness.insert(Species::Dryad, 0.0);
+                fitness.insert(Species::Goblin, 0.2);
+                fitness.insert(Species::Troll, 0.1);
                 // CODEGEN: species_fitness_desert
             }
             Terrain::River => {
@@ -111,6 +195,18 @@ impl Region {
                 fitness.insert(Species::Elf, 0.6);
                 fitness.insert(Species::Human, 1.0);
                 fitness.insert(Species::Orc, 0.4);
+                fitness.insert(Species::Kobold, 0.3);
+                fitness.insert(Species::Gnoll, 0.5);
+                fitness.insert(Species::Lizardfolk, 0.9);
+                fitness.insert(Species::Hobgoblin, 0.6);
+                fitness.insert(Species::Ogre, 0.4);
+                fitness.insert(Species::Harpy, 0.3);
+                fitness.insert(Species::Centaur, 0.5);
+                fitness.insert(Species::Minotaur, 0.3);
+                fitness.insert(Species::Satyr, 0.7);
+                fitness.insert(Species::Dryad, 0.5);
+                fitness.insert(Species::Goblin, 0.5);
+                fitness.insert(Species::Troll, 0.9);
                 // CODEGEN: species_fitness_river
             }
         }

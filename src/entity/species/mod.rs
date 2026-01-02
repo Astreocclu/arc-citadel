@@ -1,3 +1,15 @@
 pub mod human;
 pub mod orc;
+pub mod kobold;
+pub mod gnoll;
+pub mod lizardfolk;
+pub mod hobgoblin;
+pub mod ogre;
+pub mod harpy;
+pub mod centaur;
+pub mod minotaur;
+pub mod satyr;
+pub mod dryad;
+pub mod goblin;
+pub mod troll;
 // CODEGEN: entity_species_mods

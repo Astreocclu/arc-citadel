@@ -1,0 +1,79 @@
+[metadata]
+name = "Ogre"
+module_name = "ogre"
+
+[entity_values]
+hunger = { type = "f32", default = 0.8, description = "Insatiable appetite." }
+brutality = { type = "f32", default = 0.7, description = "Love of raw violence." }
+laziness = { type = "f32", default = 0.6, description = "Preference for easy prey." }
+greed = { type = "f32", default = 0.5, description = "Desire to hoard shinies." }
+dullness = { type = "f32", default = 0.7, description = "Slow thinking, easily tricked." }
+
+[polity_state]
+meat_stores = { type = "f32", default = "0.0" }
+territory_size = { type = "u32", default = "1" }
+dominated_tribes = { type = "Vec<u32>", default = "Vec::new()" }
+giant_blood = { type = "f32", default = "0.2" }
+
+[terrain_fitness]
+mountain = 0.7
+hills = 0.8
+forest = 0.6
+plains = 0.5
+marsh = 0.7
+coast = 0.3
+desert = 0.4
+river = 0.4
+
+[growth]
+rate = 1.02
+
+[expansion]
+threshold = 0.4
+
+[naming]
+prefixes = ["Grug", "Mog", "Thud", "Krag", "Bonk", "Smash", "Grub", "Lunk", "Durg", "Glob"]
+suffixes = ["-ug", "-ash", "-uk", "-og", "-unk", "-ag", "-ulk", "-ub", "-ok", "-um"]
+
+[polity_types]
+small = "Clan"
+medium = "Tribe"
+large = "Horde"
+
+[[action_rules]]
+trigger_value = "hunger"
+threshold = 0.6
+action = "Gather"
+priority = "High"
+requires_target = true
+description = "Hunt for food, anything edible."
+
+[[action_rules]]
+trigger_value = "brutality"
+threshold = 0.7
+action = "Attack"
+priority = "Normal"
+requires_target = true
+description = "Smash things that annoy."
+
+[[action_rules]]
+trigger_value = "laziness"
+threshold = 0.8
+action = "Rest"
+priority = "Normal"
+requires_target = false
+description = "Nap after eating."
+
+[[idle_behaviors]]
+value = "laziness"
+threshold = 0.5
+action = "IdleWander"
+requires_target = false
+description = "Lumber around slowly looking for food."
+
+[[idle_behaviors]]
+value = "dullness"
+threshold = 0.6
+action = "IdleObserve"
+requires_target = false
+description = "Stare blankly at surroundings."

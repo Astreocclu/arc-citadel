@@ -1,0 +1,79 @@
+[metadata]
+name = "Hobgoblin"
+module_name = "hobgoblin"
+
+[entity_values]
+discipline = { type = "f32", default = 0.85, description = "Military order and obedience." }
+ambition = { type = "f32", default = 0.6, description = "Drive for conquest and rank." }
+honor = { type = "f32", default = 0.5, description = "Adherence to warrior code." }
+pragmatism = { type = "f32", default = 0.7, description = "Efficient pursuit of goals." }
+cruelty = { type = "f32", default = 0.4, description = "Ruthlessness toward enemies." }
+
+[polity_state]
+military_doctrine = { type = "f32", default = "0.5" }
+legion_strength = { type = "u32", default = "100" }
+conquered_territories = { type = "Vec<u32>", default = "Vec::new()" }
+war_machine = { type = "f32", default = "0.3" }
+
+[terrain_fitness]
+mountain = 0.5
+hills = 0.7
+forest = 0.4
+plains = 0.8
+marsh = 0.3
+coast = 0.5
+desert = 0.6
+river = 0.6
+
+[growth]
+rate = 1.05
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Karg", "Dur", "Maz", "Gol", "Tar", "Brak", "Vor", "Zog", "Nar", "Kul"]
+suffixes = ["-oth", "-uk", "-ar", "-ash", "-or", "-az", "-ul", "-ek", "-os", "-ag"]
+
+[polity_types]
+small = "Warband"
+medium = "Hold"
+large = "Kingdom"
+
+[[action_rules]]
+trigger_value = "discipline"
+threshold = 0.7
+action = "Follow"
+priority = "High"
+requires_target = true
+description = "Execute orders with precision."
+
+[[action_rules]]
+trigger_value = "ambition"
+threshold = 0.7
+action = "Attack"
+priority = "Normal"
+requires_target = true
+description = "Strike at enemies to gain glory."
+
+[[action_rules]]
+trigger_value = "pragmatism"
+threshold = 0.6
+action = "Gather"
+priority = "Normal"
+requires_target = true
+description = "Secure resources for the legion."
+
+[[idle_behaviors]]
+value = "discipline"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "Stand watch with military bearing."
+
+[[idle_behaviors]]
+value = "honor"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "Patrol assigned sector."

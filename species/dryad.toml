@@ -1,0 +1,79 @@
+[metadata]
+name = "Dryad"
+module_name = "dryad"
+
+[entity_values]
+nature_bond = { type = "f32", default = 0.9, description = "Deep connection to trees and forest." }
+protectiveness = { type = "f32", default = 0.8, description = "Fierce defense of the grove." }
+patience = { type = "f32", default = 0.7, description = "Timeless perspective, slow to act." }
+wrath = { type = "f32", default = 0.3, description = "Fury against those who harm nature." }
+allure = { type = "f32", default = 0.5, description = "Enchanting presence." }
+
+[polity_state]
+sacred_trees = { type = "u32", default = "1" }
+forest_health = { type = "f32", default = "1.0" }
+corrupted_lands = { type = "Vec<u32>", default = "Vec::new()" }
+fey_pacts = { type = "Vec<String>", default = "Vec::new()" }
+
+[terrain_fitness]
+mountain = 0.1
+hills = 0.3
+forest = 0.99
+plains = 0.2
+marsh = 0.4
+coast = 0.2
+desert = 0.0
+river = 0.5
+
+[growth]
+rate = 1.01
+
+[expansion]
+threshold = 0.7
+
+[naming]
+prefixes = ["Oak", "Wil", "Ash", "Elm", "Bir", "Ivy", "Fern", "Moss", "Haze", "Mist"]
+suffixes = ["-ara", "-iel", "-yn", "-wen", "-eth", "-ia", "-ora", "-ine", "-ana", "-ina"]
+
+[polity_types]
+small = "Grove"
+medium = "Grove"
+large = "Court"
+
+[[action_rules]]
+trigger_value = "protectiveness"
+threshold = 0.8
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Strike down those who harm the forest."
+
+[[action_rules]]
+trigger_value = "wrath"
+threshold = 0.7
+action = "Attack"
+priority = "Normal"
+requires_target = true
+description = "Punish despoilers with nature's fury."
+
+[[action_rules]]
+trigger_value = "nature_bond"
+threshold = 0.6
+action = "Rest"
+priority = "Normal"
+requires_target = false
+description = "Commune with the heart-tree."
+
+[[idle_behaviors]]
+value = "patience"
+threshold = 0.4
+action = "IdleObserve"
+requires_target = false
+description = "Watch the forest with timeless eyes."
+
+[[idle_behaviors]]
+value = "nature_bond"
+threshold = 0.5
+action = "IdleWander"
+requires_target = false
+description = "Drift between the trees."

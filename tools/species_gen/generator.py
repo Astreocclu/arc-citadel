@@ -101,7 +101,9 @@ def main():
     generator = SpeciesGenerator(project_root)
 
     spec_path = Path(sys.argv[1])
-    files = generator.generate_all(spec_path, dry_run=True)
+    dry_run = "--dry-run" in sys.argv
+    force = "--force" in sys.argv or True  # Default to force for new species
+    files = generator.generate_all(spec_path, dry_run=dry_run, force=force)
 
     for filepath, content in files.items():
         print(f"\n=== {filepath} ===")

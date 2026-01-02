@@ -37,6 +37,18 @@ pub enum Species {
     Dwarf,
     Elf,
     Orc,
+    Kobold,
+    Gnoll,
+    Lizardfolk,
+    Hobgoblin,
+    Ogre,
+    Harpy,
+    Centaur,
+    Minotaur,
+    Satyr,
+    Dryad,
+    Goblin,
+    Troll,
     // CODEGEN: species_enum_variants
 }
 

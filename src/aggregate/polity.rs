@@ -126,6 +126,18 @@ pub enum SpeciesState {
     Dwarf(DwarfState),
     Elf(ElfState),
     Orc(OrcState),
+    Kobold(KoboldState),
+    Gnoll(GnollState),
+    Lizardfolk(LizardfolkState),
+    Hobgoblin(HobgoblinState),
+    Ogre(OgreState),
+    Harpy(HarpyState),
+    Centaur(CentaurState),
+    Minotaur(MinotaurState),
+    Satyr(SatyrState),
+    Dryad(DryadState),
+    Goblin(GoblinState),
+    Troll(TrollState),
     // CODEGEN: species_state_variants
 }
 
@@ -224,6 +236,89 @@ pub struct OrcState {
     pub blood_feuds: Vec<u32>,
     pub tribal_strength: f32,
 }
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct KoboldState {
+    pub trap_density: f32,
+    pub tunnel_network: u32,
+    pub dragon_worship: f32,
+    pub grudge_targets: Vec<u32>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct GnollState {
+    pub pack_frenzy: f32,
+    pub hunting_grounds: Vec<u32>,
+    pub demon_taint: f32,
+    pub slave_count: u32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct LizardfolkState {
+    pub spawning_pools: u32,
+    pub food_stores: f32,
+    pub tribal_memory: Vec<String>,
+    pub alliance_pragmatism: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct HobgoblinState {
+    pub military_doctrine: f32,
+    pub legion_strength: u32,
+    pub conquered_territories: Vec<u32>,
+    pub war_machine: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct OgreState {
+    pub meat_stores: f32,
+    pub territory_size: u32,
+    pub dominated_tribes: Vec<u32>,
+    pub giant_blood: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct HarpyState {
+    pub nesting_sites: Vec<u32>,
+    pub trinket_hoard: f32,
+    pub cursed_ones: u32,
+    pub flock_unity: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct CentaurState {
+    pub sacred_grounds: Vec<u32>,
+    pub herd_bonds: f32,
+    pub star_wisdom: f32,
+    pub oaths_sworn: Vec<String>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct MinotaurState {
+    pub labyrinth_depth: u32,
+    pub sacrifices_claimed: u32,
+    pub cursed_bloodline: f32,
+    pub territorial_markers: Vec<u32>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct SatyrState {
+    pub revelry_level: f32,
+    pub wine_stores: f32,
+    pub charmed_mortals: Vec<u32>,
+    pub fey_connection: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct DryadState {
+    pub sacred_trees: u32,
+    pub forest_health: f32,
+    pub corrupted_lands: Vec<u32>,
+    pub fey_pacts: Vec<String>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct GoblinState {
+    pub grudge_list: Vec<u32>,
+    pub hoard_value: f32,
+    pub raid_targets: Vec<u32>,
+    pub war_exhaustion: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct TrollState {
+    pub grudge_list: Vec<u32>,
+    pub hoard_value: f32,
+    pub war_exhaustion: f32,
+}
 // CODEGEN: species_state_structs
 
 impl Polity {
@@ -280,6 +375,174 @@ impl Polity {
     pub fn orc_state_mut(&mut self) -> Option<&mut OrcState> {
         match &mut self.species_state {
             SpeciesState::Orc(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn kobold_state(&self) -> Option<&KoboldState> {
+        match &self.species_state {
+            SpeciesState::Kobold(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn kobold_state_mut(&mut self) -> Option<&mut KoboldState> {
+        match &mut self.species_state {
+            SpeciesState::Kobold(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn gnoll_state(&self) -> Option<&GnollState> {
+        match &self.species_state {
+            SpeciesState::Gnoll(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn gnoll_state_mut(&mut self) -> Option<&mut GnollState> {
+        match &mut self.species_state {
+            SpeciesState::Gnoll(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn lizardfolk_state(&self) -> Option<&LizardfolkState> {
+        match &self.species_state {
+            SpeciesState::Lizardfolk(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn lizardfolk_state_mut(&mut self) -> Option<&mut LizardfolkState> {
+        match &mut self.species_state {
+            SpeciesState::Lizardfolk(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn hobgoblin_state(&self) -> Option<&HobgoblinState> {
+        match &self.species_state {
+            SpeciesState::Hobgoblin(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn hobgoblin_state_mut(&mut self) -> Option<&mut HobgoblinState> {
+        match &mut self.species_state {
+            SpeciesState::Hobgoblin(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn ogre_state(&self) -> Option<&OgreState> {
+        match &self.species_state {
+            SpeciesState::Ogre(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn ogre_state_mut(&mut self) -> Option<&mut OgreState> {
+        match &mut self.species_state {
+            SpeciesState::Ogre(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn harpy_state(&self) -> Option<&HarpyState> {
+        match &self.species_state {
+            SpeciesState::Harpy(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn harpy_state_mut(&mut self) -> Option<&mut HarpyState> {
+        match &mut self.species_state {
+            SpeciesState::Harpy(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn centaur_state(&self) -> Option<&CentaurState> {
+        match &self.species_state {
+            SpeciesState::Centaur(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn centaur_state_mut(&mut self) -> Option<&mut CentaurState> {
+        match &mut self.species_state {
+            SpeciesState::Centaur(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn minotaur_state(&self) -> Option<&MinotaurState> {
+        match &self.species_state {
+            SpeciesState::Minotaur(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn minotaur_state_mut(&mut self) -> Option<&mut MinotaurState> {
+        match &mut self.species_state {
+            SpeciesState::Minotaur(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn satyr_state(&self) -> Option<&SatyrState> {
+        match &self.species_state {
+            SpeciesState::Satyr(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn satyr_state_mut(&mut self) -> Option<&mut SatyrState> {
+        match &mut self.species_state {
+            SpeciesState::Satyr(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn dryad_state(&self) -> Option<&DryadState> {
+        match &self.species_state {
+            SpeciesState::Dryad(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn dryad_state_mut(&mut self) -> Option<&mut DryadState> {
+        match &mut self.species_state {
+            SpeciesState::Dryad(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn goblin_state(&self) -> Option<&GoblinState> {
+        match &self.species_state {
+            SpeciesState::Goblin(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn goblin_state_mut(&mut self) -> Option<&mut GoblinState> {
+        match &mut self.species_state {
+            SpeciesState::Goblin(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn troll_state(&self) -> Option<&TrollState> {
+        match &self.species_state {
+            SpeciesState::Troll(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn troll_state_mut(&mut self) -> Option<&mut TrollState> {
+        match &mut self.species_state {
+            SpeciesState::Troll(s) => Some(s),
             _ => None,
         }
     }

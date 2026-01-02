@@ -1,4 +1,4 @@
-//! {{ name }} entity archetype and values
+//! Satyr entity archetype and values
 
 use serde::{Deserialize, Serialize};
 use crate::core::types::{EntityId, Vec2};
@@ -8,34 +8,40 @@ use crate::entity::tasks::TaskQueue;
 use crate::entity::body::BodyState;
 use crate::entity::social::SocialMemory;
 
-/// {{ name }}-specific value vocabulary
+/// Satyr-specific value vocabulary
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct {{ name }}Values {
-{% for value_name, default in entity_values.items() %}
-    pub {{ value_name }}: f32,
-{% endfor %}
+pub struct SatyrValues {
+    pub hedonism: f32,
+    pub mischief: f32,
+    pub charm: f32,
+    pub cowardice: f32,
+    pub nature_bond: f32,
 }
 
-impl {{ name }}Values {
+impl SatyrValues {
     pub fn new() -> Self {
         Self {
-{% for value_name, value_def in entity_values.items() %}
-            {{ value_name }}: {{ value_def.default }},
-{% endfor %}
+            hedonism: 0.8,
+            mischief: 0.7,
+            charm: 0.6,
+            cowardice: 0.5,
+            nature_bond: 0.6,
         }
     }
 
     /// Randomize values within reasonable bounds
     pub fn randomize(&mut self, rng: &mut impl rand::Rng) {
-{% for value_name, _ in entity_values.items() %}
-        self.{{ value_name }} = rng.gen_range(0.2..0.8);
-{% endfor %}
+        self.hedonism = rng.gen_range(0.2..0.8);
+        self.mischief = rng.gen_range(0.2..0.8);
+        self.charm = rng.gen_range(0.2..0.8);
+        self.cowardice = rng.gen_range(0.2..0.8);
+        self.nature_bond = rng.gen_range(0.2..0.8);
     }
 }
 
-/// {{ name }} archetype using Structure of Arrays layout
+/// Satyr archetype using Structure of Arrays layout
 #[derive(Debug, Default)]
-pub struct {{ name }}Archetype {
+pub struct SatyrArchetype {
     pub ids: Vec<EntityId>,
     pub names: Vec<String>,
     pub positions: Vec<Vec2>,
@@ -43,18 +49,18 @@ pub struct {{ name }}Archetype {
     pub body_states: Vec<BodyState>,
     pub needs: Vec<Needs>,
     pub thoughts: Vec<ThoughtBuffer>,
-    pub values: Vec<{{ name }}Values>,
+    pub values: Vec<SatyrValues>,
     pub task_queues: Vec<TaskQueue>,
     pub alive: Vec<bool>,
     pub social_memories: Vec<SocialMemory>,
 }
 
-impl {{ name }}Archetype {
+impl SatyrArchetype {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn spawn(&mut self, name: String, position: Vec2, values: {{ name }}Values) -> EntityId {
+    pub fn spawn(&mut self, name: String, position: Vec2, values: SatyrValues) -> EntityId {
         let id = EntityId::new();
         self.ids.push(id);
         self.names.push(name);
@@ -92,20 +98,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_{{ module_name }}_values_creation() {
-        let values = {{ name }}Values::new();
-{% for value_name, value_def in entity_values.items() %}
-        assert!((values.{{ value_name }} - {{ value_def.default }}).abs() < 0.01);
-{% endfor %}
+    fn test_satyr_values_creation() {
+        let values = SatyrValues::new();
+        assert!((values.hedonism - 0.8).abs() < 0.01);
+        assert!((values.mischief - 0.7).abs() < 0.01);
+        assert!((values.charm - 0.6).abs() < 0.01);
+        assert!((values.cowardice - 0.5).abs() < 0.01);
+        assert!((values.nature_bond - 0.6).abs() < 0.01);
     }
 
     #[test]
-    fn test_{{ module_name }}_archetype_spawn() {
-        let mut archetype = {{ name }}Archetype::new();
+    fn test_satyr_archetype_spawn() {
+        let mut archetype = SatyrArchetype::new();
         let id = archetype.spawn(
-            "Test {{ name }}".to_string(),
+            "Test Satyr".to_string(),
             Vec2::new(10.0, 20.0),
-            {{ name }}Values::new(),
+            SatyrValues::new(),
         );
         assert_eq!(archetype.len(), 1);
         assert_eq!(archetype.index_of(id), Some(0));

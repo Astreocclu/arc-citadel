@@ -1,0 +1,79 @@
+[metadata]
+name = "Minotaur"
+module_name = "minotaur"
+
+[entity_values]
+rage = { type = "f32", default = 0.7, description = "Burning fury that clouds reason." }
+isolation = { type = "f32", default = 0.6, description = "Preference for solitude." }
+territoriality = { type = "f32", default = 0.8, description = "Fierce defense of the labyrinth." }
+hunger = { type = "f32", default = 0.5, description = "Carnivorous appetite." }
+cunning = { type = "f32", default = 0.4, description = "Maze-sense and trap awareness." }
+
+[polity_state]
+labyrinth_depth = { type = "u32", default = "1" }
+sacrifices_claimed = { type = "u32", default = "0" }
+cursed_bloodline = { type = "f32", default = "0.5" }
+territorial_markers = { type = "Vec<u32>", default = "Vec::new()" }
+
+[terrain_fitness]
+mountain = 0.8
+hills = 0.7
+forest = 0.4
+plains = 0.3
+marsh = 0.3
+coast = 0.2
+desert = 0.5
+river = 0.3
+
+[growth]
+rate = 1.01
+
+[expansion]
+threshold = 0.6
+
+[naming]
+prefixes = ["Ast", "Bov", "Kron", "Maz", "Thor", "Gor", "Bel", "Tar", "Vor", "Krag"]
+suffixes = ["-ion", "-os", "-ax", "-ur", "-oth", "-an", "-is", "-uk", "-ar", "-ul"]
+
+[polity_types]
+small = "Clan"
+medium = "Hold"
+large = "Kingdom"
+
+[[action_rules]]
+trigger_value = "rage"
+threshold = 0.7
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Charge and gore intruders."
+
+[[action_rules]]
+trigger_value = "territoriality"
+threshold = 0.75
+action = "Attack"
+priority = "Normal"
+requires_target = true
+description = "Hunt down trespassers in the maze."
+
+[[action_rules]]
+trigger_value = "hunger"
+threshold = 0.6
+action = "Gather"
+priority = "Normal"
+requires_target = true
+description = "Stalk prey through tunnels."
+
+[[idle_behaviors]]
+value = "isolation"
+threshold = 0.5
+action = "IdleWander"
+requires_target = false
+description = "Pace the labyrinth alone."
+
+[[idle_behaviors]]
+value = "cunning"
+threshold = 0.4
+action = "IdleObserve"
+requires_target = false
+description = "Listen for footsteps in the maze."

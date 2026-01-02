@@ -14,6 +14,18 @@ pub fn update_populations(world: &mut AggregateWorld) {
                 Species::Dwarf => 1.005, // 0.5% per year
                 Species::Elf => 1.002,   // 0.2% per year
                 Species::Orc => 1.02,    // 2% per year (fast breeding)
+                Species::Kobold => 1.08,
+                Species::Gnoll => 1.06,
+                Species::Lizardfolk => 1.04,
+                Species::Hobgoblin => 1.05,
+                Species::Ogre => 1.02,
+                Species::Harpy => 1.03,
+                Species::Centaur => 1.02,
+                Species::Minotaur => 1.01,
+                Species::Satyr => 1.03,
+                Species::Dryad => 1.01,
+                Species::Goblin => 1.07,
+                Species::Troll => 1.03,
                 // CODEGEN: species_growth_rates
             };
 

@@ -319,3 +319,40 @@ pub struct {name}State {{
                 missing.append(f"{patch.marker} in {patch.file_path}")
 
         return missing
+
+
+def main():
+    """Apply patches for a species TOML."""
+    import sys
+    import toml
+
+    if len(sys.argv) < 2:
+        print("Usage: python patcher.py <species.toml>")
+        sys.exit(1)
+
+    project_root = Path(__file__).parent.parent.parent
+    patcher = SpeciesPatcher(project_root)
+
+    spec_path = Path(sys.argv[1])
+    with open(spec_path) as f:
+        spec = toml.load(f)
+
+    patches = patcher.generate_patches(spec)
+
+    # Check for missing markers
+    missing = patcher.verify_markers_exist(patches)
+    if missing:
+        print(f"Warning: Missing markers: {missing}")
+
+    # Apply patches
+    dry_run = "--dry-run" in sys.argv
+    results = patcher.apply_patches(patches, dry_run=dry_run)
+
+    for filepath, (original, modified) in results.items():
+        if original != modified:
+            status = "would patch" if dry_run else "patched"
+            print(f"{status}: {filepath}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,79 @@
+[metadata]
+name = "Satyr"
+module_name = "satyr"
+
+[entity_values]
+hedonism = { type = "f32", default = 0.8, description = "Pursuit of pleasure and revelry." }
+mischief = { type = "f32", default = 0.7, description = "Delight in pranks and chaos." }
+charm = { type = "f32", default = 0.6, description = "Natural charisma and seduction." }
+cowardice = { type = "f32", default = 0.5, description = "Preference for flight over fight." }
+nature_bond = { type = "f32", default = 0.6, description = "Connection to wild places." }
+
+[polity_state]
+revelry_level = { type = "f32", default = "0.3" }
+wine_stores = { type = "f32", default = "0.5" }
+charmed_mortals = { type = "Vec<u32>", default = "Vec::new()" }
+fey_connection = { type = "f32", default = "0.4" }
+
+[terrain_fitness]
+mountain = 0.4
+hills = 0.6
+forest = 0.9
+plains = 0.5
+marsh = 0.3
+coast = 0.5
+desert = 0.1
+river = 0.7
+
+[growth]
+rate = 1.03
+
+[expansion]
+threshold = 0.5
+
+[naming]
+prefixes = ["Pan", "Sil", "Bac", "Fen", "Riv", "Glen", "Pip", "Mer", "Fawn", "Tyl"]
+suffixes = ["-us", "-an", "-os", "-ix", "-el", "-ion", "-yr", "-is", "-eon", "-as"]
+
+[polity_types]
+small = "Grove"
+medium = "Court"
+large = "Court"
+
+[[action_rules]]
+trigger_value = "cowardice"
+threshold = 0.7
+action = "Flee"
+priority = "High"
+requires_target = true
+description = "Run from danger while laughing."
+
+[[action_rules]]
+trigger_value = "hedonism"
+threshold = 0.6
+action = "Rest"
+priority = "Normal"
+requires_target = false
+description = "Indulge in wine and song."
+
+[[action_rules]]
+trigger_value = "mischief"
+threshold = 0.7
+action = "IdleWander"
+priority = "Normal"
+requires_target = false
+description = "Seek targets for pranks."
+
+[[idle_behaviors]]
+value = "hedonism"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "Dance through the woods."
+
+[[idle_behaviors]]
+value = "nature_bond"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "Commune with forest spirits."

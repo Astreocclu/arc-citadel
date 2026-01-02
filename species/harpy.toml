@@ -1,0 +1,79 @@
+[metadata]
+name = "Harpy"
+module_name = "harpy"
+
+[entity_values]
+territoriality = { type = "f32", default = 0.85, description = "Fierce defense of nesting grounds." }
+vanity = { type = "f32", default = 0.6, description = "Obsession with appearance and trinkets." }
+malice = { type = "f32", default = 0.5, description = "Delight in tormenting groundlings." }
+hunger = { type = "f32", default = 0.5, description = "Need to hunt from above." }
+sisterhood = { type = "f32", default = 0.7, description = "Bond with flock members." }
+
+[polity_state]
+nesting_sites = { type = "Vec<u32>", default = "Vec::new()" }
+trinket_hoard = { type = "f32", default = "0.0" }
+cursed_ones = { type = "u32", default = "0" }
+flock_unity = { type = "f32", default = "0.5" }
+
+[terrain_fitness]
+mountain = 0.95
+hills = 0.8
+forest = 0.3
+plains = 0.4
+marsh = 0.2
+coast = 0.7
+desert = 0.5
+river = 0.3
+
+[growth]
+rate = 1.03
+
+[expansion]
+threshold = 0.5
+
+[naming]
+prefixes = ["Shri", "Kee", "Scr", "Wail", "Sky", "Tal", "Fea", "Wing", "Caw", "Rav"]
+suffixes = ["-iek", "-eek", "-aal", "-iss", "-ara", "-ina", "-ona", "-yx", "-ia", "-ela"]
+
+[polity_types]
+small = "Clan"
+medium = "Tribe"
+large = "Court"
+
+[[action_rules]]
+trigger_value = "territoriality"
+threshold = 0.8
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Dive-bomb intruders near the nest."
+
+[[action_rules]]
+trigger_value = "hunger"
+threshold = 0.6
+action = "Gather"
+priority = "Normal"
+requires_target = true
+description = "Swoop down to snatch prey."
+
+[[action_rules]]
+trigger_value = "vanity"
+threshold = 0.7
+action = "Gather"
+priority = "Low"
+requires_target = true
+description = "Collect shiny objects for the nest."
+
+[[idle_behaviors]]
+value = "territoriality"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "Circle overhead watching for threats."
+
+[[idle_behaviors]]
+value = "sisterhood"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "Glide near flockmates."
