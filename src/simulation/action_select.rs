@@ -19,9 +19,156 @@ use crate::entity::species::satyr::SatyrValues;
 use crate::entity::species::dryad::DryadValues;
 use crate::entity::species::goblin::GoblinValues;
 use crate::entity::species::troll::TrollValues;
+use crate::entity::species::abyssal_demons::AbyssalDemonsValues;
+use crate::entity::species::elemental::ElementalValues;
+use crate::entity::species::fey::FeyValues;
+use crate::entity::species::stone_giants::StoneGiantsValues;
+use crate::entity::species::golem::GolemValues;
+use crate::entity::species::merfolk::MerfolkValues;
+use crate::entity::species::naga::NagaValues;
+use crate::entity::species::revenant::RevenantValues;
+use crate::entity::species::vampire::VampireValues;
+use crate::entity::species::lupine::LupineValues;
 // CODEGEN: species_values_imports
+use crate::core::types::Species;
+use crate::entity::species::value_access::ValueAccessor;
+use crate::rules::SpeciesRules;
+use crate::simulation::rule_eval::{evaluate_action_rules, select_idle_behavior};
 use crate::entity::tasks::{Task, TaskPriority, TaskSource};
 use crate::entity::thoughts::ThoughtBuffer;
+
+/// Generic action selection using runtime-loaded rules
+///
+/// This function evaluates species-specific rules loaded from TOML files,
+/// allowing behavior customization without recompilation.
+///
+/// # Arguments
+/// * `values` - Species-specific values implementing ValueAccessor
+/// * `needs` - Universal needs (safety, hunger, rest, social, purpose)
+/// * `species_rules` - Runtime-loaded rules from World
+/// * `species` - The species type for rule lookup
+/// * `has_current_task` - Whether entity already has an active task
+/// * `threat_nearby` - Whether a threat is perceived nearby
+/// * `food_available` - Whether food is accessible
+/// * `entity_nearby` - Whether another entity is nearby (for target-requiring actions)
+/// * `current_tick` - Current simulation tick
+///
+/// # Returns
+/// `Some(Task)` if rules match, `None` if no applicable rule found
+pub fn select_action_with_rules<V: ValueAccessor>(
+    values: &V,
+    needs: &Needs,
+    species_rules: &SpeciesRules,
+    species: Species,
+    has_current_task: bool,
+    threat_nearby: bool,
+    food_available: bool,
+    entity_nearby: bool,
+    current_tick: Tick,
+) -> Option<Task> {
+    // Critical needs always take priority (uses universal needs system)
+    if let Some(critical) = needs.has_critical() {
+        return select_critical_response_generic(critical, threat_nearby, food_available, current_tick);
+    }
+
+    // Don't interrupt existing tasks
+    if has_current_task {
+        return None;
+    }
+
+    // Get action rules for this species
+    let action_rules = species_rules.get_action_rules(species);
+
+    // Evaluate rules against current values
+    if let Some(task) = evaluate_action_rules(values, action_rules, current_tick, entity_nearby) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior from rules
+    let idle_behaviors = species_rules.get_idle_behaviors(species);
+    Some(select_idle_behavior(values, idle_behaviors, current_tick))
+}
+
+/// Handle critical needs for generic rule-based selection
+fn select_critical_response_generic(
+    need: NeedType,
+    threat_nearby: bool,
+    food_available: bool,
+    current_tick: Tick,
+) -> Option<Task> {
+    match need {
+        NeedType::Safety if threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Food if food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Food => Some(Task {
+            action: ActionId::Gather,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::High,
+            created_tick: current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Social => Some(Task {
+            action: ActionId::TalkTo,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::High,
+            created_tick: current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Purpose => Some(Task {
+            action: ActionId::Gather,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Normal,
+            created_tick: current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+    }
+}
 
 /// Context provided to the action selection algorithm
 pub struct SelectionContext<'a> {
@@ -89,6 +236,7 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -98,6 +246,7 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -107,6 +256,7 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -119,6 +269,7 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -129,6 +280,7 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
             action: ActionId::IdleWander, // No food known, wander to find some
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -138,6 +290,7 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -147,6 +300,7 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
             action: ActionId::SeekSafety, // Find safe place to rest first
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -176,6 +330,7 @@ fn check_disposition_response(ctx: &SelectionContext) -> Option<Task> {
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::High,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -196,6 +351,7 @@ fn check_disposition_response(ctx: &SelectionContext) -> Option<Task> {
                 action: ActionId::TalkTo,
                 target_position: None,
                 target_entity: Some(target_id),
+                target_building: None,
                 priority: TaskPriority::Normal,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -368,6 +524,7 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
             action: ActionId::Defend,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -377,6 +534,7 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -386,6 +544,7 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -395,6 +554,7 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -406,6 +566,7 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -416,6 +577,7 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -425,6 +587,7 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -434,6 +597,7 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -453,6 +617,7 @@ fn check_rage_response(ctx: &OrcSelectionContext) -> Option<Task> {
             action: ActionId::Defend, // Attack/fight action
             target_position: None,
             target_entity: target,
+            target_building: None,
             priority: TaskPriority::High,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -475,6 +640,7 @@ fn check_blood_debt_response(ctx: &OrcSelectionContext) -> Option<Task> {
                 action: ActionId::Defend, // Attack to settle blood debt
                 target_position: None,
                 target_entity: Some(target_id),
+                target_building: None,
                 priority: TaskPriority::High,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -493,6 +659,7 @@ fn check_dominance_response(ctx: &OrcSelectionContext) -> Option<Task> {
             action: ActionId::IdleWander, // Patrol behavior
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Normal,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -518,6 +685,7 @@ fn check_clan_loyalty_response(ctx: &OrcSelectionContext) -> Option<Task> {
                 action: ActionId::Defend,
                 target_position: None,
                 target_entity: hostile_target,
+                target_building: None,
                 priority: TaskPriority::High,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -631,6 +799,7 @@ fn select_critical_response_kobold(need: NeedType, ctx: &KoboldSelectionContext)
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -640,6 +809,7 @@ fn select_critical_response_kobold(need: NeedType, ctx: &KoboldSelectionContext)
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -649,6 +819,7 @@ fn select_critical_response_kobold(need: NeedType, ctx: &KoboldSelectionContext)
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -660,6 +831,7 @@ fn select_critical_response_kobold(need: NeedType, ctx: &KoboldSelectionContext)
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -670,6 +842,7 @@ fn select_critical_response_kobold(need: NeedType, ctx: &KoboldSelectionContext)
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -679,6 +852,7 @@ fn select_critical_response_kobold(need: NeedType, ctx: &KoboldSelectionContext)
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -688,6 +862,7 @@ fn select_critical_response_kobold(need: NeedType, ctx: &KoboldSelectionContext)
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -789,6 +964,7 @@ fn select_critical_response_gnoll(need: NeedType, ctx: &GnollSelectionContext) -
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -798,6 +974,7 @@ fn select_critical_response_gnoll(need: NeedType, ctx: &GnollSelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -807,6 +984,7 @@ fn select_critical_response_gnoll(need: NeedType, ctx: &GnollSelectionContext) -
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -818,6 +996,7 @@ fn select_critical_response_gnoll(need: NeedType, ctx: &GnollSelectionContext) -
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -828,6 +1007,7 @@ fn select_critical_response_gnoll(need: NeedType, ctx: &GnollSelectionContext) -
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -837,6 +1017,7 @@ fn select_critical_response_gnoll(need: NeedType, ctx: &GnollSelectionContext) -
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -846,6 +1027,7 @@ fn select_critical_response_gnoll(need: NeedType, ctx: &GnollSelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -947,6 +1129,7 @@ fn select_critical_response_lizardfolk(need: NeedType, ctx: &LizardfolkSelection
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -956,6 +1139,7 @@ fn select_critical_response_lizardfolk(need: NeedType, ctx: &LizardfolkSelection
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -965,6 +1149,7 @@ fn select_critical_response_lizardfolk(need: NeedType, ctx: &LizardfolkSelection
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -976,6 +1161,7 @@ fn select_critical_response_lizardfolk(need: NeedType, ctx: &LizardfolkSelection
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -986,6 +1172,7 @@ fn select_critical_response_lizardfolk(need: NeedType, ctx: &LizardfolkSelection
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -995,6 +1182,7 @@ fn select_critical_response_lizardfolk(need: NeedType, ctx: &LizardfolkSelection
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1004,6 +1192,7 @@ fn select_critical_response_lizardfolk(need: NeedType, ctx: &LizardfolkSelection
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1105,6 +1294,7 @@ fn select_critical_response_hobgoblin(need: NeedType, ctx: &HobgoblinSelectionCo
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1114,6 +1304,7 @@ fn select_critical_response_hobgoblin(need: NeedType, ctx: &HobgoblinSelectionCo
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1123,6 +1314,7 @@ fn select_critical_response_hobgoblin(need: NeedType, ctx: &HobgoblinSelectionCo
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1134,6 +1326,7 @@ fn select_critical_response_hobgoblin(need: NeedType, ctx: &HobgoblinSelectionCo
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -1144,6 +1337,7 @@ fn select_critical_response_hobgoblin(need: NeedType, ctx: &HobgoblinSelectionCo
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1153,6 +1347,7 @@ fn select_critical_response_hobgoblin(need: NeedType, ctx: &HobgoblinSelectionCo
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1162,6 +1357,7 @@ fn select_critical_response_hobgoblin(need: NeedType, ctx: &HobgoblinSelectionCo
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1261,6 +1457,7 @@ fn select_critical_response_ogre(need: NeedType, ctx: &OgreSelectionContext) -> 
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1270,6 +1467,7 @@ fn select_critical_response_ogre(need: NeedType, ctx: &OgreSelectionContext) -> 
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1279,6 +1477,7 @@ fn select_critical_response_ogre(need: NeedType, ctx: &OgreSelectionContext) -> 
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1290,6 +1489,7 @@ fn select_critical_response_ogre(need: NeedType, ctx: &OgreSelectionContext) -> 
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -1300,6 +1500,7 @@ fn select_critical_response_ogre(need: NeedType, ctx: &OgreSelectionContext) -> 
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1309,6 +1510,7 @@ fn select_critical_response_ogre(need: NeedType, ctx: &OgreSelectionContext) -> 
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1318,6 +1520,7 @@ fn select_critical_response_ogre(need: NeedType, ctx: &OgreSelectionContext) -> 
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1419,6 +1622,7 @@ fn select_critical_response_harpy(need: NeedType, ctx: &HarpySelectionContext) -
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1428,6 +1632,7 @@ fn select_critical_response_harpy(need: NeedType, ctx: &HarpySelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1437,6 +1642,7 @@ fn select_critical_response_harpy(need: NeedType, ctx: &HarpySelectionContext) -
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1448,6 +1654,7 @@ fn select_critical_response_harpy(need: NeedType, ctx: &HarpySelectionContext) -
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -1458,6 +1665,7 @@ fn select_critical_response_harpy(need: NeedType, ctx: &HarpySelectionContext) -
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1467,6 +1675,7 @@ fn select_critical_response_harpy(need: NeedType, ctx: &HarpySelectionContext) -
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1476,6 +1685,7 @@ fn select_critical_response_harpy(need: NeedType, ctx: &HarpySelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1576,6 +1786,7 @@ fn select_critical_response_centaur(need: NeedType, ctx: &CentaurSelectionContex
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1585,6 +1796,7 @@ fn select_critical_response_centaur(need: NeedType, ctx: &CentaurSelectionContex
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1594,6 +1806,7 @@ fn select_critical_response_centaur(need: NeedType, ctx: &CentaurSelectionContex
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1605,6 +1818,7 @@ fn select_critical_response_centaur(need: NeedType, ctx: &CentaurSelectionContex
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -1615,6 +1829,7 @@ fn select_critical_response_centaur(need: NeedType, ctx: &CentaurSelectionContex
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1624,6 +1839,7 @@ fn select_critical_response_centaur(need: NeedType, ctx: &CentaurSelectionContex
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1633,6 +1849,7 @@ fn select_critical_response_centaur(need: NeedType, ctx: &CentaurSelectionContex
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1734,6 +1951,7 @@ fn select_critical_response_minotaur(need: NeedType, ctx: &MinotaurSelectionCont
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1743,6 +1961,7 @@ fn select_critical_response_minotaur(need: NeedType, ctx: &MinotaurSelectionCont
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1752,6 +1971,7 @@ fn select_critical_response_minotaur(need: NeedType, ctx: &MinotaurSelectionCont
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1763,6 +1983,7 @@ fn select_critical_response_minotaur(need: NeedType, ctx: &MinotaurSelectionCont
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -1773,6 +1994,7 @@ fn select_critical_response_minotaur(need: NeedType, ctx: &MinotaurSelectionCont
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1782,6 +2004,7 @@ fn select_critical_response_minotaur(need: NeedType, ctx: &MinotaurSelectionCont
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1791,6 +2014,7 @@ fn select_critical_response_minotaur(need: NeedType, ctx: &MinotaurSelectionCont
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1888,6 +2112,7 @@ fn select_critical_response_satyr(need: NeedType, ctx: &SatyrSelectionContext) -
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1897,6 +2122,7 @@ fn select_critical_response_satyr(need: NeedType, ctx: &SatyrSelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1906,6 +2132,7 @@ fn select_critical_response_satyr(need: NeedType, ctx: &SatyrSelectionContext) -
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1917,6 +2144,7 @@ fn select_critical_response_satyr(need: NeedType, ctx: &SatyrSelectionContext) -
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -1927,6 +2155,7 @@ fn select_critical_response_satyr(need: NeedType, ctx: &SatyrSelectionContext) -
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1936,6 +2165,7 @@ fn select_critical_response_satyr(need: NeedType, ctx: &SatyrSelectionContext) -
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -1945,6 +2175,7 @@ fn select_critical_response_satyr(need: NeedType, ctx: &SatyrSelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2044,6 +2275,7 @@ fn select_critical_response_dryad(need: NeedType, ctx: &DryadSelectionContext) -
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2053,6 +2285,7 @@ fn select_critical_response_dryad(need: NeedType, ctx: &DryadSelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2062,6 +2295,7 @@ fn select_critical_response_dryad(need: NeedType, ctx: &DryadSelectionContext) -
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2073,6 +2307,7 @@ fn select_critical_response_dryad(need: NeedType, ctx: &DryadSelectionContext) -
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -2083,6 +2318,7 @@ fn select_critical_response_dryad(need: NeedType, ctx: &DryadSelectionContext) -
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2092,6 +2328,7 @@ fn select_critical_response_dryad(need: NeedType, ctx: &DryadSelectionContext) -
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2101,6 +2338,7 @@ fn select_critical_response_dryad(need: NeedType, ctx: &DryadSelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2206,6 +2444,7 @@ fn select_critical_response_goblin(need: NeedType, ctx: &GoblinSelectionContext)
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2215,6 +2454,7 @@ fn select_critical_response_goblin(need: NeedType, ctx: &GoblinSelectionContext)
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2224,6 +2464,7 @@ fn select_critical_response_goblin(need: NeedType, ctx: &GoblinSelectionContext)
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2235,6 +2476,7 @@ fn select_critical_response_goblin(need: NeedType, ctx: &GoblinSelectionContext)
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -2245,6 +2487,7 @@ fn select_critical_response_goblin(need: NeedType, ctx: &GoblinSelectionContext)
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2254,6 +2497,7 @@ fn select_critical_response_goblin(need: NeedType, ctx: &GoblinSelectionContext)
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2263,6 +2507,7 @@ fn select_critical_response_goblin(need: NeedType, ctx: &GoblinSelectionContext)
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2368,6 +2613,7 @@ fn select_critical_response_troll(need: NeedType, ctx: &TrollSelectionContext) -
             action: ActionId::Flee,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2377,6 +2623,7 @@ fn select_critical_response_troll(need: NeedType, ctx: &TrollSelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2386,6 +2633,7 @@ fn select_critical_response_troll(need: NeedType, ctx: &TrollSelectionContext) -
             action: ActionId::Eat,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2397,6 +2645,7 @@ fn select_critical_response_troll(need: NeedType, ctx: &TrollSelectionContext) -
                 action: ActionId::MoveTo,
                 target_position: Some(food_pos),
                 target_entity: None,
+                target_building: None,
                 priority: TaskPriority::Critical,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
@@ -2407,6 +2656,7 @@ fn select_critical_response_troll(need: NeedType, ctx: &TrollSelectionContext) -
             action: ActionId::IdleWander,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2416,6 +2666,7 @@ fn select_critical_response_troll(need: NeedType, ctx: &TrollSelectionContext) -
             action: ActionId::Rest,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2425,6 +2676,7 @@ fn select_critical_response_troll(need: NeedType, ctx: &TrollSelectionContext) -
             action: ActionId::SeekSafety,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority: TaskPriority::Critical,
             created_tick: ctx.current_tick,
             progress: 0.0,
@@ -2460,6 +2712,1702 @@ if ctx.values.patience > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.hunger > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to abyssal_demons action selection
+pub struct AbyssalDemonsSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a AbyssalDemonsValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for abyssal_demons
+pub fn select_action_abyssal_demons(ctx: &AbyssalDemonsSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_abyssal_demons(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Overwhelming hunger drives the demon to assault a target to claim its soul.
+    if ctx.values.soul_hunger > 0.75 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // The demon manifests a structure or altar to spread its corrupting influence in the area.
+    if ctx.values.corruptive_urge > 0.8 {
+return Some(Task::new(ActionId::Build, TaskPriority::Normal, ctx.current_tick));    }
+
+    // The demon attempts to parley, offering a deceptive bargain or contract.
+    if ctx.values.malicious_cunning > 0.7 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
+        }    }
+
+    // A burst of chaotic fury causes the demon to recklessly assault the nearest foe.
+    if ctx.values.abyssal_rage > 0.85 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_abyssal_demons(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_abyssal_demons(ctx))
+}
+
+/// Handle critical needs for abyssal_demons
+fn select_critical_response_abyssal_demons(need: NeedType, ctx: &AbyssalDemonsSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for abyssal_demons
+fn address_moderate_need_abyssal_demons(ctx: &AbyssalDemonsSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on abyssal_demons values
+fn select_idle_action_abyssal_demons(ctx: &AbyssalDemonsSelectionContext) -> Task {
+if ctx.values.corruptive_urge > 0.6 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.malicious_cunning > 0.5 {
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to elemental action selection
+pub struct ElementalSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a ElementalValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for elemental
+pub fn select_action_elemental(ctx: &ElementalSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_elemental(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Lash out with raw elemental force at those who have despoiled the land.
+    if ctx.values.elemental_rage > 0.8 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Aggressively drive out intruders from claimed terrain.
+    if ctx.values.territorial_instinct > 0.75 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Charge, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // In a moment of clarity, attempt to communicate with another entity.
+    if ctx.values.flickering_will > 0.6 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
+        }    }
+
+    // Seek out terrain of high elemental fitness to manifest more fully.
+    if ctx.values.primal_urge > 0.7 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::MoveTo, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_elemental(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_elemental(ctx))
+}
+
+/// Handle critical needs for elemental
+fn select_critical_response_elemental(need: NeedType, ctx: &ElementalSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for elemental
+fn address_moderate_need_elemental(ctx: &ElementalSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on elemental values
+fn select_idle_action_elemental(ctx: &ElementalSelectionContext) -> Task {
+if ctx.values.primal_urge > 0.4 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.flickering_will > 0.5 {
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to fey action selection
+pub struct FeySelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a FeyValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for fey
+pub fn select_action_fey(ctx: &FeySelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_fey(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Seeks to engage another entity in conversation, aiming to propose a binding bargain or oath.
+    if ctx.values.bargain_hunger > 0.75 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::TalkTo, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Lashes out with cruel magic when malice overcomes whimsy.
+    if ctx.values.cruelty > 0.8 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Retreats from entities perceived to wield or be made of cold iron.
+    if ctx.values.fear_of_iron > 0.6 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Defends a claimed site, such as a mushroom ring or ancient tree, from intruders.
+    if ctx.values.territoriality > 0.7 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Defend, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_fey(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_fey(ctx))
+}
+
+/// Handle critical needs for fey
+fn select_critical_response_fey(need: NeedType, ctx: &FeySelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for fey
+fn address_moderate_need_fey(ctx: &FeySelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on fey values
+fn select_idle_action_fey(ctx: &FeySelectionContext) -> Task {
+if ctx.values.whimsy > 0.5 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.whimsy > 0.4 {
+        if ctx.entity_nearby {
+            return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+        }
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to stone_giants action selection
+pub struct StoneGiantsSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a StoneGiantsValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for stone_giants
+pub fn select_action_stone_giants(ctx: &StoneGiantsSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_stone_giants(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Fly into a devastating rage and attack the source of provocation.
+    if ctx.values.rage > 0.8 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Demand tribute or trade from a weaker entity, leveraging size for intimidation.
+    if ctx.values.greed > 0.75 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Trade, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // Charge at intruders in their territory to drive them off.
+    if ctx.values.territoriality > 0.7 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Overcome pride to initiate cautious communication, often gruff and demanding.
+    if ctx.values.loneliness > 0.65 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_stone_giants(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_stone_giants(ctx))
+}
+
+/// Handle critical needs for stone_giants
+fn select_critical_response_stone_giants(need: NeedType, ctx: &StoneGiantsSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for stone_giants
+fn address_moderate_need_stone_giants(ctx: &StoneGiantsSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on stone_giants values
+fn select_idle_action_stone_giants(ctx: &StoneGiantsSelectionContext) -> Task {
+if ctx.values.pride > 0.6 {
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.territoriality > 0.5 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to golem action selection
+pub struct GolemSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a GolemValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for golem
+pub fn select_action_golem(ctx: &GolemSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_golem(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Stands vigilant at a post, obeying old commands.
+    if ctx.values.obedience > 0.75 {
+return Some(Task::new(ActionId::HoldPosition, TaskPriority::High, ctx.current_tick));    }
+
+    // Violently expels intruders from their claimed terrain.
+    if ctx.values.territoriality > 0.8 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Withdraws to a secure location to rest and avoid further damage.
+    if ctx.values.weariness > 0.7 {
+return Some(Task::new(ActionId::SeekSafety, TaskPriority::Normal, ctx.current_tick));    }
+
+    // Attempts cautious communication, a sign of emerging sentience.
+    if ctx.values.curiosity > 0.6 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_golem(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_golem(ctx))
+}
+
+/// Handle critical needs for golem
+fn select_critical_response_golem(need: NeedType, ctx: &GolemSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for golem
+fn address_moderate_need_golem(ctx: &GolemSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on golem values
+fn select_idle_action_golem(ctx: &GolemSelectionContext) -> Task {
+if ctx.values.curiosity > 0.4 {
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.weariness > 0.5 {
+        return Task::new(ActionId::Repair, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to merfolk action selection
+pub struct MerfolkSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a MerfolkValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for merfolk
+pub fn select_action_merfolk(ctx: &MerfolkSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_merfolk(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Attack outsiders who encroach on sacred waters.
+    if ctx.values.xenophobia > 0.8 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Initiate trade if the potential profit is high enough.
+    if ctx.values.greed > 0.7 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Trade, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // Defend the polity's territory against any aggressor.
+    if ctx.values.pride > 0.75 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Defend, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_merfolk(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_merfolk(ctx))
+}
+
+/// Handle critical needs for merfolk
+fn select_critical_response_merfolk(need: NeedType, ctx: &MerfolkSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for merfolk
+fn address_moderate_need_merfolk(ctx: &MerfolkSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on merfolk values
+fn select_idle_action_merfolk(ctx: &MerfolkSelectionContext) -> Task {
+if ctx.values.curiosity > 0.5 {
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.pride > 0.3 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to naga action selection
+pub struct NagaSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a NagaValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for naga
+pub fn select_action_naga(ctx: &NagaSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_naga(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Attack any non-Naga entity that enters a sacred site.
+    if ctx.values.territoriality > 0.75 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Launch a venomous strike against a target that has provoked them.
+    if ctx.values.venomous_rage > 0.85 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Stand guard at a sacred site or temple entrance.
+    if ctx.values.duty > 0.6 {
+return Some(Task::new(ActionId::HoldPosition, TaskPriority::Normal, ctx.current_tick));    }
+
+    // Attempt to parley with an intelligent trespasser, seeking knowledge or offering a warning.
+    if ctx.values.curiosity > 0.7 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_naga(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_naga(ctx))
+}
+
+/// Handle critical needs for naga
+fn select_critical_response_naga(need: NeedType, ctx: &NagaSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for naga
+fn address_moderate_need_naga(ctx: &NagaSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on naga values
+fn select_idle_action_naga(ctx: &NagaSelectionContext) -> Task {
+if ctx.values.curiosity > 0.5 {
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.duty > 0.4 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to revenant action selection
+pub struct RevenantSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a RevenantValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for revenant
+pub fn select_action_revenant(ctx: &RevenantSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_revenant(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Overwhelming hunger drives the Revenant to assault the living.
+    if ctx.values.hunger_for_life > 0.8 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Compelled to follow a master or a stronger undead entity.
+    if ctx.values.obedience > 0.75 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Follow, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // Seeks to expand the borders of its blighted domain.
+    if ctx.values.territorial_rot > 0.7 {
+return Some(Task::new(ActionId::MoveTo, TaskPriority::Normal, ctx.current_tick));    }
+
+    // A burst of fury from a past life fuels a reckless assault.
+    if ctx.values.lingering_rage > 0.6 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_revenant(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_revenant(ctx))
+}
+
+/// Handle critical needs for revenant
+fn select_critical_response_revenant(need: NeedType, ctx: &RevenantSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for revenant
+fn address_moderate_need_revenant(ctx: &RevenantSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on revenant values
+fn select_idle_action_revenant(ctx: &RevenantSelectionContext) -> Task {
+if ctx.values.lingering_rage > 0.3 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.obedience > 0.4 {
+        return Task::new(ActionId::HoldPosition, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to vampire action selection
+pub struct VampireSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a VampireValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for vampire
+pub fn select_action_vampire(ctx: &VampireSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_vampire(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Overwhelming hunger drives the vampire to feed on the nearest living creature.
+    if ctx.values.bloodthirst > 0.8 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // The vampire attempts to charm and enthrall a target, adding them to the thrall network.
+    if ctx.values.dominance > 0.7 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::TalkTo, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // When exposed or threatened with discovery, the vampire retreats to a safe, dark location.
+    if ctx.values.secrecy > 0.8 {
+return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));    }
+
+    // The vampire deigns to negotiate, offering ancient knowledge or artifacts for blood or service.
+    if ctx.values.arrogance > 0.6 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Trade, TaskPriority::Low, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_vampire(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_vampire(ctx))
+}
+
+/// Handle critical needs for vampire
+fn select_critical_response_vampire(need: NeedType, ctx: &VampireSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for vampire
+fn address_moderate_need_vampire(ctx: &VampireSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on vampire values
+fn select_idle_action_vampire(ctx: &VampireSelectionContext) -> Task {
+if ctx.values.ennui > 0.5 {
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.dominance > 0.4 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } 
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}
+/// Context provided to lupine action selection
+pub struct LupineSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a LupineValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for lupine
+pub fn select_action_lupine(ctx: &LupineSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_lupine(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // The beast takes over, launching into a furious, infectious attack.
+    if ctx.values.bestial_rage > 0.85 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // Leaps to the aid of a threatened packmate.
+    if ctx.values.pack_loyalty > 0.75 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Defend, TaskPriority::High, ctx.current_tick));
+        }    }
+
+    // A flicker of humanity allows for wary parley.
+    if ctx.values.human_restraint > 0.6 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::TalkTo, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // Defends claimed territory from intruders.
+    if ctx.values.territorial_hunger > 0.7 {
+if ctx.entity_nearby {
+            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
+        }    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_lupine(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_lupine(ctx))
+}
+
+/// Handle critical needs for lupine
+fn select_critical_response_lupine(need: NeedType, ctx: &LupineSelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for lupine
+fn address_moderate_need_lupine(ctx: &LupineSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on lupine values
+fn select_idle_action_lupine(ctx: &LupineSelectionContext) -> Task {
+if ctx.values.territorial_hunger > 0.4 {
+        return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
+    } else if ctx.values.pack_loyalty > 0.5 {
+        if ctx.entity_nearby {
+            return Task::new(ActionId::Follow, TaskPriority::Low, ctx.current_tick);
+        }
     } 
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)

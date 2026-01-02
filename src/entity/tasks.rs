@@ -1,7 +1,8 @@
 //! Task queue and execution
 
-use crate::core::types::{EntityId, Vec2, Tick};
 use crate::actions::catalog::ActionId;
+use crate::city::building::BuildingId;
+use crate::core::types::{EntityId, Tick, Vec2};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
@@ -11,6 +12,7 @@ pub struct Task {
     pub action: ActionId,
     pub target_position: Option<Vec2>,
     pub target_entity: Option<EntityId>,
+    pub target_building: Option<BuildingId>,
     pub priority: TaskPriority,
     pub created_tick: Tick,
     pub progress: f32,
@@ -43,6 +45,7 @@ impl Task {
             action,
             target_position: None,
             target_entity: None,
+            target_building: None,
             priority,
             created_tick: tick,
             progress: 0.0,
@@ -57,6 +60,11 @@ impl Task {
 
     pub fn with_entity(mut self, entity: EntityId) -> Self {
         self.target_entity = Some(entity);
+        self
+    }
+
+    pub fn with_building(mut self, building: BuildingId) -> Self {
+        self.target_building = Some(building);
         self
     }
 
@@ -115,5 +123,41 @@ impl TaskQueue {
 
     pub fn is_idle(&self) -> bool {
         self.current.is_none() && self.queued.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::actions::catalog::ActionId;
+    use crate::city::building::BuildingId;
+
+    #[test]
+    fn test_task_with_building_target() {
+        let building_id = BuildingId::new();
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
+            .with_building(building_id);
+
+        assert_eq!(task.action, ActionId::Build);
+        assert_eq!(task.target_building, Some(building_id));
+    }
+
+    #[test]
+    fn test_task_without_building_target() {
+        let task = Task::new(ActionId::Rest, TaskPriority::Normal, 0);
+        assert_eq!(task.target_building, None);
+    }
+
+    #[test]
+    fn test_construct_task_pattern_match() {
+        let building_id = BuildingId::new();
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
+            .with_building(building_id);
+
+        // Pattern matching on the target_building field
+        match task.target_building {
+            Some(id) => assert_eq!(id, building_id),
+            None => panic!("Expected building target to be set"),
+        }
     }
 }
