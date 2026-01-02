@@ -12,6 +12,7 @@ use crate::spatial::sparse_hash::SparseHashGrid;
 use crate::simulation::perception::{perception_system, find_nearest_food_zone, RelationshipType};
 use crate::simulation::action_select::{select_action_human, SelectionContext, select_action_orc, OrcSelectionContext};
 use crate::simulation::expectation_formation::process_observations;
+use crate::simulation::violation_detection::process_violations;
 use crate::entity::thoughts::{Thought, Valence, CauseType};
 use crate::entity::needs::NeedType;
 use crate::entity::tasks::Task;
@@ -26,18 +27,20 @@ use rayon::prelude::*;
 /// 2. Run perception (entities observe their surroundings)
 /// 3. Generate thoughts (reactions to perceptions)
 /// 4. Process observations (form expectations from observed actions)
-/// 5. Convert intense thoughts to memories (thoughts about entities become social memories)
-/// 6. Decay thoughts (thoughts fade over time)
-/// 7. Select actions (decide what to do based on needs, thoughts, values)
-/// 8. Execute tasks (progress current tasks, satisfy needs)
-/// 9. Regenerate food zones (scarce zones recover over time)
-/// 10. Advance tick counter
-/// 11. Decay social memories (once per day, after tick advances)
+/// 5. Process violations (detect expectation violations and generate thoughts)
+/// 6. Convert intense thoughts to memories (thoughts about entities become social memories)
+/// 7. Decay thoughts (thoughts fade over time)
+/// 8. Select actions (decide what to do based on needs, thoughts, values)
+/// 9. Execute tasks (progress current tasks, satisfy needs)
+/// 10. Regenerate food zones (scarce zones recover over time)
+/// 11. Advance tick counter
+/// 12. Decay social memories (once per day, after tick advances)
 pub fn run_simulation_tick(world: &mut World) {
     update_needs(world);
     let perceptions = run_perception(world);
     generate_thoughts(world, &perceptions);
     process_observations(world, &perceptions);
+    process_violations(world, &perceptions);
     convert_thoughts_to_memories(world);
     decay_thoughts(world);
     select_actions(world);
