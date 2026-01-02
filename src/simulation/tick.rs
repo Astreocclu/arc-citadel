@@ -35,6 +35,7 @@ use rayon::prelude::*;
 /// 10. Regenerate food zones (scarce zones recover over time)
 /// 11. Advance tick counter
 /// 12. Decay social memories (once per day, after tick advances)
+/// 13. Decay expectations (once per day, after tick advances)
 pub fn run_simulation_tick(world: &mut World) {
     update_needs(world);
     let perceptions = run_perception(world);
@@ -48,6 +49,7 @@ pub fn run_simulation_tick(world: &mut World) {
     regenerate_food_zones(world);
     world.tick();
     decay_social_memories(world);
+    decay_expectations(world);
 }
 
 /// Update all entity needs based on time passage
@@ -1072,6 +1074,40 @@ fn decay_social_memories(world: &mut World) {
     let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
     for &idx in &orc_indices {
         world.orcs.social_memories[idx].apply_decay(current_tick);
+    }
+}
+
+/// Decay expectation salience once per simulation day
+///
+/// Expectations fade over time, causing salience to decrease.
+/// This runs once per day (every TICKS_PER_DAY ticks) to:
+/// - Apply decay to all relationship slot expectations
+/// - Remove near-zero expectations (below SALIENCE_FLOOR)
+///
+/// Called at the END of run_simulation_tick, AFTER world.tick() has advanced
+/// the counter, so we check when current_tick % TICKS_PER_DAY == 0.
+fn decay_expectations(world: &mut World) {
+    // Only decay once per day
+    if world.current_tick % TICKS_PER_DAY != 0 {
+        return;
+    }
+
+    const EXPECTATION_DECAY_RATE: f32 = 0.05;
+
+    // Decay human expectations
+    let living_indices: Vec<usize> = world.humans.iter_living().collect();
+    for idx in living_indices {
+        for slot in &mut world.humans.social_memories[idx].slots {
+            slot.decay_expectations(EXPECTATION_DECAY_RATE);
+        }
+    }
+
+    // Decay orc expectations
+    let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
+    for idx in orc_indices {
+        for slot in &mut world.orcs.social_memories[idx].slots {
+            slot.decay_expectations(EXPECTATION_DECAY_RATE);
+        }
     }
 }
 
@@ -2205,5 +2241,57 @@ mod tests {
             "Idle without IdleObserve should have 50.0 range, got {}",
             perception_ranges[idle_idx]
         );
+    }
+
+    #[test]
+    fn test_expectation_decay() {
+        use crate::core::types::Vec2;
+        use crate::simulation::expectation_formation::record_observation;
+        use crate::actions::catalog::ActionId;
+
+        let mut world = World::new();
+
+        let observer_id = world.spawn_human("Observer".into());
+        let actor_id = world.spawn_human("Actor".into());
+
+        let observer_idx = world.humans.index_of(observer_id).unwrap();
+        let actor_idx = world.humans.index_of(actor_id).unwrap();
+
+        // Position them close enough to perceive each other
+        world.humans.positions[observer_idx] = Vec2::new(0.0, 0.0);
+        world.humans.positions[actor_idx] = Vec2::new(5.0, 0.0);
+
+        // Build expectation by recording an observation
+        record_observation(&mut world, observer_idx, actor_idx, ActionId::Help, 0);
+
+        // Get initial salience (should exist and have positive salience)
+        let initial_salience = {
+            let slot = world.humans.social_memories[observer_idx].find_slot(actor_id);
+            assert!(slot.is_some(), "Observer should have a memory slot for Actor");
+            let slot = slot.unwrap();
+            assert!(!slot.expectations.is_empty(), "Should have expectations");
+            slot.expectations[0].salience
+        };
+
+        // Advance to tick 1000 (one day) - decay_expectations runs when current_tick % TICKS_PER_DAY == 0
+        for _ in 0..TICKS_PER_DAY {
+            run_simulation_tick(&mut world);
+        }
+
+        // Verify we're at the right tick
+        assert_eq!(world.current_tick, TICKS_PER_DAY, "Should be at tick 1000");
+
+        // Salience should have decayed
+        let final_salience = {
+            let slot = world.humans.social_memories[observer_idx].find_slot(actor_id);
+            assert!(slot.is_some(), "Observer should still have memory slot");
+            let slot = slot.unwrap();
+            assert!(!slot.expectations.is_empty(), "Should still have expectations");
+            slot.expectations[0].salience
+        };
+
+        assert!(final_salience < initial_salience,
+            "Salience should decay after one day. Initial: {}, Final: {}",
+            initial_salience, final_salience);
     }
 }
