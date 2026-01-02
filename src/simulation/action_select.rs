@@ -1,6 +1,7 @@
 //! Action selection algorithm - the heart of autonomous behavior
 
 use crate::actions::catalog::ActionId;
+use crate::city::building::BuildingId;
 use crate::core::types::{EntityId, Tick, Vec2};
 use crate::entity::body::BodyState;
 use crate::entity::needs::{Needs, NeedType};
@@ -187,6 +188,10 @@ pub struct SelectionContext<'a> {
     /// Nearby entities with their dispositions (from perception and social memory)
     /// Used for disposition-aware action selection (flee from hostile, talk to friendly)
     pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+    /// Building skill level (0.0 to 1.0) for construction work
+    pub building_skill: f32,
+    /// Nearest building under construction: (building_id, position, distance)
+    pub nearest_building_site: Option<(BuildingId, Vec2, f32)>,
 }
 
 /// Main action selection function for humans
@@ -196,8 +201,9 @@ pub struct SelectionContext<'a> {
 /// 2. If entity already has a task, returning None (don't interrupt)
 /// 3. Checking disposition-based responses (flee from hostile, approach friendly)
 /// 4. Checking for value-driven impulses from strong thoughts
-/// 5. Addressing moderate needs (> 0.6)
-/// 6. Falling back to idle behavior based on values
+/// 5. Checking for purpose-driven building work (when purpose need is high and building site nearby)
+/// 6. Addressing moderate needs (> 0.6)
+/// 7. Falling back to idle behavior based on values
 pub fn select_action_human(ctx: &SelectionContext) -> Option<Task> {
     // Critical needs always take priority
     if let Some(critical) = ctx.needs.has_critical() {
@@ -217,6 +223,12 @@ pub fn select_action_human(ctx: &SelectionContext) -> Option<Task> {
 
     // Check for value-driven impulses from thoughts
     if let Some(task) = check_value_impulses(ctx) {
+        return Some(task);
+    }
+
+    // Check for purpose-driven building work
+    // When purpose need is high and there's a nearby construction site, seek work
+    if let Some(task) = should_seek_building_work(ctx) {
         return Some(task);
     }
 
@@ -421,6 +433,43 @@ fn address_moderate_need(ctx: &SelectionContext) -> Option<Task> {
     };
 
     Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Check if entity should seek building work based on purpose need
+///
+/// When an entity has high purpose need (> 0.6) and there's a nearby building site,
+/// they may choose to work on construction. Higher building skill increases likelihood.
+///
+/// Returns Some((ActionId::Build, building_id, position)) if work should be sought.
+fn should_seek_building_work(ctx: &SelectionContext) -> Option<Task> {
+    // Only seek work if purpose need is high (> 0.6)
+    if ctx.needs.purpose < 0.6 {
+        return None;
+    }
+
+    // Need a building site within range
+    let (building_id, pos, _distance) = ctx.nearest_building_site?;
+
+    // Higher skill = more likely to seek building work
+    // Skill weight: 0.5 base + 0.5 from skill (so 0.5 to 1.0 range)
+    let skill_weight = 0.5 + ctx.building_skill * 0.5;
+    // Purpose weight: maps 0.6-1.0 to 0.0-1.0 (so 0.0 to 1.0 range)
+    let purpose_weight = (ctx.needs.purpose - 0.6) * 2.5;
+
+    // Combined weight threshold: if skill_weight * purpose_weight > 0.3, seek work
+    // Examples:
+    //   skill=0.0, purpose=1.0 => 0.5 * 1.0 = 0.5 > 0.3 => seek work
+    //   skill=0.8, purpose=0.7 => 0.9 * 0.25 = 0.225 < 0.3 => no work (purpose too low)
+    //   skill=0.8, purpose=0.8 => 0.9 * 0.5 = 0.45 > 0.3 => seek work
+    if skill_weight * purpose_weight > 0.3 {
+        Some(
+            Task::new(ActionId::Build, TaskPriority::Normal, ctx.current_tick)
+                .with_building(building_id)
+                .with_position(pos),
+        )
+    } else {
+        None
+    }
 }
 
 /// Select an idle action based on the entity's values
@@ -4440,6 +4489,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4470,6 +4521,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4499,6 +4552,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4534,6 +4589,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4564,6 +4621,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4597,6 +4656,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4630,6 +4691,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4659,6 +4722,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4697,6 +4762,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4727,6 +4794,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         // Critical needs should still trigger even with existing task
@@ -4760,6 +4829,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: Some((0, Vec2::new(100.0, 100.0), 50.0)), // Food zone nearby
             perceived_dispositions: vec![],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4796,6 +4867,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![(hostile_entity, Disposition::Hostile)],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4830,6 +4903,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![(suspicious_entity, Disposition::Suspicious)],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4864,6 +4939,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![(friendly_entity, Disposition::Friendly)],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4899,6 +4976,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![(favorable_entity, Disposition::Favorable)],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4938,6 +5017,8 @@ mod tests {
                 (hostile_entity, Disposition::Hostile),
                 (friendly_entity, Disposition::Friendly),
             ],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -4971,6 +5052,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![(hostile_entity, Disposition::Hostile)],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -5004,6 +5087,8 @@ mod tests {
             current_tick: 0,
             nearest_food_zone: None,
             perceived_dispositions: vec![(friendly_entity, Disposition::Friendly)],
+            building_skill: 0.0,
+            nearest_building_site: None,
         };
 
         let task = select_action_human(&ctx);
@@ -5012,6 +5097,229 @@ mod tests {
         // With low social need, friendly entity doesn't trigger talk
         // (falls through to idle behavior)
         assert_ne!(task.action, ActionId::TalkTo);
+    }
+
+    // ========================================================================
+    // PURPOSE-DRIVEN BUILDING WORK TESTS
+    // ========================================================================
+
+    #[test]
+    fn test_high_purpose_seeks_building_work() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.purpose = 0.8; // High purpose need
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a building site
+        let building_id = BuildingId::new();
+        let building_pos = Vec2::new(10.0, 10.0);
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+            building_skill: 0.5,
+            nearest_building_site: Some((building_id, building_pos, 20.0)),
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With high purpose need and building site nearby, should seek building work
+        assert_eq!(task.action, ActionId::Build);
+        assert_eq!(task.target_building, Some(building_id));
+        assert!(task.target_position.is_some());
+        assert_eq!(task.priority, TaskPriority::Normal);
+    }
+
+    #[test]
+    fn test_low_purpose_does_not_seek_building() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.purpose = 0.4; // Low purpose need (below 0.6 threshold)
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a building site
+        let building_id = BuildingId::new();
+        let building_pos = Vec2::new(10.0, 10.0);
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+            building_skill: 0.5,
+            nearest_building_site: Some((building_id, building_pos, 20.0)),
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With low purpose need, should NOT seek building work (falls to idle)
+        assert_ne!(task.action, ActionId::Build);
+    }
+
+    #[test]
+    fn test_high_purpose_no_building_site() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.purpose = 0.8; // High purpose need
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+            building_skill: 0.5,
+            nearest_building_site: None, // No building site
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With high purpose but no building site, should NOT build
+        // Falls through to address_moderate_need which returns Gather for Purpose
+        assert_ne!(task.action, ActionId::Build);
+    }
+
+    #[test]
+    fn test_very_high_purpose_overrides_low_skill() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.purpose = 1.0; // Maximum purpose need
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a building site
+        let building_id = BuildingId::new();
+        let building_pos = Vec2::new(10.0, 10.0);
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+            building_skill: 0.0, // Zero skill
+            nearest_building_site: Some((building_id, building_pos, 20.0)),
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With very high purpose, even zero skill should seek building work
+        // skill_weight = 0.5, purpose_weight = (1.0-0.6)*2.5 = 1.0, product = 0.5 > 0.3
+        assert_eq!(task.action, ActionId::Build);
+    }
+
+    #[test]
+    fn test_moderate_purpose_needs_skill() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.purpose = 0.7; // Moderate purpose need
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a building site
+        let building_id = BuildingId::new();
+        let building_pos = Vec2::new(10.0, 10.0);
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+            building_skill: 0.0, // Zero skill
+            nearest_building_site: Some((building_id, building_pos, 20.0)),
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With moderate purpose and zero skill, the threshold isn't met
+        // skill_weight = 0.5, purpose_weight = (0.7-0.6)*2.5 = 0.25, product = 0.125 < 0.3
+        assert_ne!(task.action, ActionId::Build);
+    }
+
+    #[test]
+    fn test_skilled_builder_seeks_work_at_moderate_purpose() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.purpose = 0.73; // Just above threshold with skill
+        let thoughts = ThoughtBuffer::new();
+        let values = HumanValues::default();
+
+        // Create a building site
+        let building_id = BuildingId::new();
+        let building_pos = Vec2::new(10.0, 10.0);
+
+        let ctx = SelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+            building_skill: 1.0, // Max skill
+            nearest_building_site: Some((building_id, building_pos, 20.0)),
+        };
+
+        let task = select_action_human(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // With max skill (1.0), skilled builder seeks work earlier
+        // skill_weight = 1.0, purpose_weight = (0.73-0.6)*2.5 = 0.325, product = 0.325 > 0.3
+        assert_eq!(task.action, ActionId::Build);
     }
 
     // ========================================================================

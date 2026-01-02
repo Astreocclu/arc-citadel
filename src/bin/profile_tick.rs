@@ -235,6 +235,8 @@ fn select_actions(world: &mut World) {
             current_tick,
             nearest_food_zone,
             perceived_dispositions: vec![],
+            building_skill: world.humans.building_skills[i],
+            nearest_building_site: None,
         };
 
         if let Some(task) = select_action_human(&ctx) {

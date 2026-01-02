@@ -407,6 +407,9 @@ fn select_actions(world: &mut World) {
                     })
                     .collect();
 
+                // Find nearest building site for construction work
+                let nearest_building_site = find_nearest_building_site(pos, perception_range, &world.buildings);
+
                 let ctx = SelectionContext {
                     body: &world.humans.body_states[i],
                     needs: &world.humans.needs[i],
@@ -420,6 +423,8 @@ fn select_actions(world: &mut World) {
                     current_tick,
                     nearest_food_zone,
                     perceived_dispositions,
+                    building_skill: world.humans.building_skills[i],
+                    nearest_building_site,
                 };
                 Some((i, select_action_human(&ctx)))
             })
@@ -462,6 +467,9 @@ fn select_actions(world: &mut World) {
                 })
                 .collect();
 
+            // Find nearest building site for construction work
+            let nearest_building_site = find_nearest_building_site(pos, perception_range, &world.buildings);
+
             let ctx = SelectionContext {
                 body: &world.humans.body_states[i],
                 needs: &world.humans.needs[i],
@@ -475,6 +483,8 @@ fn select_actions(world: &mut World) {
                 current_tick,
                 nearest_food_zone,
                 perceived_dispositions,
+                building_skill: world.humans.building_skills[i],
+                nearest_building_site,
             };
             if let Some(task) = select_action_human(&ctx) {
                 world.humans.task_queues[i].push(task);
