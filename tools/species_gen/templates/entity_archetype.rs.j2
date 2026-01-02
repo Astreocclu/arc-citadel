@@ -1,0 +1,113 @@
+//! {{ name }} entity archetype and values
+
+use serde::{Deserialize, Serialize};
+use crate::core::types::{EntityId, Vec2};
+use crate::entity::needs::Needs;
+use crate::entity::thoughts::ThoughtBuffer;
+use crate::entity::tasks::TaskQueue;
+use crate::entity::body::BodyState;
+use crate::entity::social_memory::SocialMemory;
+
+/// {{ name }}-specific value vocabulary
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct {{ name }}Values {
+{% for value_name, default in entity_values.items() %}
+    pub {{ value_name }}: f32,
+{% endfor %}
+}
+
+impl {{ name }}Values {
+    pub fn new() -> Self {
+        Self {
+{% for value_name, default in entity_values.items() %}
+            {{ value_name }}: {{ default }},
+{% endfor %}
+        }
+    }
+
+    /// Randomize values within reasonable bounds
+    pub fn randomize(&mut self, rng: &mut impl rand::Rng) {
+{% for value_name, _ in entity_values.items() %}
+        self.{{ value_name }} = rng.gen_range(0.2..0.8);
+{% endfor %}
+    }
+}
+
+/// {{ name }} archetype using Structure of Arrays layout
+#[derive(Debug, Default)]
+pub struct {{ name }}Archetype {
+    pub ids: Vec<EntityId>,
+    pub names: Vec<String>,
+    pub positions: Vec<Vec2>,
+    pub velocities: Vec<Vec2>,
+    pub body_states: Vec<BodyState>,
+    pub needs: Vec<Needs>,
+    pub thoughts: Vec<ThoughtBuffer>,
+    pub values: Vec<{{ name }}Values>,
+    pub task_queues: Vec<TaskQueue>,
+    pub alive: Vec<bool>,
+    pub social_memories: Vec<SocialMemory>,
+}
+
+impl {{ name }}Archetype {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn spawn(&mut self, name: String, position: Vec2, values: {{ name }}Values) -> EntityId {
+        let id = EntityId::new();
+        self.ids.push(id);
+        self.names.push(name);
+        self.positions.push(position);
+        self.velocities.push(Vec2::default());
+        self.body_states.push(BodyState::default());
+        self.needs.push(Needs::new());
+        self.thoughts.push(ThoughtBuffer::new());
+        self.values.push(values);
+        self.task_queues.push(TaskQueue::new());
+        self.alive.push(true);
+        self.social_memories.push(SocialMemory::default());
+        id
+    }
+
+    pub fn index_of(&self, id: EntityId) -> Option<usize> {
+        self.ids.iter().position(|&eid| eid == id)
+    }
+
+    pub fn len(&self) -> usize {
+        self.ids.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ids.is_empty()
+    }
+
+    pub fn alive_count(&self) -> usize {
+        self.alive.iter().filter(|&&a| a).count()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_{{ module_name }}_values_creation() {
+        let values = {{ name }}Values::new();
+{% for value_name, default in entity_values.items() %}
+        assert!((values.{{ value_name }} - {{ default }}).abs() < 0.01);
+{% endfor %}
+    }
+
+    #[test]
+    fn test_{{ module_name }}_archetype_spawn() {
+        let mut archetype = {{ name }}Archetype::new();
+        let id = archetype.spawn(
+            "Test {{ name }}".to_string(),
+            Vec2::new(10.0, 20.0),
+            {{ name }}Values::new(),
+        );
+        assert_eq!(archetype.len(), 1);
+        assert_eq!(archetype.index_of(id), Some(0));
+    }
+}

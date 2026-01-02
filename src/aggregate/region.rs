@@ -61,41 +61,57 @@ impl Region {
                 fitness.insert(Species::Dwarf, 1.0);
                 fitness.insert(Species::Elf, 0.1);
                 fitness.insert(Species::Human, 0.2);
+                fitness.insert(Species::Orc, 0.6);
+                // CODEGEN: species_fitness_mountain
             }
             Terrain::Hills => {
                 fitness.insert(Species::Dwarf, 0.8);
                 fitness.insert(Species::Elf, 0.5);
                 fitness.insert(Species::Human, 0.7);
+                fitness.insert(Species::Orc, 0.8);
+                // CODEGEN: species_fitness_hills
             }
             Terrain::Forest => {
                 fitness.insert(Species::Dwarf, 0.2);
                 fitness.insert(Species::Elf, 1.0);
                 fitness.insert(Species::Human, 0.5);
+                fitness.insert(Species::Orc, 0.5);
+                // CODEGEN: species_fitness_forest
             }
             Terrain::Plains => {
                 fitness.insert(Species::Dwarf, 0.1);
                 fitness.insert(Species::Elf, 0.3);
                 fitness.insert(Species::Human, 0.9);
+                fitness.insert(Species::Orc, 0.7);
+                // CODEGEN: species_fitness_plains
             }
             Terrain::Marsh => {
                 fitness.insert(Species::Dwarf, 0.0);
                 fitness.insert(Species::Elf, 0.2);
                 fitness.insert(Species::Human, 0.3);
+                fitness.insert(Species::Orc, 0.6);
+                // CODEGEN: species_fitness_marsh
             }
             Terrain::Coast => {
                 fitness.insert(Species::Dwarf, 0.3);
                 fitness.insert(Species::Elf, 0.4);
                 fitness.insert(Species::Human, 0.9);
+                fitness.insert(Species::Orc, 0.3);
+                // CODEGEN: species_fitness_coast
             }
             Terrain::Desert => {
                 fitness.insert(Species::Dwarf, 0.2);
                 fitness.insert(Species::Elf, 0.1);
                 fitness.insert(Species::Human, 0.4);
+                fitness.insert(Species::Orc, 0.5);
+                // CODEGEN: species_fitness_desert
             }
             Terrain::River => {
                 fitness.insert(Species::Dwarf, 0.4);
                 fitness.insert(Species::Elf, 0.6);
                 fitness.insert(Species::Human, 1.0);
+                fitness.insert(Species::Orc, 0.4);
+                // CODEGEN: species_fitness_river
             }
         }
 

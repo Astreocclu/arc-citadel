@@ -36,6 +36,8 @@ pub enum Species {
     Human,
     Dwarf,
     Elf,
+    Orc,
+    // CODEGEN: species_enum_variants
 }
 
 /// 2D position

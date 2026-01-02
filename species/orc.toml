@@ -1,0 +1,106 @@
+[metadata]
+name = "Orc"
+module_name = "orc"
+
+[entity_values]
+rage = { type = "f32", default = 0.5, description = "Combat fury level" }
+strength = { type = "f32", default = 0.5, description = "Physical power" }
+dominance = { type = "f32", default = 0.5, description = "Leadership drive" }
+clan_loyalty = { type = "f32", default = 0.5, description = "Allegiance to clan" }
+blood_debt = { type = "f32", default = 0.5, description = "Vengeance owed" }
+territory = { type = "f32", default = 0.5, description = "Territorial instinct" }
+combat_prowess = { type = "f32", default = 0.5, description = "Fighting skill" }
+
+[polity_state]
+waaagh_level = { type = "f32", default = "0.0" }
+raid_targets = { type = "Vec<u32>", default = "Vec::new()" }
+blood_feuds = { type = "Vec<u32>", default = "Vec::new()" }
+tribal_strength = { type = "f32", default = "0.5" }
+
+# Terrain fitness - must match region.rs Terrain enum (lowercase keys)
+[terrain_fitness]
+mountain = 0.6
+hills = 0.8
+forest = 0.5
+plains = 0.7
+marsh = 0.6
+coast = 0.3
+desert = 0.5
+river = 0.4
+
+[growth]
+rate = 1.02
+
+[expansion]
+threshold = 0.2
+
+[naming]
+prefixes = ["Grak", "Thok", "Zug", "Mog", "Gor", "Skul", "Nar", "Krag", "Urg", "Drak"]
+suffixes = ["gash", "gore", "skull", "bone", "rot", "maw", "fang", "claw", "blood", "war"]
+
+[polity_types]
+small = "Warband"
+medium = "Tribe"
+large = "Horde"
+
+# Entity-layer action selection rules
+# Each rule triggers an action when a value exceeds threshold
+[[action_rules]]
+trigger_value = "rage"
+threshold = 0.7
+action = "Defend"
+priority = "High"
+requires_target = true
+description = "High rage triggers aggressive action"
+
+[[action_rules]]
+trigger_value = "blood_debt"
+threshold = 0.5
+action = "Defend"
+priority = "High"
+requires_target = true
+description = "Blood debt drives revenge-seeking"
+
+[[action_rules]]
+trigger_value = "dominance"
+threshold = 0.7
+action = "IdleWander"
+priority = "Normal"
+requires_target = false
+description = "High dominance triggers patrol behavior"
+
+# Idle behavior priorities (checked in order)
+[[idle_behaviors]]
+value = "combat_prowess"
+threshold = 0.7
+action = "IdleWander"
+requires_target = false
+description = "Patrol for combat opportunities"
+
+[[idle_behaviors]]
+value = "dominance"
+threshold = 0.7
+action = "IdleObserve"
+requires_target = false
+description = "Watch for challenges"
+
+[[idle_behaviors]]
+value = "strength"
+threshold = 0.7
+action = "Gather"
+requires_target = false
+description = "Work on strength-building tasks"
+
+# Polity-layer behavior rules
+# Each rule generates an event when state field exceeds threshold
+[[behavior_rules]]
+state_field = "waaagh_level"
+threshold = 0.8
+event_type = "WarDeclared"
+description = "High WAAAGH level triggers war"
+
+[[behavior_rules]]
+state_field = "tribal_strength"
+threshold = 0.9
+event_type = "Expansion"
+description = "Strong tribe expands territory"

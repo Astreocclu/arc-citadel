@@ -6,6 +6,7 @@ use crate::entity::body::BodyState;
 use crate::entity::needs::{Needs, NeedType};
 use crate::entity::social::Disposition;
 use crate::entity::species::human::HumanValues;
+use crate::entity::species::orc::OrcValues;
 use crate::entity::tasks::{Task, TaskPriority, TaskSource};
 use crate::entity::thoughts::ThoughtBuffer;
 
@@ -276,6 +277,288 @@ fn select_idle_action(ctx: &SelectionContext) -> Task {
 
     Task::new(action, TaskPriority::Low, ctx.current_tick)
 }
+
+// ============================================================================
+// ORC ACTION SELECTION
+// ============================================================================
+
+/// Context provided to orc action selection
+pub struct OrcSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a OrcValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for orcs
+///
+/// Orcs have different behavioral priorities than humans:
+/// 1. Critical needs still take priority (survival)
+/// 2. High rage triggers aggressive action
+/// 3. Blood debt creates revenge-seeking behavior
+/// 4. Dominance drives territorial/assertive actions
+/// 5. Clan loyalty triggers defense of nearby clan members
+/// 6. Idle behavior is aggressive (patrol, challenge)
+pub fn select_action_orc(ctx: &OrcSelectionContext) -> Option<Task> {
+    // Critical needs always take priority (even orcs need to survive)
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_orc(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // High rage triggers aggressive action
+    if let Some(task) = check_rage_response(ctx) {
+        return Some(task);
+    }
+
+    // Blood debt creates revenge-seeking behavior
+    if let Some(task) = check_blood_debt_response(ctx) {
+        return Some(task);
+    }
+
+    // Dominance drives territorial behavior
+    if let Some(task) = check_dominance_response(ctx) {
+        return Some(task);
+    }
+
+    // Clan loyalty triggers defense
+    if let Some(task) = check_clan_loyalty_response(ctx) {
+        return Some(task);
+    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_orc(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to orc idle behavior
+    Some(select_idle_action_orc(ctx))
+}
+
+/// Handle critical needs for orcs
+fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Option<Task> {
+    match need {
+        // Orcs with high strength may fight instead of flee
+        NeedType::Safety if ctx.threat_nearby && ctx.values.strength > 0.7 => Some(Task {
+            action: ActionId::Defend,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// High rage triggers aggressive action toward nearby entities
+fn check_rage_response(ctx: &OrcSelectionContext) -> Option<Task> {
+    if ctx.values.rage > 0.7 && ctx.entity_nearby {
+        // Find any target (orcs in rage attack anyone nearby)
+        let target = ctx.perceived_dispositions.first().map(|(id, _)| *id);
+
+        return Some(Task {
+            action: ActionId::Defend, // Attack/fight action
+            target_position: None,
+            target_entity: target,
+            priority: TaskPriority::High,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        });
+    }
+    None
+}
+
+/// Blood debt creates revenge-seeking behavior against hostile entities
+fn check_blood_debt_response(ctx: &OrcSelectionContext) -> Option<Task> {
+    if ctx.values.blood_debt > 0.5 {
+        // Look for hostile entities to attack (settling blood debts)
+        let hostile_target = ctx.perceived_dispositions.iter()
+            .find(|(_, d)| matches!(d, Disposition::Hostile | Disposition::Suspicious))
+            .map(|(id, _)| *id);
+
+        if let Some(target_id) = hostile_target {
+            return Some(Task {
+                action: ActionId::Defend, // Attack to settle blood debt
+                target_position: None,
+                target_entity: Some(target_id),
+                priority: TaskPriority::High,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            });
+        }
+    }
+    None
+}
+
+/// Dominance drives territorial/assertive actions
+fn check_dominance_response(ctx: &OrcSelectionContext) -> Option<Task> {
+    if ctx.values.dominance > 0.7 && ctx.values.territory > 0.5 {
+        // High dominance + territory = patrol and defend territory
+        return Some(Task {
+            action: ActionId::IdleWander, // Patrol behavior
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Normal,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        });
+    }
+    None
+}
+
+/// Clan loyalty triggers defense of nearby friendly entities
+fn check_clan_loyalty_response(ctx: &OrcSelectionContext) -> Option<Task> {
+    if ctx.values.clan_loyalty > 0.7 {
+        // Check if friendly entity is nearby with hostile also present
+        let has_friendly = ctx.perceived_dispositions.iter()
+            .any(|(_, d)| matches!(d, Disposition::Friendly | Disposition::Favorable));
+        let hostile_target = ctx.perceived_dispositions.iter()
+            .find(|(_, d)| matches!(d, Disposition::Hostile))
+            .map(|(id, _)| *id);
+
+        if has_friendly && hostile_target.is_some() {
+            // Clan member nearby with hostile threat - defend!
+            return Some(Task {
+                action: ActionId::Defend,
+                target_position: None,
+                target_entity: hostile_target,
+                priority: TaskPriority::High,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Reaction,
+            });
+        }
+    }
+    None
+}
+
+/// Address moderate needs for orcs
+fn address_moderate_need_orc(ctx: &OrcSelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo, // Even orcs socialize
+        NeedType::Purpose => ActionId::Gather, // Productive work
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on orc values
+///
+/// Orc idle behaviors reflect their aggressive nature:
+/// - High combat prowess: patrol/wander aggressively
+/// - High dominance: observe (watch for challenges)
+/// - High strength: gather (work on strength-building tasks)
+/// - Default: wander looking for trouble
+fn select_idle_action_orc(ctx: &OrcSelectionContext) -> Task {
+    let action = if ctx.values.combat_prowess > 0.7 {
+        ActionId::IdleWander // Patrol for combat opportunities
+    } else if ctx.values.dominance > 0.7 {
+        ActionId::IdleObserve // Watch for challenges to dominance
+    } else if ctx.values.strength > 0.7 {
+        ActionId::Gather // Work on strength-building tasks
+    } else {
+        ActionId::IdleWander // Default: wander
+    };
+
+    Task::new(action, TaskPriority::Low, ctx.current_tick)
+}
+
+// CODEGEN: species_selection_context
+
+// CODEGEN: species_select_action
 
 #[cfg(test)]
 mod tests {
@@ -875,5 +1158,233 @@ mod tests {
         // With low social need, friendly entity doesn't trigger talk
         // (falls through to idle behavior)
         assert_ne!(task.action, ActionId::TalkTo);
+    }
+
+    // ========================================================================
+    // ORC ACTION SELECTION TESTS
+    // ========================================================================
+
+    #[test]
+    fn test_orc_high_rage_attacks() {
+        let body = BodyState::new();
+        let needs = Needs::default();
+        let thoughts = ThoughtBuffer::new();
+        let mut values = OrcValues::default();
+        values.rage = 0.9; // High rage
+
+        let target_entity = EntityId::new();
+
+        let ctx = OrcSelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![(target_entity, Disposition::Neutral)],
+        };
+
+        let task = select_action_orc(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        assert_eq!(task.action, ActionId::Defend);
+        assert_eq!(task.priority, TaskPriority::High);
+    }
+
+    #[test]
+    fn test_orc_blood_debt_seeks_revenge() {
+        let body = BodyState::new();
+        let needs = Needs::default();
+        let thoughts = ThoughtBuffer::new();
+        let mut values = OrcValues::default();
+        values.blood_debt = 0.8; // High blood debt
+
+        let hostile_entity = EntityId::new();
+
+        let ctx = OrcSelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![(hostile_entity, Disposition::Hostile)],
+        };
+
+        let task = select_action_orc(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        assert_eq!(task.action, ActionId::Defend);
+        assert_eq!(task.target_entity, Some(hostile_entity));
+    }
+
+    #[test]
+    fn test_orc_strong_fights_instead_of_flees() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.safety = 0.9; // Critical safety need
+        let thoughts = ThoughtBuffer::new();
+        let mut values = OrcValues::default();
+        values.strength = 0.9; // High strength
+
+        let ctx = OrcSelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: true,
+            food_available: true,
+            safe_location: false,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+        };
+
+        let task = select_action_orc(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // Strong orcs fight instead of flee
+        assert_eq!(task.action, ActionId::Defend);
+        assert_eq!(task.priority, TaskPriority::Critical);
+    }
+
+    #[test]
+    fn test_orc_weak_flees_from_threat() {
+        let body = BodyState::new();
+        let mut needs = Needs::default();
+        needs.safety = 0.9; // Critical safety need
+        let thoughts = ThoughtBuffer::new();
+        let mut values = OrcValues::default();
+        values.strength = 0.3; // Low strength
+
+        let ctx = OrcSelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: true,
+            food_available: true,
+            safe_location: false,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+        };
+
+        let task = select_action_orc(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // Weak orcs flee
+        assert_eq!(task.action, ActionId::Flee);
+    }
+
+    #[test]
+    fn test_orc_clan_loyalty_defends_ally() {
+        let body = BodyState::new();
+        let needs = Needs::default();
+        let thoughts = ThoughtBuffer::new();
+        let mut values = OrcValues::default();
+        values.clan_loyalty = 0.9; // High clan loyalty
+
+        let friendly_entity = EntityId::new();
+        let hostile_entity = EntityId::new();
+
+        let ctx = OrcSelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: true,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![
+                (friendly_entity, Disposition::Friendly),
+                (hostile_entity, Disposition::Hostile),
+            ],
+        };
+
+        let task = select_action_orc(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        // Loyal orc defends clan member
+        assert_eq!(task.action, ActionId::Defend);
+        assert_eq!(task.target_entity, Some(hostile_entity));
+    }
+
+    #[test]
+    fn test_orc_idle_high_combat_prowess_wanders() {
+        let body = BodyState::new();
+        let needs = Needs::default();
+        let thoughts = ThoughtBuffer::new();
+        let mut values = OrcValues::default();
+        values.combat_prowess = 0.9;
+
+        let ctx = OrcSelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+        };
+
+        let task = select_action_orc(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        assert_eq!(task.action, ActionId::IdleWander);
+        assert_eq!(task.priority, TaskPriority::Low);
+    }
+
+    #[test]
+    fn test_orc_idle_high_dominance_observes() {
+        let body = BodyState::new();
+        let needs = Needs::default();
+        let thoughts = ThoughtBuffer::new();
+        let mut values = OrcValues::default();
+        values.dominance = 0.9;
+        values.combat_prowess = 0.3; // Low combat prowess so dominance takes precedence
+
+        let ctx = OrcSelectionContext {
+            body: &body,
+            needs: &needs,
+            thoughts: &thoughts,
+            values: &values,
+            has_current_task: false,
+            threat_nearby: false,
+            food_available: true,
+            safe_location: true,
+            entity_nearby: false,
+            current_tick: 0,
+            nearest_food_zone: None,
+            perceived_dispositions: vec![],
+        };
+
+        let task = select_action_orc(&ctx);
+        assert!(task.is_some());
+        let task = task.unwrap();
+        assert_eq!(task.action, ActionId::IdleObserve);
     }
 }

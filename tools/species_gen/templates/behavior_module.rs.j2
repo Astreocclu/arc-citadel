@@ -1,0 +1,92 @@
+//! {{ name }}-specific polity behavior
+
+use crate::aggregate::polity::Polity;
+use crate::aggregate::world::AggregateWorld;
+use crate::aggregate::events::EventType;
+
+/// Generate {{ name }}-specific events for a polity
+pub fn tick(polity: &Polity, _world: &AggregateWorld, _year: u32) -> Vec<EventType> {
+    let mut events = Vec::new();
+
+    // Access {{ module_name }}-specific state
+    if let Some(state) = polity.{{ module_name }}_state() {
+{% if behavior_rules %}
+{% for rule in behavior_rules %}
+        // {{ rule.description }}
+        if state.{{ rule.state_field }} > {{ rule.threshold }} {
+            events.push(EventType::{{ rule.event_type }});
+        }
+{% endfor %}
+{% else %}
+        // No behavior rules defined - placeholder for future implementation
+        let _ = state;
+{% endif %}
+    }
+
+    events
+}
+{% if state_update_rules %}
+
+/// Update {{ module_name }}-specific state based on world conditions
+pub fn update_state(polity: &mut Polity, world: &AggregateWorld) {
+    if let Some(state) = polity.{{ module_name }}_state_mut() {
+{% for rule in state_update_rules %}
+        // {{ rule.description }}
+        {% if rule.condition %}
+        if {{ rule.condition }} {
+            state.{{ rule.field }} = (state.{{ rule.field }} + {{ rule.delta }}).clamp(0.0, 1.0);
+        }
+        {% else %}
+        state.{{ rule.field }} = (state.{{ rule.field }} + {{ rule.delta }}).clamp(0.0, 1.0);
+        {% endif %}
+{% endfor %}
+    }
+    let _ = world; // Suppress unused warning if no world-dependent rules
+}
+{% endif %}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::aggregate::polity::*;
+    use crate::core::types::{PolityId, Species, PolityTier, GovernmentType};
+    use std::collections::HashMap;
+
+    fn create_test_polity() -> Polity {
+        Polity {
+            id: PolityId(1),
+            name: "Test {{ name }} Polity".to_string(),
+            species: Species::{{ name }},
+            polity_type: PolityType::{{ polity_types.get('large', 'Kingdom') }},
+            tier: PolityTier::Kingdom,
+            government: GovernmentType::Autocracy,
+            parent: None,
+            rulers: vec![],
+            council_roles: HashMap::new(),
+            population: 1000,
+            capital: 0,
+            military_strength: 100.0,
+            economic_strength: 100.0,
+            cultural_drift: CulturalDrift::default(),
+            relations: HashMap::new(),
+            species_state: SpeciesState::{{ name }}({{ name }}State::default()),
+            alive: true,
+        }
+    }
+
+    #[test]
+    fn test_{{ module_name }}_state_accessor() {
+        let polity = create_test_polity();
+        let state = polity.{{ module_name }}_state();
+        assert!(state.is_some());
+    }
+
+    #[test]
+    fn test_{{ module_name }}_tick_no_panic() {
+        let polity = create_test_polity();
+        let world = AggregateWorld::default();
+        let events = tick(&polity, &world, 0);
+        // Should not panic, events may be empty
+        let _ = events;
+    }
+}

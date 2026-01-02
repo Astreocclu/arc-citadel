@@ -1,0 +1,47 @@
+[metadata]
+name = "Human"
+module_name = "human"
+
+[entity_values]
+honor = 0.5
+beauty = 0.5
+comfort = 0.5
+ambition = 0.5
+loyalty = 0.5
+love = 0.5
+justice = 0.5
+curiosity = 0.5
+safety = 0.5
+piety = 0.5
+
+[polity_state]
+expansion_pressure = { type = "f32", default = "0.5" }
+internal_cohesion = { type = "f32", default = "0.7" }
+reputation = { type = "f32", default = "0.5" }
+piety = { type = "f32", default = "0.5" }
+factions = { type = "Vec<Faction>", default = "Vec::new()" }
+
+[terrain_fitness]
+plains = 0.9
+forest = 0.7
+mountains = 0.3
+hills = 0.7
+desert = 0.3
+tundra = 0.2
+swamp = 0.3
+coastal = 0.85
+
+[growth]
+rate = 1.01
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Alden", "Bran", "Cael", "Dorn", "Eld", "Frey", "Grim", "Hal", "Isen", "Kael"]
+suffixes = ["mark", "ford", "heim", "dale", "wick", "ton", "bury", "wood", "vale", "gate"]
+
+[polity_types]
+small = "Tribe"
+medium = "CityState"
+large = "Kingdom"

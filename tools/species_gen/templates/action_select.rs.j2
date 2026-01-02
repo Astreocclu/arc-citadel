@@ -1,0 +1,157 @@
+/// Context provided to {{ module_name }} action selection
+pub struct {{ name }}SelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a {{ name }}Values,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for {{ module_name }}
+pub fn select_action_{{ module_name }}(ctx: &{{ name }}SelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_{{ module_name }}(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+{% for rule in action_rules %}
+
+    // {{ rule.description }}
+    if ctx.values.{{ rule.trigger_value }} > {{ rule.threshold }} {
+        {% if rule.requires_target %}if ctx.entity_nearby {
+            return Some(Task::new(ActionId::{{ rule.action }}, TaskPriority::{{ rule.priority }}, ctx.current_tick));
+        }{% else %}return Some(Task::new(ActionId::{{ rule.action }}, TaskPriority::{{ rule.priority }}, ctx.current_tick));{% endif %}
+    }
+{% endfor %}
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_{{ module_name }}(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to idle behavior
+    Some(select_idle_action_{{ module_name }}(ctx))
+}
+
+/// Handle critical needs for {{ module_name }}
+fn select_critical_response_{{ module_name }}(need: NeedType, ctx: &{{ name }}SelectionContext) -> Option<Task> {
+    match need {
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Food => Some(Task {
+            action: ActionId::IdleWander,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        NeedType::Rest if ctx.safe_location => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Rest => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for {{ module_name }}
+fn address_moderate_need_{{ module_name }}(ctx: &{{ name }}SelectionContext) -> Option<Task> {
+    let (need_type, level) = ctx.needs.most_pressing();
+
+    if level < 0.5 {
+        return None;
+    }
+
+    let action = match need_type {
+        NeedType::Food if ctx.food_available => ActionId::Eat,
+        NeedType::Rest if ctx.safe_location => ActionId::Rest,
+        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
+        NeedType::Purpose => ActionId::Gather,
+        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
+        _ => return None,
+    };
+
+    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+}
+
+/// Select an idle action based on {{ module_name }} values
+fn select_idle_action_{{ module_name }}(ctx: &{{ name }}SelectionContext) -> Task {
+{% if idle_behaviors %}
+    {% for behavior in idle_behaviors %}
+    {% if not loop.first %}else {% endif %}if ctx.values.{{ behavior.value }} > {{ behavior.threshold }} {
+        {% if behavior.requires_target %}
+        if ctx.entity_nearby {
+            return Task::new(ActionId::{{ behavior.action }}, TaskPriority::Low, ctx.current_tick);
+        }
+        {% else %}
+        return Task::new(ActionId::{{ behavior.action }}, TaskPriority::Low, ctx.current_tick);
+        {% endif %}
+    } {% endfor %}
+
+{% endif %}
+    // Default idle behavior
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
+}

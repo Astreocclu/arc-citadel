@@ -13,6 +13,8 @@ pub fn update_populations(world: &mut AggregateWorld) {
                 Species::Human => 1.01,  // 1% per year
                 Species::Dwarf => 1.005, // 0.5% per year
                 Species::Elf => 1.002,   // 0.2% per year
+                Species::Orc => 1.02,    // 2% per year (fast breeding)
+                // CODEGEN: species_growth_rates
             };
 
             // Territory quality affects growth

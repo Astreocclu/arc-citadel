@@ -60,6 +60,9 @@ pub enum PolityType {
     // Elf
     Grove,
     Court,
+    // Orc
+    Warband,
+    Horde,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -122,6 +125,8 @@ pub enum SpeciesState {
     Human(HumanState),
     Dwarf(DwarfState),
     Elf(ElfState),
+    Orc(OrcState),
+    // CODEGEN: species_state_variants
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -212,6 +217,15 @@ pub enum DecisionType {
     Migration,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct OrcState {
+    pub waaagh_level: f32,
+    pub raid_targets: Vec<u32>,
+    pub blood_feuds: Vec<u32>,
+    pub tribal_strength: f32,
+}
+// CODEGEN: species_state_structs
+
 impl Polity {
     pub fn human_state(&self) -> Option<&HumanState> {
         match &self.species_state {
@@ -254,6 +268,22 @@ impl Polity {
             _ => None,
         }
     }
+
+
+    pub fn orc_state(&self) -> Option<&OrcState> {
+        match &self.species_state {
+            SpeciesState::Orc(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn orc_state_mut(&mut self) -> Option<&mut OrcState> {
+        match &mut self.species_state {
+            SpeciesState::Orc(s) => Some(s),
+            _ => None,
+        }
+    }
+    // CODEGEN: species_state_accessors
 
     /// Returns true if this polity has no parent (is sovereign)
     pub fn is_sovereign(&self) -> bool {

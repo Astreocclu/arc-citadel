@@ -3,6 +3,8 @@
 mod human;
 mod dwarf;
 mod elf;
+mod orc;
+// CODEGEN: species_behavior_mods
 
 use crate::aggregate::polity::Polity;
 use crate::aggregate::world::AggregateWorld;
@@ -15,5 +17,7 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
         Species::Human => human::tick(polity, world, year),
         Species::Dwarf => dwarf::tick(polity, world, year),
         Species::Elf => elf::tick(polity, world, year),
+        Species::Orc => orc::tick(polity, world, year),
+        // CODEGEN: species_tick_arms
     }
 }
