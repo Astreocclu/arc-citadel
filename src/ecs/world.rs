@@ -2,7 +2,9 @@
 
 use ahash::AHashMap;
 use crate::core::types::{EntityId, Species, Vec2};
+use crate::core::calendar::Calendar;
 use crate::entity::species::human::HumanArchetype;
+use crate::entity::species::orc::OrcArchetype;
 use crate::simulation::resource_zone::ResourceZone;
 
 /// Abundance level of a food zone
@@ -54,10 +56,12 @@ pub struct World {
     pub current_tick: u64,
     entity_registry: AHashMap<EntityId, (Species, usize)>,
     pub humans: HumanArchetype,
+    pub orcs: OrcArchetype,
     next_indices: AHashMap<Species, usize>,
     pub food_zones: Vec<FoodZone>,
     next_food_zone_id: u32,
     pub resource_zones: Vec<ResourceZone>,
+    pub calendar: Calendar,
 }
 
 impl World {
@@ -66,15 +70,18 @@ impl World {
         next_indices.insert(Species::Human, 0);
         next_indices.insert(Species::Dwarf, 0);
         next_indices.insert(Species::Elf, 0);
+        next_indices.insert(Species::Orc, 0);
 
         Self {
             current_tick: 0,
             entity_registry: AHashMap::new(),
             humans: HumanArchetype::new(),
+            orcs: OrcArchetype::new(),
             next_indices,
             food_zones: Vec::new(),
             next_food_zone_id: 0,
             resource_zones: Vec::new(),
+            calendar: Calendar::default(),
         }
     }
 
@@ -97,12 +104,24 @@ impl World {
         entity_id
     }
 
+    pub fn spawn_orc(&mut self, name: String) -> EntityId {
+        let entity_id = EntityId::new();
+        let index = *self.next_indices.get(&Species::Orc).unwrap();
+
+        self.orcs.spawn(entity_id, name, self.current_tick);
+
+        self.entity_registry.insert(entity_id, (Species::Orc, index));
+        *self.next_indices.get_mut(&Species::Orc).unwrap() += 1;
+
+        entity_id
+    }
+
     pub fn get_entity_info(&self, entity_id: EntityId) -> Option<(Species, usize)> {
         self.entity_registry.get(&entity_id).copied()
     }
 
     pub fn entity_count(&self) -> usize {
-        self.humans.count()
+        self.humans.count() + self.orcs.count()
     }
 
     pub fn tick(&mut self) {
