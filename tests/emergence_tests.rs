@@ -1405,3 +1405,222 @@ fn test_resource_gathering_workflow() {
         final_pos.x
     );
 }
+
+// ============================================================================
+// Astronomical System Integration Tests
+// ============================================================================
+
+use arc_citadel::core::astronomy::{
+    AstronomicalState, CelestialEvent, FoundingModifiers, Season, CONJUNCTION_CYCLE, TICKS_PER_DAY,
+    YEAR_LENGTH,
+};
+
+/// Integration test: Full year simulation
+///
+/// This test verifies that the astronomical system correctly advances through
+/// an entire year (360 days × TICKS_PER_DAY), rolling over to year 2 and
+/// returning to Season::Spring on day 1.
+#[test]
+fn test_full_year_simulation() {
+    let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+    // Verify initial state
+    assert_eq!(state.year, 1);
+    assert_eq!(state.day_of_year, 1);
+    assert_eq!(state.season, Season::Spring);
+
+    // Advance through entire year (360 days × 1000 ticks per day)
+    for _ in 0..(YEAR_LENGTH as u64 * TICKS_PER_DAY) {
+        state.advance_tick();
+    }
+
+    // After one full year, should be in year 2
+    assert_eq!(state.year, 2, "Year should roll over to 2 after 360 days");
+
+    // Day of year should be back to 1
+    assert_eq!(state.day_of_year, 1, "Day of year should reset to 1");
+
+    // Season should be back to Spring
+    assert_eq!(state.season, Season::Spring, "Season should reset to Spring");
+}
+
+/// Integration test: Light levels vary through the day
+///
+/// This test verifies that light levels correctly vary from dark at night
+/// to bright at midday, ensuring the solar phase system is working correctly
+/// in conjunction with the tick advancement.
+#[test]
+fn test_light_levels_through_day() {
+    let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+    let mut min_light: f32 = 1.0;
+    let mut max_light: f32 = 0.0;
+
+    // Advance through one full day (1000 ticks)
+    for _ in 0..TICKS_PER_DAY {
+        state.advance_tick();
+        min_light = min_light.min(state.light_level);
+        max_light = max_light.max(state.light_level);
+    }
+
+    // Should have darkness at night (light < 0.3)
+    assert!(
+        min_light < 0.3,
+        "Should have darkness at night. Minimum light level was: {}",
+        min_light
+    );
+
+    // Should have brightness at midday (light > 0.9)
+    assert!(
+        max_light > 0.9,
+        "Should have brightness at midday. Maximum light level was: {}",
+        max_light
+    );
+
+    // Light levels should vary significantly through the day
+    let variation = max_light - min_light;
+    assert!(
+        variation > 0.7,
+        "Light levels should vary significantly through the day. Variation was: {}",
+        variation
+    );
+}
+
+/// Integration test: Double full moon is rare
+///
+/// This test verifies that PerfectDoubleFull events are relatively rare compared
+/// to regular full moon events. The event requires BOTH moons to be near full
+/// simultaneously (both phases within 0.02 of 0.5).
+///
+/// With Argent period of 29 days and Sanguine period of 83 days:
+/// - PerfectDoubleFull occurs when both moons are within ~1 day of exact full
+/// - This happens multiple times per conjunction cycle, but is still much rarer
+///   than individual full moons
+/// - Expected: significantly fewer PerfectDoubleFull days than regular FullArgent days
+#[test]
+fn test_double_full_is_rare() {
+    let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+    // Precompute events for more than one full conjunction cycle
+    let days_to_compute = CONJUNCTION_CYCLE + 100;
+    state.precompute_events(days_to_compute);
+
+    // Count PerfectDoubleFull events
+    let mut perfect_double_count = 0;
+    let mut full_argent_count = 0;
+    for (_, events) in &state.event_calendar {
+        if events.contains(&CelestialEvent::PerfectDoubleFull) {
+            perfect_double_count += 1;
+        }
+        if events.contains(&CelestialEvent::FullArgent) {
+            full_argent_count += 1;
+        }
+    }
+
+    // PerfectDoubleFull should exist (not zero)
+    assert!(
+        perfect_double_count >= 1,
+        "Should find at least 1 PerfectDoubleFull event in {} days, found {}",
+        days_to_compute,
+        perfect_double_count
+    );
+
+    // PerfectDoubleFull should be MUCH rarer than regular FullArgent
+    // FullArgent occurs ~12 times per year, so ~85 times in 2507 days
+    // PerfectDoubleFull should be less than 15% of that
+    let rarity_ratio = perfect_double_count as f32 / full_argent_count as f32;
+    assert!(
+        rarity_ratio < 0.15,
+        "PerfectDoubleFull should be rare compared to FullArgent. \
+         Found {} PerfectDoubleFull vs {} FullArgent (ratio: {:.2})",
+        perfect_double_count,
+        full_argent_count,
+        rarity_ratio
+    );
+
+    // Sanity check: should have reasonable counts
+    assert!(
+        full_argent_count >= 50,
+        "Should find many FullArgent events in {} days, found {}",
+        days_to_compute,
+        full_argent_count
+    );
+}
+
+/// Integration test: Founding conditions in deep winter
+///
+/// This test verifies the integration between AstronomicalState and
+/// FoundingModifiers by:
+/// 1. Advancing the simulation to deep winter (day 340)
+/// 2. Verifying the season is correctly identified as Winter
+/// 3. Calculating FoundingModifiers based on the astronomical state
+/// 4. Verifying siege_mentality is true and defensive bias is applied
+#[test]
+fn test_founding_conditions_integration() {
+    let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+    // Advance to deep winter (day 340)
+    // Day 340 is in deep winter range (day_of_year >= 300)
+    let target_day = 340;
+    for _ in 0..(target_day as u64 * TICKS_PER_DAY) {
+        state.advance_tick();
+    }
+
+    // Verify we're in Winter season
+    assert_eq!(
+        state.season,
+        Season::Winter,
+        "Day {} should be in Winter, but got {:?}",
+        target_day,
+        state.season
+    );
+
+    // Verify day_of_year is around 340 (accounting for 1-based indexing)
+    // Day 340 from start should be day_of_year 341 (since day_of_year is 1-based)
+    assert!(
+        state.day_of_year >= 300,
+        "Should be in deep winter (day_of_year >= 300), got day_of_year {}",
+        state.day_of_year
+    );
+
+    // Calculate founding modifiers based on current astronomical state
+    let modifiers = FoundingModifiers::calculate(
+        state.day_of_year,
+        state.season,
+        &state.active_events,
+    );
+
+    // Deep winter (day_of_year >= 300) should trigger siege_mentality
+    assert!(
+        modifiers.siege_mentality,
+        "Deep winter founding should have siege_mentality = true"
+    );
+
+    // Should have defensive bias tag
+    assert!(
+        modifiers.bias_tags.contains(&"defensive".to_string()),
+        "Deep winter founding should have 'defensive' bias tag. Tags: {:?}",
+        modifiers.bias_tags
+    );
+
+    // Should have increased stockpile efficiency (> 1.0 base)
+    assert!(
+        modifiers.stockpile_efficiency > 1.0,
+        "Deep winter founding should have stockpile_efficiency > 1.0, got {}",
+        modifiers.stockpile_efficiency
+    );
+
+    // Should have reduced initial population
+    assert!(
+        modifiers.initial_population_mult < 1.0,
+        "Deep winter founding should have reduced initial_population_mult, got {}",
+        modifiers.initial_population_mult
+    );
+
+    // Should have increased defensive weight
+    assert!(
+        modifiers.defensive_weight > 0.0,
+        "Deep winter founding should have positive defensive_weight, got {}",
+        modifiers.defensive_weight
+    );
+}
