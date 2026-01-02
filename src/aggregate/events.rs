@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::aggregate::polity::{GrudgeReason, TreatyTerms, DecisionType};
 use crate::aggregate::world::WarCause;
+use crate::core::types::PolityId;
 
 /// A historical event
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -57,6 +58,24 @@ pub enum EventType {
     GriefEvent { polity: u32, intensity: f32 },
     DeliberationComplete { polity: u32, decision: DecisionType },
     Isolation { polity: u32 },
+
+    // Gnoll-specific
+    RaidLaunched { attacker: PolityId, target: PolityId },
+    CorruptionSpreads { polity: PolityId, intensity: f32 },
+    BattleWon { polity: PolityId },
+    BattleLost { polity: PolityId },
+
+    // Vampire-specific
+    InfiltrationAttempt { infiltrator: PolityId, target: PolityId },
+    InfiltrationSuccess { infiltrator: PolityId, target: PolityId },
+    TributeDemanded { from: PolityId, amount: u32 },
+    TributePaid { to: PolityId, amount: u32 },
+
+    // Kobold-specific
+    TrapConstruction { polity: PolityId, trap_count: u32 },
+    SpiteRaid { attacker: PolityId, target: PolityId },
+    DragonTributeOffered { polity: PolityId },
+    TrapTriggered { polity: PolityId, casualties: u32 },
 }
 
 /// The complete history log

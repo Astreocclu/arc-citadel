@@ -1,0 +1,109 @@
+[metadata]
+name = "Vampire"
+module_name = "vampire"
+
+[entity_values]
+bloodthirst = { type = "f32", default = 0.5, description = "The gnawing hunger for blood." }
+arrogance = { type = "f32", default = 0.6, description = "Pride and sense of superiority over mortals." }
+secrecy = { type = "f32", default = 0.7, description = "The drive to remain hidden from the sun and mortal scrutiny." }
+dominance = { type = "f32", default = 0.5, description = "The desire to control and enthrall others." }
+ennui = { type = "f32", default = 0.3, description = "The crushing boredom of eternal existence." }
+
+[polity_state]
+thrall_network = { type = "Vec<u32>", default = "Vec::new()" }
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+hoard_value = { type = "f32", default = 0.0 }
+blood_debt_owed = { type = "u32", default = "0" }
+
+[terrain_fitness]
+mountain = 0.8
+hills = 0.7
+forest = 0.9
+plains = 0.3
+marsh = 0.6
+coast = 0.4
+desert = 0.1
+river = 0.5
+
+[growth]
+rate = 1.02
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Blood", "Shadow", "Night", "Crimson", "Obsidian", "Ancient", "Eternal", "Pale", "Silent", "Veiled"]
+suffixes = ["Fang", "Claw", "Court", "Keep", "Sanctum", "Masque", "Vein", "Shroud", "Crypt", "Thirst"]
+
+[polity_types]
+small = "Clan"
+medium = "Court"
+large = "Kingdom"
+
+[[action_rules]]
+trigger_value = "bloodthirst"
+threshold = 0.65
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Overwhelming hunger drives the vampire to feed on the nearest living creature."
+
+[[action_rules]]
+trigger_value = "dominance"
+threshold = 0.6
+action = "TalkTo"
+priority = "Normal"
+requires_target = true
+description = "The vampire attempts to charm and enthrall a target, adding them to the thrall network."
+
+[[action_rules]]
+trigger_value = "secrecy"
+threshold = 0.75
+action = "Flee"
+priority = "High"
+requires_target = false
+description = "When exposed or threatened with discovery, the vampire retreats to a safe, dark location."
+
+[[action_rules]]
+trigger_value = "arrogance"
+threshold = 0.55
+action = "Trade"
+priority = "Low"
+requires_target = true
+description = "The vampire deigns to negotiate, offering ancient knowledge or artifacts for blood or service."
+
+[[idle_behaviors]]
+value = "ennui"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "The vampire watches mortal affairs from the shadows, seeking amusement or a new obsession."
+
+[[idle_behaviors]]
+value = "dominance"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "The vampire patrols its claimed territory, reinforcing its presence and checking on thralls."
+
+[value_dynamics]
+bloodthirst = { tick_delta = 0.003, min = 0.0, max = 1.0 }
+arrogance = { tick_delta = 0.0, min = 0.0, max = 1.0 }
+secrecy = { tick_delta = -0.001, min = 0.2, max = 1.0 }
+dominance = { tick_delta = 0.001, min = 0.0, max = 1.0 }
+ennui = { tick_delta = 0.002, min = 0.0, max = 1.0 }
+
+[[value_events]]
+event = "feeding"
+value = "bloodthirst"
+delta = -0.5
+
+[[value_events]]
+event = "thrall_created"
+value = "dominance"
+delta = 0.2
+
+[[value_events]]
+event = "exposed_to_sunlight"
+value = "secrecy"
+delta = -0.3

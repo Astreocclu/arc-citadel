@@ -3,11 +3,11 @@ name = "Kobold"
 module_name = "kobold"
 
 [entity_values]
-cunning = { type = "f32", default = 0.7, description = "Cleverness in setting traps and ambushes." }
-cowardice = { type = "f32", default = 0.8, description = "Fear of direct confrontation." }
-industriousness = { type = "f32", default = 0.6, description = "Drive to dig, build, and hoard." }
+cunning = { type = "f32", default = 0.6, description = "Cleverness in setting traps and ambushes." }
+cowardice = { type = "f32", default = 0.7, description = "Fear of direct confrontation." }
+industriousness = { type = "f32", default = 0.55, description = "Drive to dig, build, and hoard." }
 pack_loyalty = { type = "f32", default = 0.5, description = "Devotion to the warren and its members." }
-spite = { type = "f32", default = 0.4, description = "Desire to harm those who wronged the warren." }
+spite = { type = "f32", default = 0.35, description = "Desire to harm those who wronged the warren." }
 
 [polity_state]
 trap_density = { type = "f32", default = "0.0" }
@@ -41,16 +41,8 @@ medium = "Tribe"
 large = "Horde"
 
 [[action_rules]]
-trigger_value = "cunning"
-threshold = 0.7
-action = "IdleObserve"
-priority = "Normal"
-requires_target = false
-description = "Scout and plan ambush locations."
-
-[[action_rules]]
 trigger_value = "cowardice"
-threshold = 0.75
+threshold = 0.65
 action = "Flee"
 priority = "High"
 requires_target = true
@@ -58,11 +50,19 @@ description = "Run when threatened by stronger foes."
 
 [[action_rules]]
 trigger_value = "industriousness"
-threshold = 0.6
+threshold = 0.5
 action = "Gather"
 priority = "Normal"
 requires_target = true
 description = "Collect resources for the warren."
+
+[[action_rules]]
+trigger_value = "cunning"
+threshold = 0.55
+action = "IdleObserve"
+priority = "Normal"
+requires_target = false
+description = "Scout and plan ambush locations."
 
 [[idle_behaviors]]
 value = "cunning"
@@ -77,3 +77,25 @@ threshold = 0.4
 action = "IdleWander"
 requires_target = false
 description = "Patrol near other kobolds."
+
+[value_dynamics]
+cunning = { tick_delta = 0.0, min = 0.0, max = 1.0 }
+cowardice = { tick_delta = 0.001, min = 0.0, max = 1.0 }
+industriousness = { tick_delta = 0.0, min = 0.0, max = 1.0 }
+pack_loyalty = { tick_delta = 0.0, min = 0.0, max = 1.0 }
+spite = { tick_delta = 0.002, min = 0.0, max = 1.0 }
+
+[[value_events]]
+event = "trap_triggered"
+value = "cunning"
+delta = 0.1
+
+[[value_events]]
+event = "ally_killed"
+value = "spite"
+delta = 0.3
+
+[[value_events]]
+event = "fled_combat"
+value = "cowardice"
+delta = 0.05

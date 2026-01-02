@@ -124,6 +124,38 @@ impl AggregateWorld {
     pub fn next_war_id(&self) -> u32 {
         self.active_wars.iter().map(|w| w.id).max().unwrap_or(0) + 1
     }
+
+    /// Get neighboring polity IDs for a given polity
+    /// Neighbors are polities that control regions adjacent to this polity's regions
+    pub fn get_neighbors(&self, polity_id: PolityId) -> Vec<PolityId> {
+        use std::collections::HashSet;
+
+        // Find all regions controlled by this polity
+        let my_regions: HashSet<u32> = self.regions.iter()
+            .filter(|r| r.controller == Some(polity_id.0))
+            .map(|r| r.id)
+            .collect();
+
+        if my_regions.is_empty() {
+            return Vec::new();
+        }
+
+        // Find all neighboring region IDs
+        let neighbor_region_ids: HashSet<u32> = my_regions.iter()
+            .filter_map(|&region_id| self.get_region(region_id))
+            .flat_map(|r| r.neighbors.iter().copied())
+            .filter(|id| !my_regions.contains(id))
+            .collect();
+
+        // Find polities that control those neighboring regions
+        let neighbor_polities: HashSet<PolityId> = neighbor_region_ids.iter()
+            .filter_map(|&region_id| self.get_region(region_id))
+            .filter_map(|r| r.controller.map(PolityId))
+            .filter(|&pid| pid != polity_id)
+            .collect();
+
+        neighbor_polities.into_iter().collect()
+    }
 }
 
 #[cfg(test)]

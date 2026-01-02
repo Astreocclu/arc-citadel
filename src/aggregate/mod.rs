@@ -14,6 +14,7 @@ pub mod output;
 pub mod systems;
 pub mod species;
 pub mod hierarchy;
+pub mod behavior;
 
 pub use world::AggregateWorld;
 pub use region::{Region, Terrain, ResourceType};

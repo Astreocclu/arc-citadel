@@ -39,6 +39,34 @@ impl KoboldValues {
     }
 }
 
+impl crate::entity::species::value_access::ValueAccessor for KoboldValues {
+    fn get_value(&self, field_name: &str) -> Option<f32> {
+        match field_name {
+            "cunning" => Some(self.cunning),
+            "cowardice" => Some(self.cowardice),
+            "industriousness" => Some(self.industriousness),
+            "pack_loyalty" => Some(self.pack_loyalty),
+            "spite" => Some(self.spite),
+            _ => None,
+        }
+    }
+
+    fn set_value(&mut self, field_name: &str, value: f32) -> bool {
+        match field_name {
+            "cunning" => { self.cunning = value; true }
+            "cowardice" => { self.cowardice = value; true }
+            "industriousness" => { self.industriousness = value; true }
+            "pack_loyalty" => { self.pack_loyalty = value; true }
+            "spite" => { self.spite = value; true }
+            _ => false,
+        }
+    }
+
+    fn field_names() -> &'static [&'static str] {
+        &["cunning", "cowardice", "industriousness", "pack_loyalty", "spite"]
+    }
+}
+
 /// Kobold archetype using Structure of Arrays layout
 #[derive(Debug, Default)]
 pub struct KoboldArchetype {

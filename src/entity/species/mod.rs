@@ -1,3 +1,6 @@
+pub mod value_access;
+pub use value_access::ValueAccessor;
+
 pub mod human;
 pub mod orc;
 pub mod kobold;
@@ -12,4 +15,14 @@ pub mod satyr;
 pub mod dryad;
 pub mod goblin;
 pub mod troll;
+pub mod abyssal_demons;
+pub mod elemental;
+pub mod fey;
+pub mod stone_giants;
+pub mod golem;
+pub mod merfolk;
+pub mod naga;
+pub mod revenant;
+pub mod vampire;
+pub mod lupine;
 // CODEGEN: entity_species_mods

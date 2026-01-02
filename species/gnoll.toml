@@ -3,11 +3,11 @@ name = "Gnoll"
 module_name = "gnoll"
 
 [entity_values]
-bloodlust = { type = "f32", default = 0.7, description = "Frenzy triggered by scent of blood." }
-pack_instinct = { type = "f32", default = 0.8, description = "Coordination with packmates in hunts." }
-hunger = { type = "f32", default = 0.6, description = "Constant need to feed." }
-cruelty = { type = "f32", default = 0.5, description = "Enjoyment of suffering." }
-dominance = { type = "f32", default = 0.4, description = "Drive to establish pack hierarchy." }
+bloodlust = { type = "f32", default = 0.55, description = "Frenzy triggered by scent of blood." }
+pack_instinct = { type = "f32", default = 0.65, description = "Coordination with packmates in hunts." }
+hunger = { type = "f32", default = 0.5, description = "Constant need to feed." }
+cruelty = { type = "f32", default = 0.4, description = "Enjoyment of suffering." }
+dominance = { type = "f32", default = 0.35, description = "Drive to establish pack hierarchy." }
 
 [polity_state]
 pack_frenzy = { type = "f32", default = "0.0" }
@@ -42,7 +42,7 @@ large = "Horde"
 
 [[action_rules]]
 trigger_value = "bloodlust"
-threshold = 0.7
+threshold = 0.6
 action = "Attack"
 priority = "High"
 requires_target = true
@@ -50,7 +50,7 @@ description = "Enter killing frenzy when blood is scented."
 
 [[action_rules]]
 trigger_value = "hunger"
-threshold = 0.65
+threshold = 0.55
 action = "Gather"
 priority = "Normal"
 requires_target = true
@@ -77,3 +77,25 @@ threshold = 0.5
 action = "IdleObserve"
 requires_target = false
 description = "Watch packmates for signs of weakness."
+
+[value_dynamics]
+bloodlust = { tick_delta = 0.002, min = 0.0, max = 1.0 }
+hunger = { tick_delta = 0.003, min = 0.0, max = 1.0 }
+pack_instinct = { tick_delta = 0.0, min = 0.0, max = 1.0 }
+cruelty = { tick_delta = 0.001, min = 0.0, max = 1.0 }
+dominance = { tick_delta = 0.0, min = 0.0, max = 1.0 }
+
+[[value_events]]
+event = "combat_victory"
+value = "bloodlust"
+delta = 0.15
+
+[[value_events]]
+event = "combat_victory"
+value = "dominance"
+delta = 0.1
+
+[[value_events]]
+event = "feeding"
+value = "hunger"
+delta = -0.4
