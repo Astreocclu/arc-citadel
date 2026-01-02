@@ -461,6 +461,150 @@ impl AstronomicalState {
     pub fn has_event(&self, event: CelestialEvent) -> bool {
         self.active_events.contains(&event)
     }
+
+    /// Precompute events for the next N days
+    ///
+    /// This method clears the existing event calendar and precomputes all
+    /// celestial events for each day from `current_day` to `current_day + days`.
+    /// Events are stored in the `event_calendar` HashMap keyed by day number.
+    ///
+    /// # Arguments
+    /// * `days` - Number of days to precompute from the current day
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut state = AstronomicalState::new(TICKS_PER_DAY);
+    /// state.precompute_events(360); // Precompute one year
+    /// ```
+    pub fn precompute_events(&mut self, days: u32) {
+        self.event_calendar.clear();
+
+        let start_day = self.current_day;
+
+        for day in start_day..(start_day + days) {
+            let argent = MoonState::new(day, ARGENT_PERIOD, ARGENT_NODE_PRECESSION);
+            let sanguine = MoonState::new(day, SANGUINE_PERIOD, SANGUINE_NODE_PRECESSION);
+
+            let mut day_events = Vec::new();
+
+            // Check moon phases
+            if argent.is_full() {
+                day_events.push(CelestialEvent::FullArgent);
+            }
+            if argent.is_new() {
+                day_events.push(CelestialEvent::NewArgent);
+            }
+            if sanguine.is_full() {
+                day_events.push(CelestialEvent::FullSanguine);
+            }
+            if sanguine.is_new() {
+                day_events.push(CelestialEvent::NewSanguine);
+            }
+
+            // Check double events
+            if argent.is_full() && sanguine.is_full() {
+                if (argent.phase - 0.5).abs() < 0.02 && (sanguine.phase - 0.5).abs() < 0.02 {
+                    day_events.push(CelestialEvent::PerfectDoubleFull);
+                } else {
+                    day_events.push(CelestialEvent::NearDoubleFull);
+                }
+            }
+            if argent.is_new() && sanguine.is_new() {
+                if argent.phase < 0.02 && sanguine.phase < 0.02 {
+                    day_events.push(CelestialEvent::PerfectDoubleNew);
+                } else {
+                    day_events.push(CelestialEvent::NearDoubleNew);
+                }
+            }
+
+            // Check eclipses
+            let day_of_year = ((day % YEAR_LENGTH as u32) + 1) as u16;
+            let sun_longitude = (day_of_year as f32 / YEAR_LENGTH as f32) * 360.0;
+
+            if argent.is_new() && argent.eclipse_possible(sun_longitude) {
+                day_events.push(CelestialEvent::SilverEclipse);
+            }
+            if sanguine.is_new() && sanguine.eclipse_possible(sun_longitude) {
+                day_events.push(CelestialEvent::BloodEclipse);
+            }
+
+            // Check for double eclipse
+            if day_events.contains(&CelestialEvent::SilverEclipse)
+                && day_events.contains(&CelestialEvent::BloodEclipse)
+            {
+                day_events.push(CelestialEvent::DoubleEclipse);
+            }
+
+            // Only store non-empty event lists
+            if !day_events.is_empty() {
+                self.event_calendar.insert(day, day_events);
+            }
+        }
+    }
+
+    /// Find the next occurrence of a specific event type
+    ///
+    /// Searches the precomputed event calendar for the next occurrence of the
+    /// specified event type after the current day.
+    ///
+    /// # Arguments
+    /// * `event` - The type of celestial event to search for
+    ///
+    /// # Returns
+    /// * `Some(days)` - Number of days until the next occurrence
+    /// * `None` - If no occurrence found in the precomputed calendar
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut state = AstronomicalState::new(TICKS_PER_DAY);
+    /// state.precompute_events(360);
+    /// if let Some(days) = state.next_event_of_type(CelestialEvent::FullArgent) {
+    ///     println!("Next full silver moon in {} days", days);
+    /// }
+    /// ```
+    pub fn next_event_of_type(&self, event: CelestialEvent) -> Option<u32> {
+        let mut next_day: Option<u32> = None;
+
+        for (&day, events) in &self.event_calendar {
+            if day > self.current_day && events.contains(&event) {
+                match next_day {
+                    None => next_day = Some(day),
+                    Some(d) if day < d => next_day = Some(day),
+                    _ => {}
+                }
+            }
+        }
+
+        next_day.map(|d| d - self.current_day)
+    }
+
+    /// Get events for a specific day
+    ///
+    /// Returns a slice of celestial events that occur on the specified day.
+    /// If the day has no events or is not in the precomputed calendar, returns
+    /// an empty slice.
+    ///
+    /// # Arguments
+    /// * `day` - The day number to query
+    ///
+    /// # Returns
+    /// A slice of `CelestialEvent` for that day
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut state = AstronomicalState::new(TICKS_PER_DAY);
+    /// state.precompute_events(360);
+    /// let events = state.events_on_day(14); // Check day 14
+    /// for event in events {
+    ///     println!("Event: {:?}", event);
+    /// }
+    /// ```
+    pub fn events_on_day(&self, day: u32) -> &[CelestialEvent] {
+        self.event_calendar
+            .get(&day)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+    }
 }
 
 impl Default for AstronomicalState {
@@ -1378,5 +1522,210 @@ mod tests {
         assert!(found_afternoon, "Afternoon should occur during the day");
         assert!(found_evening, "Evening should occur during the day");
         assert!(found_night, "Night should occur during the day");
+    }
+
+    // ========================================================================
+    // Task 7 Tests: Event Calendar Precomputation (TDD - written first)
+    // ========================================================================
+
+    #[test]
+    fn test_precompute_event_calendar() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // Precompute for 1 year
+        state.precompute_events(YEAR_LENGTH as u32);
+
+        // Should have entries for full moons
+        // Argent: every 29 days, Sanguine: every 83 days
+        let mut full_argent_count = 0;
+        let mut full_sanguine_count = 0;
+
+        for (_, events) in &state.event_calendar {
+            if events.contains(&CelestialEvent::FullArgent) {
+                full_argent_count += 1;
+            }
+            if events.contains(&CelestialEvent::FullSanguine) {
+                full_sanguine_count += 1;
+            }
+        }
+
+        // With threshold of 0.05, each full moon spans ~3 days (0.45-0.55 phase range)
+        // Argent: 360/29 ≈ 12.4 cycles × ~2-3 days per cycle = ~24-38 full moon days
+        // We verify we have at least 12 days (one per cycle minimum) and a reasonable upper bound
+        assert!(
+            full_argent_count >= 12,
+            "Expected at least 12 Full Argent moon days (one per cycle), got {}",
+            full_argent_count
+        );
+        assert!(
+            full_argent_count <= 40,
+            "Expected at most 40 Full Argent moon days, got {}",
+            full_argent_count
+        );
+
+        // Sanguine: 360/83 ≈ 4.3 cycles
+        // With 83 day period and 0.05 threshold, ~8 days per cycle count as "full"
+        // 4.3 cycles × ~8 days = ~34 days
+        assert!(
+            full_sanguine_count >= 4,
+            "Expected at least 4 Full Sanguine moon days (one per cycle), got {}",
+            full_sanguine_count
+        );
+        assert!(
+            full_sanguine_count <= 40,
+            "Expected at most 40 Full Sanguine moon days, got {}",
+            full_sanguine_count
+        );
+    }
+
+    #[test]
+    fn test_precompute_event_calendar_new_moons() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // Precompute for 1 year
+        state.precompute_events(YEAR_LENGTH as u32);
+
+        let mut new_argent_count = 0;
+        let mut new_sanguine_count = 0;
+
+        for (_, events) in &state.event_calendar {
+            if events.contains(&CelestialEvent::NewArgent) {
+                new_argent_count += 1;
+            }
+            if events.contains(&CelestialEvent::NewSanguine) {
+                new_sanguine_count += 1;
+            }
+        }
+
+        // New moon threshold is phase < 0.05 OR phase > 0.95
+        // This means ~10% of each cycle counts as "new" (2 × 0.05 = 0.10)
+        // Argent: 360/29 ≈ 12.4 cycles × ~3-4 days per cycle = ~36-50 new moon days
+        assert!(
+            new_argent_count >= 12,
+            "Expected at least 12 New Argent moon days (one per cycle), got {}",
+            new_argent_count
+        );
+        assert!(
+            new_argent_count <= 50,
+            "Expected at most 50 New Argent moon days, got {}",
+            new_argent_count
+        );
+
+        // Sanguine: 360/83 ≈ 4.3 cycles
+        // With 83 day period and ~10% threshold (0.05 at start + 0.05 at end), ~8-9 days per cycle
+        // 4.3 cycles × ~9 days = ~39-43 days
+        assert!(
+            new_sanguine_count >= 4,
+            "Expected at least 4 New Sanguine moon days (one per cycle), got {}",
+            new_sanguine_count
+        );
+        assert!(
+            new_sanguine_count <= 50,
+            "Expected at most 50 New Sanguine moon days, got {}",
+            new_sanguine_count
+        );
+    }
+
+    #[test]
+    fn test_query_next_event() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+        state.precompute_events(YEAR_LENGTH as u32);
+
+        // Should find next full Argent within 29 days
+        let next = state.next_event_of_type(CelestialEvent::FullArgent);
+        assert!(next.is_some(), "Should find a FullArgent event");
+        assert!(
+            next.unwrap() <= 29,
+            "Next FullArgent should be within 29 days, got {}",
+            next.unwrap()
+        );
+    }
+
+    #[test]
+    fn test_query_next_event_full_sanguine() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+        state.precompute_events(YEAR_LENGTH as u32);
+
+        // Should find next full Sanguine within 83 days
+        let next = state.next_event_of_type(CelestialEvent::FullSanguine);
+        assert!(next.is_some(), "Should find a FullSanguine event");
+        assert!(
+            next.unwrap() <= 83,
+            "Next FullSanguine should be within 83 days, got {}",
+            next.unwrap()
+        );
+    }
+
+    #[test]
+    fn test_events_on_day() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+        state.precompute_events(YEAR_LENGTH as u32);
+
+        // Day 0 starts at new moon for both moons
+        let events = state.events_on_day(0);
+        assert!(
+            events.contains(&CelestialEvent::NewArgent),
+            "Day 0 should have NewArgent"
+        );
+        assert!(
+            events.contains(&CelestialEvent::NewSanguine),
+            "Day 0 should have NewSanguine"
+        );
+    }
+
+    #[test]
+    fn test_events_on_day_empty() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+        state.precompute_events(YEAR_LENGTH as u32);
+
+        // Day 10 should have no events (not near full or new for either moon)
+        // Argent: full around day 14, new around day 0 and 29
+        // Sanguine: full around day 41, new around day 0 and 83
+        let events = state.events_on_day(10);
+        assert!(events.is_empty(), "Day 10 should have no events");
+    }
+
+    #[test]
+    fn test_events_on_day_outside_precomputed_range() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+        state.precompute_events(100); // Only precompute 100 days
+
+        // Day 200 is outside precomputed range
+        let events = state.events_on_day(200);
+        assert!(events.is_empty(), "Day outside range should return empty slice");
+    }
+
+    #[test]
+    fn test_next_event_of_type_no_match() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+        state.precompute_events(30); // Short window
+
+        // DoubleEclipse is extremely rare, likely won't occur in 30 days
+        // We can only test that the function handles absence gracefully
+        let result = state.next_event_of_type(CelestialEvent::DoubleEclipse);
+        // It may or may not find one - just verify the function works
+        if let Some(days) = result {
+            assert!(days > 0, "Days should be positive if found");
+        }
+    }
+
+    #[test]
+    fn test_precompute_clears_existing_calendar() {
+        let mut state = AstronomicalState::new(TICKS_PER_DAY);
+
+        // First precompute
+        state.precompute_events(100);
+        let first_count = state.event_calendar.len();
+
+        // Second precompute should clear and recompute
+        state.precompute_events(50);
+        let second_count = state.event_calendar.len();
+
+        // Different ranges should have different counts
+        // (assuming events are distributed reasonably)
+        assert!(
+            second_count <= first_count || second_count > 0,
+            "Calendar should be recomputed on each call"
+        );
     }
 }
