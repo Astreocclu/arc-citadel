@@ -1,0 +1,90 @@
+# Production Recipes
+# Defines what buildings can produce and the resources required.
+
+# ============================================================================
+# FARM RECIPES
+# ============================================================================
+
+[[recipes]]
+id = "farm_food"
+name = "Grow Food"
+building_type = "Farm"
+work_required = 100
+workers_needed = 2
+inputs = []
+
+[[recipes.outputs]]
+resource = "Food"
+amount = 5
+
+# ============================================================================
+# WORKSHOP RECIPES
+# ============================================================================
+
+[[recipes]]
+id = "smelt_iron"
+name = "Smelt Iron"
+building_type = "Workshop"
+work_required = 50
+workers_needed = 1
+
+[[recipes.inputs]]
+resource = "Ore"
+amount = 3
+
+[[recipes.outputs]]
+resource = "Iron"
+amount = 1
+
+[[recipes]]
+id = "weave_cloth"
+name = "Weave Cloth"
+building_type = "Workshop"
+work_required = 40
+workers_needed = 1
+
+[[recipes.inputs]]
+resource = "Wood"
+amount = 2
+
+[[recipes.outputs]]
+resource = "Cloth"
+amount = 1
+
+[[recipes]]
+id = "forge_tools"
+name = "Forge Tools"
+building_type = "Workshop"
+work_required = 80
+workers_needed = 2
+
+[[recipes.inputs]]
+resource = "Iron"
+amount = 2
+
+[[recipes.inputs]]
+resource = "Wood"
+amount = 1
+
+[[recipes.outputs]]
+resource = "Iron"
+amount = 3
+
+# ============================================================================
+# GRANARY RECIPES
+# ============================================================================
+
+[[recipes]]
+id = "preserve_food"
+name = "Preserve Food"
+building_type = "Granary"
+work_required = 30
+workers_needed = 1
+
+[[recipes.inputs]]
+resource = "Food"
+amount = 10
+
+[[recipes.outputs]]
+resource = "Food"
+amount = 8
