@@ -2,7 +2,7 @@
 
 use ahash::AHashMap;
 use crate::core::types::{EntityId, Species, Vec2};
-use crate::core::calendar::Calendar;
+use crate::core::astronomy::AstronomicalState;
 use crate::entity::species::human::HumanArchetype;
 use crate::entity::species::orc::OrcArchetype;
 use crate::simulation::resource_zone::ResourceZone;
@@ -61,7 +61,7 @@ pub struct World {
     pub food_zones: Vec<FoodZone>,
     next_food_zone_id: u32,
     pub resource_zones: Vec<ResourceZone>,
-    pub calendar: Calendar,
+    pub astronomy: AstronomicalState,
 }
 
 impl World {
@@ -81,7 +81,7 @@ impl World {
             food_zones: Vec::new(),
             next_food_zone_id: 0,
             resource_zones: Vec::new(),
-            calendar: Calendar::default(),
+            astronomy: AstronomicalState::default(),
         }
     }
 
@@ -146,6 +146,16 @@ impl Default for World {
 mod tests {
     use super::*;
     use crate::core::types::Vec2;
+    use crate::core::astronomy::Season;
+
+    #[test]
+    fn test_world_has_astronomy() {
+        let world = World::new();
+
+        assert_eq!(world.astronomy.year, 1);
+        assert_eq!(world.astronomy.day_of_year, 1);
+        assert_eq!(world.astronomy.season, Season::Spring);
+    }
 
     #[test]
     fn test_food_zones_exist() {

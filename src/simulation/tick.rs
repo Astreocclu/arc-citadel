@@ -37,6 +37,9 @@ use rayon::prelude::*;
 /// 12. Decay social memories (once per day, after tick advances)
 /// 13. Decay expectations (once per day, after tick advances)
 pub fn run_simulation_tick(world: &mut World) {
+    // Advance astronomical state (time, moons, celestial events)
+    world.astronomy.advance_tick();
+
     update_needs(world);
     let perceptions = run_perception(world);
     generate_thoughts(world, &perceptions);
@@ -1164,6 +1167,18 @@ fn create_social_memory_from_task(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_tick_advances_astronomy() {
+        let mut world = World::new();
+
+        let initial_tick = world.astronomy.tick;
+
+        // Run one simulation tick
+        run_simulation_tick(&mut world);
+
+        assert!(world.astronomy.tick > initial_tick);
+    }
 
     #[test]
     fn test_tick_advances_counter() {
