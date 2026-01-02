@@ -9,7 +9,7 @@
 
 use crate::ecs::world::World;
 use crate::spatial::sparse_hash::SparseHashGrid;
-use crate::simulation::perception::{perception_system, find_nearest_food_zone, RelationshipType};
+use crate::simulation::perception::{perception_system, find_nearest_food_zone, find_nearest_building_site, RelationshipType};
 use crate::simulation::action_select::{select_action_human, SelectionContext, select_action_orc, OrcSelectionContext};
 use crate::simulation::expectation_formation::process_observations;
 use crate::simulation::violation_detection::process_violations;
@@ -135,12 +135,17 @@ fn run_perception(world: &World) -> Vec<crate::simulation::perception::Perceptio
         perception_system(&grid, &positions, &ids, &social_memories, &perception_ranges)
     };
 
-    // Populate nearest_food_zone for each perception using per-entity ranges
+    // Populate nearest_food_zone and nearest_building_site for each perception
     for (i, perception) in perceptions.iter_mut().enumerate() {
         perception.nearest_food_zone = find_nearest_food_zone(
             positions[i],
             perception_ranges[i],
             &world.food_zones,
+        );
+        perception.nearest_building_site = find_nearest_building_site(
+            positions[i],
+            perception_ranges[i],
+            &world.buildings,
         );
     }
 
@@ -209,6 +214,7 @@ fn perception_system_parallel(
                 perceived_objects: vec![],
                 perceived_events: vec![],
                 nearest_food_zone: None, // Will be populated after with food zone data
+                nearest_building_site: None, // Will be populated after with building data
             }
         })
         .collect()
@@ -2476,5 +2482,67 @@ mod tests {
 
         // Building should still be under construction
         assert_eq!(world.buildings.states[building_idx], BuildingState::UnderConstruction);
+    }
+
+    #[test]
+    fn test_perception_includes_nearby_building_site() {
+        use crate::city::building::BuildingType;
+        use crate::core::types::Vec2;
+
+        let mut world = World::new();
+
+        // Spawn an entity
+        let entity = world.spawn_human("Observer".into());
+        let idx = world.humans.index_of(entity).unwrap();
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Spawn a building under construction nearby (within perception range of 50)
+        let building_id = world.spawn_building(BuildingType::House, Vec2::new(20.0, 0.0));
+
+        // Run perception manually
+        let perceptions = run_perception(&world);
+
+        // Find observer's perception
+        let observer_perception = perceptions.iter()
+            .find(|p| p.observer == entity)
+            .expect("Should have perception for observer");
+
+        // Verify building site is detected
+        assert!(observer_perception.nearest_building_site.is_some(),
+            "Observer should perceive nearby building site");
+
+        let (perceived_id, _pos, distance) = observer_perception.nearest_building_site.unwrap();
+        assert_eq!(perceived_id, building_id);
+        assert!((distance - 20.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_perception_ignores_completed_building() {
+        use crate::city::building::{BuildingType, BuildingState};
+        use crate::core::types::Vec2;
+
+        let mut world = World::new();
+
+        // Spawn an entity
+        let entity = world.spawn_human("Observer".into());
+        let idx = world.humans.index_of(entity).unwrap();
+        world.humans.positions[idx] = Vec2::new(0.0, 0.0);
+
+        // Spawn a building and mark it complete
+        let building_id = world.spawn_building(BuildingType::House, Vec2::new(20.0, 0.0));
+        let building_idx = world.buildings.index_of(building_id).unwrap();
+        world.buildings.states[building_idx] = BuildingState::Complete;
+
+        // Run perception
+        let perceptions = run_perception(&world);
+
+        // Find observer's perception
+        let observer_perception = perceptions.iter()
+            .find(|p| p.observer == entity)
+            .expect("Should have perception for observer");
+
+        // Verify completed building is NOT detected as a building site
+        assert!(observer_perception.nearest_building_site.is_none(),
+            "Completed building should not be detected as building site");
     }
 }

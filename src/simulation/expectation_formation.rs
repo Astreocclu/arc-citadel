@@ -330,6 +330,7 @@ mod tests {
                 perceived_objects: vec![],
                 perceived_events: vec![],
                 nearest_food_zone: None,
+                nearest_building_site: None,
             },
             Perception {
                 observer: actor_id,
@@ -344,6 +345,7 @@ mod tests {
                 perceived_objects: vec![],
                 perceived_events: vec![],
                 nearest_food_zone: None,
+                nearest_building_site: None,
             },
         ];
 

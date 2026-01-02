@@ -1,5 +1,6 @@
 //! Perception system - what entities notice based on their values
 
+use crate::city::building::{BuildingArchetype, BuildingId};
 use crate::core::types::{EntityId, Vec2};
 use crate::ecs::world::FoodZone;
 use crate::entity::social::{Disposition, SocialMemory};
@@ -14,6 +15,8 @@ pub struct Perception {
     pub perceived_events: Vec<PerceivedEvent>,
     /// Nearest food zone: (zone_id, position, distance)
     pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    /// Nearest building under construction: (building_id, position, distance)
+    pub nearest_building_site: Option<(BuildingId, Vec2, f32)>,
 }
 
 #[derive(Debug, Clone)]
@@ -133,6 +136,33 @@ pub fn find_nearest_food_zone(
     nearest
 }
 
+/// Find nearest building under construction within range
+///
+/// Returns (BuildingId, position, distance) for the nearest construction site.
+/// Only considers buildings with state = UnderConstruction.
+pub fn find_nearest_building_site(
+    observer_pos: Vec2,
+    range: f32,
+    buildings: &BuildingArchetype,
+) -> Option<(BuildingId, Vec2, f32)> {
+    use crate::city::building::BuildingState;
+
+    let mut nearest: Option<(BuildingId, Vec2, f32)> = None;
+
+    for i in buildings.iter_under_construction() {
+        let pos = buildings.positions[i];
+        let distance = observer_pos.distance(&pos);
+
+        if distance <= range {
+            if nearest.is_none() || distance < nearest.unwrap().2 {
+                nearest = Some((buildings.ids[i], pos, distance));
+            }
+        }
+    }
+
+    nearest
+}
+
 pub fn perception_system(
     spatial_grid: &SparseHashGrid,
     positions: &[Vec2],
@@ -186,6 +216,7 @@ pub fn perception_system(
             perceived_objects: vec![],
             perceived_events: vec![],
             nearest_food_zone: None, // Will be populated by caller with food zone data
+            nearest_building_site: None, // Will be populated by caller with building data
         }
     }).collect()
 }
@@ -213,6 +244,63 @@ mod tests {
         let (zone_id, _zone_pos, distance) = nearest.unwrap();
         assert_eq!(zone_id, 0);  // Closer zone
         assert!(distance < 20.0);
+    }
+
+    #[test]
+    fn test_find_nearest_building_site() {
+        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId, BuildingState};
+
+        let mut buildings = BuildingArchetype::new();
+        // Spawn two buildings under construction at different distances
+        let id1 = BuildingId::new();
+        let id2 = BuildingId::new();
+        buildings.spawn(id1, BuildingType::House, Vec2::new(10.0, 0.0), 0);
+        buildings.spawn(id2, BuildingType::Farm, Vec2::new(5.0, 0.0), 0);
+
+        let observer = Vec2::new(0.0, 0.0);
+        let result = super::find_nearest_building_site(observer, 50.0, &buildings);
+
+        assert!(result.is_some());
+        let (id, _, dist) = result.unwrap();
+        assert_eq!(id, id2); // Farm is closer at distance 5.0
+        assert!((dist - 5.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_find_nearest_building_site_ignores_completed() {
+        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId, BuildingState};
+
+        let mut buildings = BuildingArchetype::new();
+        let id1 = BuildingId::new();
+        let id2 = BuildingId::new();
+        buildings.spawn(id1, BuildingType::House, Vec2::new(5.0, 0.0), 0);  // Closer
+        buildings.spawn(id2, BuildingType::Farm, Vec2::new(10.0, 0.0), 0);  // Farther
+
+        // Complete the closer building
+        buildings.states[0] = BuildingState::Complete;
+
+        let observer = Vec2::new(0.0, 0.0);
+        let result = super::find_nearest_building_site(observer, 50.0, &buildings);
+
+        // Should find the farther one since the closer one is complete
+        assert!(result.is_some());
+        let (id, _, dist) = result.unwrap();
+        assert_eq!(id, id2);
+        assert!((dist - 10.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_find_nearest_building_site_none_in_range() {
+        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId};
+
+        let mut buildings = BuildingArchetype::new();
+        buildings.spawn(BuildingId::new(), BuildingType::House, Vec2::new(100.0, 0.0), 0);
+
+        let observer = Vec2::new(0.0, 0.0);
+        // Perception range is only 50, building is at 100
+        let result = super::find_nearest_building_site(observer, 50.0, &buildings);
+
+        assert!(result.is_none());
     }
 
     #[test]
