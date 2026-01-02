@@ -1,11 +1,13 @@
 //! ECS World - manages all entities and their components
 
 use ahash::AHashMap;
+use crate::city::building::{BuildingArchetype, BuildingId, BuildingType};
 use crate::core::types::{EntityId, Species, Vec2};
 use crate::core::astronomy::AstronomicalState;
 use crate::entity::species::human::HumanArchetype;
 use crate::entity::species::orc::OrcArchetype;
 use crate::simulation::resource_zone::ResourceZone;
+use crate::rules::SpeciesRules;
 
 /// Abundance level of a food zone
 #[derive(Debug, Clone)]
@@ -62,6 +64,10 @@ pub struct World {
     next_food_zone_id: u32,
     pub resource_zones: Vec<ResourceZone>,
     pub astronomy: AstronomicalState,
+    /// Runtime-loaded species action rules
+    pub species_rules: SpeciesRules,
+    /// All buildings in the world
+    pub buildings: BuildingArchetype,
 }
 
 impl World {
@@ -71,6 +77,14 @@ impl World {
         next_indices.insert(Species::Dwarf, 0);
         next_indices.insert(Species::Elf, 0);
         next_indices.insert(Species::Orc, 0);
+
+        // Load species rules from TOML files
+        let species_dir = std::path::Path::new("species");
+        let species_rules = crate::rules::load_species_rules(species_dir)
+            .unwrap_or_else(|e| {
+                eprintln!("Warning: Failed to load species rules: {}", e);
+                SpeciesRules::new()
+            });
 
         Self {
             current_tick: 0,
@@ -82,6 +96,8 @@ impl World {
             next_food_zone_id: 0,
             resource_zones: Vec::new(),
             astronomy: AstronomicalState::default(),
+            species_rules,
+            buildings: BuildingArchetype::new(),
         }
     }
 
@@ -114,6 +130,13 @@ impl World {
         *self.next_indices.get_mut(&Species::Orc).unwrap() += 1;
 
         entity_id
+    }
+
+    /// Spawn a new building at the given position
+    pub fn spawn_building(&mut self, building_type: BuildingType, position: Vec2) -> BuildingId {
+        let id = BuildingId::new();
+        self.buildings.spawn(id, building_type, position, self.current_tick);
+        id
     }
 
     pub fn get_entity_info(&self, entity_id: EntityId) -> Option<(Species, usize)> {
@@ -167,5 +190,30 @@ mod tests {
 
         world.add_food_zone(Vec2::new(500.0, 500.0), 15.0, Abundance::Scarce { current: 100.0, max: 100.0, regen: 0.1 });
         assert_eq!(world.food_zones.len(), 2);
+    }
+
+    #[test]
+    fn test_world_has_buildings() {
+        let mut world = World::new();
+        assert_eq!(world.buildings.count(), 0);
+
+        let id = world.spawn_building(BuildingType::House, Vec2::new(50.0, 50.0));
+
+        assert_eq!(world.buildings.count(), 1);
+        assert_eq!(world.buildings.index_of(id), Some(0));
+    }
+
+    #[test]
+    fn test_spawn_building_returns_unique_ids() {
+        let mut world = World::new();
+
+        let id1 = world.spawn_building(BuildingType::House, Vec2::new(0.0, 0.0));
+        let id2 = world.spawn_building(BuildingType::Farm, Vec2::new(10.0, 10.0));
+        let id3 = world.spawn_building(BuildingType::Wall, Vec2::new(20.0, 20.0));
+
+        assert_ne!(id1, id2);
+        assert_ne!(id2, id3);
+        assert_ne!(id1, id3);
+        assert_eq!(world.buildings.count(), 3);
     }
 }
