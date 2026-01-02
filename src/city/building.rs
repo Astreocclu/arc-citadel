@@ -132,6 +132,12 @@ pub struct BuildingArchetype {
     pub started_ticks: Vec<Tick>,
     /// Tick when completed (0 if not complete)
     pub completed_ticks: Vec<Tick>,
+    /// Active recipe ID (None if not producing)
+    pub active_recipes: Vec<Option<String>>,
+    /// Production progress (0.0 to 1.0)
+    pub production_progress: Vec<f32>,
+    /// Workers assigned to production
+    pub production_workers: Vec<u32>,
 }
 
 impl BuildingArchetype {
@@ -161,6 +167,10 @@ impl BuildingArchetype {
         self.polity_ids.push(None);
         self.started_ticks.push(tick);
         self.completed_ticks.push(0);
+        // Production fields
+        self.active_recipes.push(None);
+        self.production_progress.push(0.0);
+        self.production_workers.push(0);
         index
     }
 
@@ -183,6 +193,42 @@ impl BuildingArchetype {
             .iter()
             .enumerate()
             .filter(|(_, state)| **state == BuildingState::Complete)
+            .map(|(i, _)| i)
+    }
+
+    /// Start production of a recipe
+    pub fn start_production(&mut self, index: usize, recipe_id: String) -> bool {
+        if index >= self.count() {
+            return false;
+        }
+        if self.states[index] != BuildingState::Complete {
+            return false;
+        }
+        self.active_recipes[index] = Some(recipe_id);
+        self.production_progress[index] = 0.0;
+        true
+    }
+
+    /// Advance production by given amount, returns true if cycle completed
+    pub fn advance_production(&mut self, index: usize, amount: f32) -> bool {
+        if index >= self.count() || self.active_recipes[index].is_none() {
+            return false;
+        }
+        self.production_progress[index] += amount;
+        if self.production_progress[index] >= 1.0 {
+            self.production_progress[index] = 0.0; // Reset for next cycle
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Iterate over buildings that are producing
+    pub fn iter_producing(&self) -> impl Iterator<Item = usize> + '_ {
+        self.active_recipes
+            .iter()
+            .enumerate()
+            .filter(|(i, recipe)| recipe.is_some() && self.states[*i] == BuildingState::Complete)
             .map(|(i, _)| i)
     }
 }
@@ -330,5 +376,117 @@ mod tests {
                 bt
             );
         }
+    }
+
+    // Task 12: Production state tests
+    #[test]
+    fn test_building_production_state_initialized() {
+        let mut arch = BuildingArchetype::new();
+        let id = BuildingId::new();
+        arch.spawn(id, BuildingType::Farm, Vec2::new(0.0, 0.0), 0);
+
+        // Production fields should be initialized
+        assert_eq!(arch.active_recipes.len(), 1);
+        assert_eq!(arch.production_progress.len(), 1);
+        assert_eq!(arch.production_workers.len(), 1);
+
+        // Initial values
+        assert_eq!(arch.active_recipes[0], None);
+        assert_eq!(arch.production_progress[0], 0.0);
+        assert_eq!(arch.production_workers[0], 0);
+    }
+
+    #[test]
+    fn test_building_start_production() {
+        let mut arch = BuildingArchetype::new();
+        let id = BuildingId::new();
+        arch.spawn(id, BuildingType::Farm, Vec2::new(0.0, 0.0), 0);
+
+        // Can't produce while under construction
+        assert!(!arch.start_production(0, "farm_food".into()));
+        assert_eq!(arch.active_recipes[0], None);
+
+        // Complete it
+        arch.states[0] = BuildingState::Complete;
+        assert!(arch.start_production(0, "farm_food".into()));
+        assert_eq!(arch.active_recipes[0], Some("farm_food".into()));
+        assert_eq!(arch.production_progress[0], 0.0);
+    }
+
+    #[test]
+    fn test_building_start_production_invalid_index() {
+        let mut arch = BuildingArchetype::new();
+
+        // Invalid index should return false
+        assert!(!arch.start_production(0, "test".into()));
+        assert!(!arch.start_production(100, "test".into()));
+    }
+
+    #[test]
+    fn test_building_advance_production() {
+        let mut arch = BuildingArchetype::new();
+        let id = BuildingId::new();
+        arch.spawn(id, BuildingType::Farm, Vec2::new(0.0, 0.0), 0);
+        arch.states[0] = BuildingState::Complete;
+        arch.start_production(0, "farm_food".into());
+
+        // Advance production - not complete yet
+        assert!(!arch.advance_production(0, 0.5));
+        assert!((arch.production_progress[0] - 0.5).abs() < 0.01);
+
+        // Advance more - should complete (0.5 + 0.6 > 1.0)
+        assert!(arch.advance_production(0, 0.6));
+        // Progress should reset after completion
+        assert!((arch.production_progress[0] - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_building_advance_production_no_recipe() {
+        let mut arch = BuildingArchetype::new();
+        let id = BuildingId::new();
+        arch.spawn(id, BuildingType::Farm, Vec2::new(0.0, 0.0), 0);
+        arch.states[0] = BuildingState::Complete;
+        // No recipe started
+
+        // Should return false when no active recipe
+        assert!(!arch.advance_production(0, 0.5));
+    }
+
+    #[test]
+    fn test_building_iter_producing() {
+        let mut arch = BuildingArchetype::new();
+        arch.spawn(BuildingId::new(), BuildingType::Farm, Vec2::new(0.0, 0.0), 0);
+        arch.spawn(BuildingId::new(), BuildingType::Workshop, Vec2::new(10.0, 0.0), 0);
+        arch.spawn(BuildingId::new(), BuildingType::House, Vec2::new(20.0, 0.0), 0);
+
+        // Complete first two
+        arch.states[0] = BuildingState::Complete;
+        arch.states[1] = BuildingState::Complete;
+        // Third stays under construction
+
+        // Start production on first two
+        arch.start_production(0, "farm_food".into());
+        arch.start_production(1, "smelt_iron".into());
+
+        // Only completed buildings with active recipes should be producing
+        let producing: Vec<_> = arch.iter_producing().collect();
+        assert_eq!(producing.len(), 2);
+        assert!(producing.contains(&0));
+        assert!(producing.contains(&1));
+        // Index 2 should not be producing (under construction)
+        assert!(!producing.contains(&2));
+    }
+
+    #[test]
+    fn test_building_iter_producing_filters_incomplete() {
+        let mut arch = BuildingArchetype::new();
+        arch.spawn(BuildingId::new(), BuildingType::Farm, Vec2::new(0.0, 0.0), 0);
+
+        // Building under construction with recipe set (shouldn't be possible normally, but test the filter)
+        arch.active_recipes[0] = Some("farm_food".into());
+
+        // Should NOT be in producing list because building isn't complete
+        let producing: Vec<_> = arch.iter_producing().collect();
+        assert!(producing.is_empty());
     }
 }
