@@ -32,3 +32,7 @@ pub use courier::{
     CourierId, OrderType, OrderTarget, Order,
     CourierStatus, CourierInFlight, CourierSystem,
 };
+pub use execution::{
+    BattlePhase, BattleOutcome, BattleEvent, BattleEventType,
+    RoutingUnit, ActiveCombat, BattleState, check_battle_end,
+};
