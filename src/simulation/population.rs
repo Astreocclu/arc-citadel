@@ -19,7 +19,7 @@ pub fn housing_surplus(world: &World) -> i32 {
     }
 
     let occupied = world.humans.assigned_houses.iter()
-        .filter(|h| h.is_some())
+        .filter(|h: &&Option<crate::city::BuildingId>| h.is_some())
         .count() as i32;
 
     total_capacity - occupied

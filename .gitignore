@@ -2,3 +2,20 @@
 Cargo.lock
 .env
 *.log
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Output files
+*.tmp
+worldgen/output/
+worldgen/*.html

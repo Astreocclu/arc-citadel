@@ -1,6 +1,6 @@
 //! Human-specific archetype with SoA layout
 
-use crate::city::building::BuildingId;
+use crate::city::BuildingId;
 use crate::combat::CombatState;
 use crate::core::types::{EntityId, Vec2, Tick};
 use crate::entity::body::BodyState;
@@ -173,7 +173,6 @@ mod tests {
 
     #[test]
     fn test_human_has_assigned_house() {
-        use crate::city::building::BuildingId;
 
         let mut archetype = HumanArchetype::new();
         let id = EntityId::new();
@@ -185,7 +184,6 @@ mod tests {
 
     #[test]
     fn test_iter_homeless() {
-        use crate::city::building::BuildingId;
 
         let mut archetype = HumanArchetype::new();
 

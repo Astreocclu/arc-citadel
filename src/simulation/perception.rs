@@ -145,7 +145,7 @@ pub fn find_nearest_building_site(
     range: f32,
     buildings: &BuildingArchetype,
 ) -> Option<(BuildingId, Vec2, f32)> {
-    use crate::city::building::BuildingState;
+    
 
     let mut nearest: Option<(BuildingId, Vec2, f32)> = None;
 
@@ -224,6 +224,7 @@ pub fn perception_system(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::city::BuildingState;
     use crate::core::types::Vec2;
     use crate::ecs::world::{Abundance, FoodZone};
     use crate::entity::social::EventType;
@@ -248,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_find_nearest_building_site() {
-        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId, BuildingState};
+        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId};
 
         let mut buildings = BuildingArchetype::new();
         // Spawn two buildings under construction at different distances
@@ -268,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_find_nearest_building_site_ignores_completed() {
-        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId, BuildingState};
+        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId};
 
         let mut buildings = BuildingArchetype::new();
         let id1 = BuildingId::new();

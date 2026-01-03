@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use crate::core::types::EntityId;
-use crate::core::calendar::TimePeriod;
 use super::memory::RelationshipMemory;
 use super::event_types::{EventType, Valence};
 use super::expectations::{BehaviorPattern, PatternType, MAX_PATTERNS_PER_SLOT, SALIENCE_FLOOR};
 use super::service_types::{ServiceType, TraitIndicator};
+use crate::core::calendar::TimePeriod;
 
 /// How an entity feels about another based on memories
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

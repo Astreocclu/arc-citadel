@@ -1,6 +1,6 @@
 //! Construction system - handles building progress from worker contributions
 
-use crate::city::building::{BuildingArchetype, BuildingState, BuildingType};
+use crate::city::building::{BuildingArchetype, BuildingState};
 
 /// Base construction rate per tick
 const BASE_RATE: f32 = 1.0;
@@ -78,7 +78,7 @@ pub fn apply_construction_work(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::city::building::BuildingId;
+    use crate::city::building::{BuildingId, BuildingType};
     use crate::core::types::Vec2;
 
     #[test]
