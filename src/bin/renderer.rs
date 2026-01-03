@@ -199,6 +199,22 @@ fn setup_test_world() -> World {
         world.humans.body_states[i].fatigue = pseudo_random(&mut rng_seed) * 0.5;
     }
 
+    // Spawn 100 orcs in a separate cluster
+    for i in 0..100 {
+        world.spawn_orc(format!("Orc_{}", i));
+
+        // Cluster in bottom-right area
+        let base_x = 150.0 + (i % 10) as f32 * 6.0;
+        let base_y = 150.0 + (i / 10) as f32 * 6.0;
+        let jitter_x = pseudo_random(&mut rng_seed) * 3.0 - 1.5;
+        let jitter_y = pseudo_random(&mut rng_seed) * 3.0 - 1.5;
+        world.orcs.positions[i] = SimVec2::new(base_x + jitter_x, base_y + jitter_y);
+
+        // Orcs are generally healthier but more tired
+        world.orcs.body_states[i].overall_health = 0.7 + pseudo_random(&mut rng_seed) * 0.3;
+        world.orcs.body_states[i].fatigue = pseudo_random(&mut rng_seed) * 0.8;
+    }
+
     // Add some food zones
     world.add_food_zone(SimVec2::new(50.0, 50.0), 20.0, Abundance::Unlimited);
     world.add_food_zone(SimVec2::new(150.0, 100.0), 15.0, Abundance::Unlimited);
