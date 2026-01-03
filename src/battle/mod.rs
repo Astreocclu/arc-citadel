@@ -36,3 +36,8 @@ pub use execution::{
     BattlePhase, BattleOutcome, BattleEvent, BattleEventType,
     RoutingUnit, ActiveCombat, BattleState, check_battle_end,
 };
+pub use resolution::{
+    CombatLOD, UnitCombatResult, ShockResult,
+    calculate_casualty_rate, calculate_stress_delta,
+    resolve_unit_combat, resolve_shock_attack, determine_combat_lod,
+};
