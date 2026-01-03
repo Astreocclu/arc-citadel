@@ -34,8 +34,9 @@ fn test_population_lifecycle() {
     assert_eq!(initial_pop, 2);
 
     // Run for several in-game days (TICKS_PER_DAY = 1000)
-    // Running 10000 ticks = 10 days, with 5% growth chance per day
-    for _ in 0..10000 {
+    // Running 100000 ticks = 100 days, with 5% growth chance per day
+    // P(no growth in 100 days) = 0.95^100 ~ 0.006 (very unlikely)
+    for _ in 0..100000 {
         run_simulation_tick(&mut world);
     }
 
