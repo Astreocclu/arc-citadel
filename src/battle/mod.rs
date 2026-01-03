@@ -1,3 +1,8 @@
+//! Battle system - tactical combat with fog of war and courier delays
+//!
+//! NOT Total War: terrain is dense, vision is scarce, control is delegated.
+
+pub mod constants;
 pub mod battle_map;
 pub mod planning;
 pub mod execution;
