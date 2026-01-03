@@ -22,6 +22,8 @@ pub mod pathfinding;
 pub mod triggers;
 pub mod visibility;
 pub mod movement;
+pub mod morale;
+pub mod engagement;
 
 // Re-exports for convenient access
 pub use constants::*;
@@ -62,3 +64,12 @@ pub use visibility::{
     ArmyVisibility, calculate_army_visibility, unit_vision_range, update_army_visibility,
 };
 pub use movement::{MovementResult, advance_unit_movement, move_routing_unit};
+pub use morale::{
+    MoraleCheckResult, check_morale_break, check_rally,
+    calculate_contagion_stress, calculate_officer_death_stress,
+    apply_stress, process_morale_break, process_rally,
+};
+pub use engagement::{
+    PotentialEngagement, detect_engagement, should_initiate_combat,
+    find_all_engagements, is_flanked, is_surrounded,
+};
