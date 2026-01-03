@@ -20,6 +20,9 @@ use crate::entity::social::EventType;
 use crate::actions::catalog::ActionId;
 use crate::city::building::BuildingState;
 use crate::city::construction::{apply_construction_work, calculate_worker_contribution, ContributionResult};
+use crate::simulation::housing::assign_housing;
+use crate::simulation::consumption::consume_food;
+use crate::simulation::population::try_population_growth;
 use rayon::prelude::*;
 
 /// Run a single simulation tick
@@ -36,8 +39,9 @@ use rayon::prelude::*;
 /// 9. Execute tasks (progress current tasks, satisfy needs)
 /// 10. Regenerate food zones (scarce zones recover over time)
 /// 11. Advance tick counter
-/// 12. Decay social memories (once per day, after tick advances)
-/// 13. Decay expectations (once per day, after tick advances)
+/// 12. Run daily systems (once per day: housing assignment, food consumption, population growth)
+/// 13. Decay social memories (once per day, after tick advances)
+/// 14. Decay expectations (once per day, after tick advances)
 pub fn run_simulation_tick(world: &mut World) {
     // Advance astronomical state (time, moons, celestial events)
     world.astronomy.advance_tick();
@@ -60,6 +64,14 @@ pub fn run_simulation_tick(world: &mut World) {
     // See src/city/production.rs for implementation
 
     world.tick();
+
+    // Daily systems (run once per day)
+    if world.current_tick % TICKS_PER_DAY == 0 {
+        assign_housing(world);
+        consume_food(world);
+        try_population_growth(world);
+    }
+
     decay_social_memories(world);
     decay_expectations(world);
 }
@@ -2597,5 +2609,35 @@ mod tests {
         assert!(homeless_food > housed_food,
             "Homeless should decay faster: homeless={} housed={}",
             homeless_food, housed_food);
+    }
+
+    #[test]
+    fn test_daily_systems_run_on_tick_1000() {
+        use crate::simulation::resource_zone::ResourceType;
+        use crate::city::building::{BuildingType, BuildingState};
+        use crate::core::types::Vec2;
+
+        let mut world = World::new();
+
+        // Setup: house, food, one human
+        world.spawn_building(BuildingType::House, Vec2::new(0.0, 0.0));
+        world.buildings.states[0] = BuildingState::Complete;
+        world.stockpile.add(ResourceType::Food, 1000);
+        world.spawn_human("Adam".into());
+
+        // Human starts homeless
+        assert!(world.humans.assigned_houses[0].is_none());
+
+        // Advance to tick 1000 (first daily tick)
+        for _ in 0..TICKS_PER_DAY {
+            run_simulation_tick(&mut world);
+        }
+
+        // After daily tick:
+        // - Should be housed (housing assignment ran)
+        assert!(world.humans.assigned_houses[0].is_some(), "Should be housed after daily tick");
+
+        // - Food should have been consumed
+        assert!(world.stockpile.get(ResourceType::Food) < 1000, "Food should have been consumed");
     }
 }
