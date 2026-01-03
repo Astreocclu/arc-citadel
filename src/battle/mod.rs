@@ -4,6 +4,7 @@
 
 pub mod constants;
 pub mod hex;
+pub mod terrain;
 pub mod battle_map;
 pub mod planning;
 pub mod execution;
