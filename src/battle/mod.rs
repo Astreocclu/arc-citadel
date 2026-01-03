@@ -1,6 +1,12 @@
 //! Battle system - tactical combat with fog of war and courier delays
 //!
 //! NOT Total War: terrain is dense, vision is scarce, control is delegated.
+//!
+//! Key differences from typical RTS:
+//! - Dense terrain constrains movement (navigation is a puzzle)
+//! - Vision is scarce (information must be gathered)
+//! - Orders go through couriers (not instant)
+//! - Same simulation at all accessibility levels
 
 pub mod constants;
 pub mod hex;
@@ -9,10 +15,12 @@ pub mod battle_map;
 pub mod unit_type;
 pub mod units;
 pub mod planning;
-pub mod execution;
 pub mod courier;
+pub mod execution;
 pub mod resolution;
 
+// Re-exports for convenient access
+pub use constants::*;
 pub use hex::{BattleHexCoord, HexDirection};
 pub use terrain::{BattleTerrain, TerrainFeature};
 pub use battle_map::{BattleHex, BattleMap, VisibilityState, Objective};
