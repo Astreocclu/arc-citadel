@@ -28,3 +28,7 @@ pub use planning::{
     GoCodeTrigger, GoCode, ContingencyTrigger, ContingencyResponse,
     Contingency, UnitDeployment, BattlePlan,
 };
+pub use courier::{
+    CourierId, OrderType, OrderTarget, Order,
+    CourierStatus, CourierInFlight, CourierSystem,
+};
