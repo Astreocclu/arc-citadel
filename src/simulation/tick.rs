@@ -72,8 +72,6 @@ pub fn run_simulation_tick(world: &mut World) {
 /// - Social and purpose increase slowly
 /// - Safety decreases naturally when no threats present
 fn update_needs(world: &mut World) {
-    let dt = 1.0;
-
     // Process humans
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for i in living_indices {
@@ -82,6 +80,12 @@ fn update_needs(world: &mut World) {
             .map(|t| t.action.is_restful())
             .unwrap_or(true);
         let is_active = !is_restful;
+
+        // Homeless entities have accelerated need decay
+        let is_homeless = world.humans.assigned_houses[i].is_none();
+        let homeless_mult = if is_homeless { 1.5 } else { 1.0 };
+        let dt = 1.0 * homeless_mult;
+
         world.humans.needs[i].decay(dt, is_active);
     }
 
@@ -93,6 +97,7 @@ fn update_needs(world: &mut World) {
             .map(|t| t.action.is_restful())
             .unwrap_or(true);
         let is_active = !is_restful;
+        let dt = 1.0;
         world.orcs.needs[i].decay(dt, is_active);
     }
 }
@@ -2561,5 +2566,36 @@ mod tests {
         // Verify completed building is NOT detected as a building site
         assert!(observer_perception.nearest_building_site.is_none(),
             "Completed building should not be detected as building site");
+    }
+
+    #[test]
+    fn test_homeless_decay_multiplier() {
+        let mut world = World::new();
+
+        // Spawn two humans
+        let housed_id = world.spawn_human("Housed Helen".into());
+        let homeless_id = world.spawn_human("Homeless Harry".into());
+
+        // Assign house to one
+        use crate::city::building::BuildingType;
+        let house_id = world.spawn_building(BuildingType::House, crate::core::types::Vec2::new(0.0, 0.0));
+        let housed_idx = world.humans.index_of(housed_id).unwrap();
+        world.humans.assigned_houses[housed_idx] = Some(house_id);
+
+        // Set identical starting needs
+        let homeless_idx = world.humans.index_of(homeless_id).unwrap();
+        world.humans.needs[housed_idx].food = 0.5;
+        world.humans.needs[homeless_idx].food = 0.5;
+
+        // Run update_needs
+        update_needs(&mut world);
+
+        // Homeless should have higher food need (faster decay)
+        let housed_food = world.humans.needs[housed_idx].food;
+        let homeless_food = world.humans.needs[homeless_idx].food;
+
+        assert!(homeless_food > housed_food,
+            "Homeless should decay faster: homeless={} housed={}",
+            homeless_food, housed_food);
     }
 }
