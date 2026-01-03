@@ -53,6 +53,14 @@ impl BuildingType {
         }
     }
 
+    /// Housing capacity for residential buildings
+    pub fn housing_capacity(&self) -> u32 {
+        match self {
+            BuildingType::House => 4,
+            _ => 0,
+        }
+    }
+
     /// Materials required to construct this building
     pub fn required_materials(&self) -> Vec<(ResourceType, u32)> {
         match self {
@@ -488,5 +496,15 @@ mod tests {
         // Should NOT be in producing list because building isn't complete
         let producing: Vec<_> = arch.iter_producing().collect();
         assert!(producing.is_empty());
+    }
+
+    #[test]
+    fn test_building_housing_capacity() {
+        assert_eq!(BuildingType::House.housing_capacity(), 4);
+        assert_eq!(BuildingType::Farm.housing_capacity(), 0);
+        assert_eq!(BuildingType::Workshop.housing_capacity(), 0);
+        assert_eq!(BuildingType::Granary.housing_capacity(), 0);
+        assert_eq!(BuildingType::Wall.housing_capacity(), 0);
+        assert_eq!(BuildingType::Gate.housing_capacity(), 0);
     }
 }
