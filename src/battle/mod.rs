@@ -22,3 +22,9 @@ pub use units::{
     Element, BattleUnit, BattleFormation, Army,
     UnitStance, FormationShape,
 };
+pub use planning::{
+    GoCodeId, MovementPace, WaypointBehavior, WaitCondition,
+    Waypoint, WaypointPlan, EngagementRule,
+    GoCodeTrigger, GoCode, ContingencyTrigger, ContingencyResponse,
+    Contingency, UnitDeployment, BattlePlan,
+};
