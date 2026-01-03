@@ -21,6 +21,16 @@ use crate::aggregate::polity::{
     DryadState,
     GoblinState,
     TrollState,
+    AbyssalDemonsState,
+    ElementalState,
+    FeyState,
+    StoneGiantsState,
+    GolemState,
+    MerfolkState,
+    NagaState,
+    RevenantState,
+    VampireState,
+    LupineState,
     // CODEGEN: species_state_imports
 };
 use crate::aggregate::simulation::{MapConfig, PolityConfig};
@@ -189,27 +199,40 @@ fn get_neighbors(id: u32, width: u32, height: u32) -> Vec<u32> {
     neighbors
 }
 
-/// Generate initial polities
+/// Territory assignment: (region_id, polity_id)
+pub type TerritoryAssignment = (u32, u32);
+
+/// Generate initial polities and their territory assignments
 pub fn generate_polities(
     regions: &[Region],
     config: &PolityConfig,
     mut rng: ChaCha8Rng,
-) -> Vec<Polity> {
+) -> (Vec<Polity>, Vec<TerritoryAssignment>) {
     let mut polities = Vec::new();
+    let mut assignments = Vec::new();
     let mut claimed: HashSet<u32> = HashSet::new();
+    let mut next_id: u32 = 0;
 
     // Generate polities for each species
-    polities.extend(generate_species_polities(
-        Species::Human, config.human_count, regions, &mut claimed, &mut rng, config
-    ));
-    polities.extend(generate_species_polities(
-        Species::Dwarf, config.dwarf_count, regions, &mut claimed, &mut rng, config
-    ));
-    polities.extend(generate_species_polities(
-        Species::Elf, config.elf_count, regions, &mut claimed, &mut rng, config
-    ));
+    let (human_polities, human_assignments) = generate_species_polities(
+        Species::Human, config.human_count, regions, &mut claimed, &mut rng, config, &mut next_id
+    );
+    polities.extend(human_polities);
+    assignments.extend(human_assignments);
 
-    polities
+    let (dwarf_polities, dwarf_assignments) = generate_species_polities(
+        Species::Dwarf, config.dwarf_count, regions, &mut claimed, &mut rng, config, &mut next_id
+    );
+    polities.extend(dwarf_polities);
+    assignments.extend(dwarf_assignments);
+
+    let (elf_polities, elf_assignments) = generate_species_polities(
+        Species::Elf, config.elf_count, regions, &mut claimed, &mut rng, config, &mut next_id
+    );
+    polities.extend(elf_polities);
+    assignments.extend(elf_assignments);
+
+    (polities, assignments)
 }
 
 fn generate_species_polities(
@@ -219,8 +242,10 @@ fn generate_species_polities(
     claimed: &mut HashSet<u32>,
     rng: &mut ChaCha8Rng,
     config: &PolityConfig,
-) -> Vec<Polity> {
+    next_id: &mut u32,
+) -> (Vec<Polity>, Vec<TerritoryAssignment>) {
     let mut polities = Vec::new();
+    let mut assignments = Vec::new();
 
     // Find high-fitness regions for this species
     let mut candidates: Vec<(u32, f32)> = regions.iter()
@@ -230,7 +255,7 @@ fn generate_species_polities(
 
     candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-    for i in 0..count {
+    for _ in 0..count {
         // Pick capital - mostly high fitness, sometimes low (misplaced)
         let is_misplaced = rng.gen::<f32>() < config.misplaced_fraction;
 
@@ -272,8 +297,9 @@ fn generate_species_polities(
             }
         }
 
-        // Create polity
-        let polity_id = polities.len() as u32 + i;
+        // Create polity with unique ID
+        let polity_id = *next_id;
+        *next_id += 1;
         let polity_type = match species {
             Species::Human => {
                 if territory.len() > 20 { PolityType::Kingdom }
@@ -352,10 +378,69 @@ fn generate_species_polities(
                 else if territory.len() > 5 { PolityType::Tribe }
                 else { PolityType::Clan }
             }
+            Species::AbyssalDemons => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Court }
+                else { PolityType::Clan }
+            }
+            Species::Elemental => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Court }
+                else { PolityType::Clan }
+            }
+            Species::Fey => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Court }
+                else { PolityType::Grove }
+            }
+            Species::StoneGiants => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Hold }
+                else { PolityType::Clan }
+            }
+            Species::Golem => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Hold }
+                else { PolityType::Clan }
+            }
+            Species::Merfolk => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Tribe }
+                else { PolityType::Clan }
+            }
+            Species::Naga => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Court }
+                else { PolityType::Clan }
+            }
+            Species::Revenant => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Warband }
+                else { PolityType::Clan }
+            }
+            Species::Vampire => {
+                if territory.len() > 10 { PolityType::Kingdom }
+                else if territory.len() > 5 { PolityType::Court }
+                else { PolityType::Clan }
+            }
+            Species::Lupine => {
+                if territory.len() > 10 { PolityType::Horde }
+                else if territory.len() > 5 { PolityType::Clan }
+                else { PolityType::Warband }
+            }
             // CODEGEN: species_polity_type
         };
 
-        let population = territory.len() as u32 * 500 + rng.gen_range(100..1000);
+        // Species-specific starting population density
+        // Long-lived species have more established, denser populations
+        let pop_per_region = match species {
+            Species::Human => 500,
+            Species::Dwarf => 1500,   // Ancient holds, very high density
+            Species::Elf => 1500,     // Ancient immortal populations
+            Species::Orc => 400,      // Aggressive but sparse
+            _ => 500,
+        };
+        let population = territory.len() as u32 * pop_per_region + rng.gen_range(100..1000);
 
         let species_state = match species {
             Species::Human => SpeciesState::Human(HumanState {
@@ -364,12 +449,22 @@ fn generate_species_polities(
                 reputation: rng.gen_range(0.4..0.8),
                 piety: rng.gen_range(0.2..0.8),
                 factions: Vec::new(),
+                // Humans: balanced personality distribution
+                boldness: rng.gen_range(0.3..0.7),
+                caution: rng.gen_range(0.3..0.7),
+                war_exhaustion: 0.0,
+                morale: rng.gen_range(-0.1..0.1),
             }),
             Species::Dwarf => SpeciesState::Dwarf(DwarfState {
                 grudge_ledger: HashMap::new(),
                 oaths: Vec::new(),
                 ancestral_sites: vec![capital_id],
                 craft_focus: CraftType::Stone,
+                // Dwarves: cautious but bold when honor demands
+                boldness: rng.gen_range(0.4..0.8),
+                caution: rng.gen_range(0.5..0.9),
+                war_exhaustion: 0.0,
+                morale: rng.gen_range(0.0..0.2),
             }),
             Species::Elf => SpeciesState::Elf(ElfState {
                 memory: Vec::new(),
@@ -377,6 +472,11 @@ fn generate_species_polities(
                 pending_decisions: Vec::new(),
                 core_territory: territory.clone(),
                 pattern_assessment: rng.gen_range(0.5..0.8),
+                // Elves: very cautious, low boldness
+                boldness: rng.gen_range(0.1..0.4),
+                caution: rng.gen_range(0.6..0.9),
+                war_exhaustion: 0.0,
+                morale: rng.gen_range(-0.2..0.1),
             }),
             Species::Orc => SpeciesState::Orc(OrcState {
                 waaagh_level: 0.0,
@@ -455,6 +555,56 @@ fn generate_species_polities(
                 hoard_value: 0.0,
                 war_exhaustion: 0.0,
             }),
+            Species::AbyssalDemons => SpeciesState::AbyssalDemons(AbyssalDemonsState {
+                grudge_list: Vec::new(),
+                soul_hoard: 0,
+                corruption_seeds_planted: Vec::new(),
+            }),
+            Species::Elemental => SpeciesState::Elemental(ElementalState {
+                grudge_list: Vec::new(),
+                claimed_terrain: Vec::new(),
+                elemental_storm: 0.0,
+            }),
+            Species::Fey => SpeciesState::Fey(FeyState {
+                grudge_list: Vec::new(),
+                oath_ledger: Vec::new(),
+                mischief_targets: Vec::new(),
+            }),
+            Species::StoneGiants => SpeciesState::StoneGiants(StoneGiantsState {
+                grudge_list: Vec::new(),
+                hoard_value: 0.0,
+                tribute_demands: Vec::new(),
+            }),
+            Species::Golem => SpeciesState::Golem(GolemState {
+                grudge_list: Vec::new(),
+                core_hoard_value: 0.0,
+            }),
+            Species::Merfolk => SpeciesState::Merfolk(MerfolkState {
+                grudge_list: Vec::new(),
+                hoard_value: 0.0,
+                trade_partners: Vec::new(),
+            }),
+            Species::Naga => SpeciesState::Naga(NagaState {
+                grudge_list: Vec::new(),
+                hoarded_secrets: Vec::new(),
+                sacred_sites_claimed: 0,
+            }),
+            Species::Revenant => SpeciesState::Revenant(RevenantState {
+                grudge_list: Vec::new(),
+                hoard_of_souls: 0,
+                war_exhaustion: 0.0,
+            }),
+            Species::Vampire => SpeciesState::Vampire(VampireState {
+                thrall_network: Vec::new(),
+                grudge_list: Vec::new(),
+                hoard_value: 0.0,
+                blood_debt_owed: 0,
+            }),
+            Species::Lupine => SpeciesState::Lupine(LupineState {
+                grudge_list: Vec::new(),
+                hoard_of_bones: 0,
+                moon_phase_tracker: 0.0,
+            }),
             // CODEGEN: species_state_generation
         };
 
@@ -465,6 +615,15 @@ fn generate_species_polities(
             11..=20 => PolityTier::Duchy,
             21..=40 => PolityTier::Kingdom,
             _ => PolityTier::Empire,
+        };
+
+        // Species-specific strength multipliers (matching population.rs)
+        let (mil_mult, econ_mult) = match species {
+            Species::Human => (1.0, 1.0),
+            Species::Dwarf => (2.5, 3.0),   // Master craftsmen, legendary equipment
+            Species::Elf => (3.0, 2.5),     // Ancient magic, immortal warriors
+            Species::Orc => (1.2, 0.6),
+            _ => (1.0, 1.0),
         };
 
         let polity = Polity {
@@ -479,21 +638,23 @@ fn generate_species_polities(
             council_roles: HashMap::new(),
             population,
             capital: capital_id,
-            military_strength: population as f32 * 0.1,
-            economic_strength: population as f32 * 0.08,
+            military_strength: population as f32 * 0.1 * mil_mult,
+            economic_strength: population as f32 * 0.08 * econ_mult,
             cultural_drift: CulturalDrift::default(),
             relations: HashMap::new(),
             species_state,
             alive: true,
         };
 
-        // Update regions to point to this polity as controller
-        // Note: territory is now tracked via region.controller, not polity.territory
+        // Collect territory assignments for this polity
+        for region_id in &territory {
+            assignments.push((*region_id, polity_id));
+        }
 
         polities.push(polity);
     }
 
-    polities
+    (polities, assignments)
 }
 
 fn generate_polity_name(species: Species, rng: &mut ChaCha8Rng) -> String {
@@ -514,6 +675,16 @@ fn generate_polity_name(species: Species, rng: &mut ChaCha8Rng) -> String {
         Species::Dryad => ["Oak", "Wil", "Ash", "Elm", "Bir", "Ivy", "Fern", "Moss", "Haze", "Mist"],
         Species::Goblin => ["Snik", "Griz", "Mog", "Krag", "Zog", "Snarl", "Drik", "Fizz", "Glob", "Rikk"],
         Species::Troll => ["Stone", "Mire", "River", "Bog", "Moss", "Crag", "Deep", "Old", "Grim", "Silent"],
+        Species::AbyssalDemons => ["Ash", "Blight", "Cinder", "Dread", "Gloom", "Harrow", "Mire", "Scorch", "Vile", "Wrath"],
+        Species::Elemental => ["Ember", "Stone", "Tide", "Gale", "Cinder", "Slate", "Torrent", "Zephyr", "Magma", "Frost"],
+        Species::Fey => ["Glimmer", "Whisper", "Mist", "Thorn", "Puck", "Trick", "Willow", "Briar", "Gossamer", "Riddle"],
+        Species::StoneGiants => ["Stone", "Iron", "Granite", "Thunder", "Crag", "Boulder", "Mountain", "Deep", "High", "Grim"],
+        Species::Golem => ["Stone", "Iron", "Clay", "Granite", "Obsidian", "Ancient", "Weathered", "Runic", "Silent", "Guardian"],
+        Species::Merfolk => ["Coral", "Pearl", "Abyssal", "Tidal", "Azure", "Siren", "Kelp", "Nautilus", "Trident", "Deep"],
+        Species::Naga => ["Sesha", "Vasuki", "Nagini", "Apep", "Jormun", "Tiamat", "Quetzal", "Mucalinda", "Ananta", "Shesha"],
+        Species::Revenant => ["Bone", "Rot", "Grim", "Ash", "Dust", "Shade", "Wight", "Crypt", "Grave", "Carrion"],
+        Species::Vampire => ["Blood", "Shadow", "Night", "Crimson", "Obsidian", "Ancient", "Eternal", "Pale", "Silent", "Veiled"],
+        Species::Lupine => ["Grey", "Blood", "Moon", "Night", "Iron", "Stone", "Fang", "Shadow", "Winter", "Howling"],
         // CODEGEN: species_name_prefixes
     };
 
@@ -534,6 +705,16 @@ fn generate_polity_name(species: Species, rng: &mut ChaCha8Rng) -> String {
         Species::Dryad => ["-ara", "-iel", "-yn", "-wen", "-eth", "-ia", "-ora", "-ine", "-ana", "-ina"],
         Species::Goblin => ["-git", "-snatch", "-grab", "-ear", "-fang", "-claw", "-sneak", "-grin", "-tooth", "-eye"],
         Species::Troll => ["Gut", "Hide", "Fang", "Claw", "Bone", "Tusk", "Maw", "Scale", "Wart", "Spine"],
+        Species::AbyssalDemons => ["bane", "claw", "fang", "fiend", "maw", "rend", "shade", "spawn", "thorn", "wraith"],
+        Species::Elemental => ["Heart", "Fury", "Spire", "Crash", "Brand", "Crag", "Surge", "Howl", "Flow", "Core"],
+        Species::Fey => ["dancer", "tongue", "shadow", "leaf", "bind", "weaver", "spark", "thorn", "song", "trick"],
+        Species::StoneGiants => ["breaker", "hewer", "fist", "back", "heart", "roar", "hold", "fall", "crusher", "lord"],
+        Species::Golem => ["Sentinel", "Warden", "Construct", "Monolith", "Colossus", "Watcher", "Remnant", "Golem", "Statue", "Automaton"],
+        Species::Merfolk => ["Reef", "Tide", "Current", "Depths", "Shoal", "Breaker", "Crest", "Grotto", "Spire", "Shell"],
+        Species::Naga => ["-Guardian", "-Watcher", "-Coiled", "-the-Keeper", "-of-Secrets", "-Venom-Tongue", "-Ancient-Scale", "-Temple-Born", "-Oracle", "-the-Cursed"],
+        Species::Revenant => ["Bane", "Claw", "Walker", "Shambler", "Wraith", "Reaper", "Husk", "Blight", "Howler", "Keeper"],
+        Species::Vampire => ["Fang", "Claw", "Court", "Keep", "Sanctum", "Masque", "Vein", "Shroud", "Crypt", "Thirst"],
+        Species::Lupine => ["maw", "hide", "claw", "runner", "stalker", "bane", "heart", "caller", "pelt", "hunter"],
         // CODEGEN: species_name_suffixes
     };
 

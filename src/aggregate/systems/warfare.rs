@@ -3,9 +3,40 @@
 use rand::Rng;
 
 use crate::aggregate::world::{AggregateWorld, War, WarState, WarCause};
-use crate::aggregate::polity::Polity;
+use crate::aggregate::polity::{Polity, SpeciesState};
 use crate::aggregate::events::{HistoryLog, EventType};
 use crate::core::types::Species;
+
+/// Update a polity's war exhaustion and morale after combat
+fn update_war_state(polity: &mut Polity, won: bool, intensity: f32) {
+    match &mut polity.species_state {
+        SpeciesState::Human(s) => {
+            s.war_exhaustion = (s.war_exhaustion + intensity * 0.1).min(1.0);
+            s.morale = if won {
+                (s.morale + 0.2).min(1.0)
+            } else {
+                (s.morale - 0.3).max(-1.0)
+            };
+        }
+        SpeciesState::Dwarf(s) => {
+            s.war_exhaustion = (s.war_exhaustion + intensity * 0.08).min(1.0); // Dwarves endure
+            s.morale = if won {
+                (s.morale + 0.15).min(1.0)
+            } else {
+                (s.morale - 0.2).max(-1.0)
+            };
+        }
+        SpeciesState::Elf(s) => {
+            s.war_exhaustion = (s.war_exhaustion + intensity * 0.15).min(1.0); // Elves tire of war
+            s.morale = if won {
+                (s.morale + 0.1).min(1.0)
+            } else {
+                (s.morale - 0.4).max(-1.0) // Losses hit elves hard
+            };
+        }
+        _ => {}
+    }
+}
 
 /// Resolve all active wars for this year
 pub fn resolve_active_wars(world: &mut AggregateWorld, history: &mut HistoryLog, year: u32) {
@@ -48,6 +79,17 @@ pub fn resolve_active_wars(world: &mut AggregateWorld, history: &mut HistoryLog,
                 if let Some(p) = world.get_polity_mut(defender) {
                     if let Some(rel) = p.relations.get_mut(&aggressor) {
                         rel.at_war = false;
+                    }
+                }
+
+                // Update war exhaustion and morale based on outcome
+                if let Some(winner_id) = victor {
+                    let loser_id = if winner_id == aggressor { defender } else { aggressor };
+                    if let Some(winner) = world.get_polity_mut(winner_id) {
+                        update_war_state(winner, true, 0.5);
+                    }
+                    if let Some(loser) = world.get_polity_mut(loser_id) {
+                        update_war_state(loser, false, 0.5);
                     }
                 }
 

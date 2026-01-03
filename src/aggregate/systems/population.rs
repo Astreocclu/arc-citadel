@@ -1,6 +1,7 @@
 //! Population and economy system
 
 use crate::aggregate::world::AggregateWorld;
+use crate::aggregate::polity::SpeciesState;
 use crate::core::types::Species;
 
 /// Update populations for all polities
@@ -26,6 +27,16 @@ pub fn update_populations(world: &mut AggregateWorld) {
                 Species::Dryad => 1.01,
                 Species::Goblin => 1.07,
                 Species::Troll => 1.03,
+                Species::AbyssalDemons => 1.04,
+                Species::Elemental => 1.04,
+                Species::Fey => 1.03,
+                Species::StoneGiants => 1.03,
+                Species::Golem => 1.02,
+                Species::Merfolk => 1.03,
+                Species::Naga => 1.03,
+                Species::Revenant => 1.04,
+                Species::Vampire => 1.02,
+                Species::Lupine => 1.04,
                 // CODEGEN: species_growth_rates
             };
 
@@ -43,22 +54,33 @@ pub fn update_populations(world: &mut AggregateWorld) {
                 .sum();
 
             // Logistic growth - slow down as approaching capacity
+            // base_growth is the MAX growth rate when pop << capacity
+            // Growth approaches 1.0 (no growth) as pop -> capacity
             let density = if capacity > 0 {
-                polity.population as f32 / capacity as f32
+                (polity.population as f32 / capacity as f32).min(1.0)
             } else {
-                1.0
+                1.0 // No territory = no growth
             };
-            let logistic_modifier = (1.0 - density).max(0.0);
+            let growth_room = (1.0 - density).max(0.0);
 
-            let new_pop = (polity.population as f32
-                * base_growth
-                * territory_quality
-                * war_modifier
-                * (1.0 + logistic_modifier * 0.1)) as u32;
+            // Actual growth = 1.0 + (base_growth - 1.0) * growth_room * modifiers
+            let effective_growth = 1.0 + (base_growth - 1.0) * growth_room * territory_quality * war_modifier;
+
+            let new_pop = (polity.population as f32 * effective_growth) as u32;
+
+            // Species-specific strength multipliers
+            // Slower-growing species compensate with quality over quantity
+            let (mil_mult, econ_mult) = match polity.species {
+                Species::Human => (1.0, 1.0),      // Baseline
+                Species::Dwarf => (2.5, 3.0),     // Master craftsmen, legendary equipment
+                Species::Elf => (3.0, 2.5),       // Ancient magic, immortal warriors
+                Species::Orc => (1.2, 0.6),       // Strong but poor economy
+                _ => (1.0, 1.0),
+            };
 
             // Update strengths
-            let econ = new_pop as f32 * 0.08 * territory_quality;
-            let mil = new_pop as f32 * 0.1;
+            let econ = new_pop as f32 * 0.08 * territory_quality * econ_mult;
+            let mil = new_pop as f32 * 0.1 * mil_mult;
 
             (polity.id.0, new_pop, econ, mil)
         })
@@ -70,6 +92,36 @@ pub fn update_populations(world: &mut AggregateWorld) {
             polity.population = pop;
             polity.economic_strength = econ;
             polity.military_strength = mil;
+        }
+    }
+
+    // War exhaustion decays slowly over peacetime
+    decay_war_exhaustion(world);
+}
+
+/// Decay war exhaustion for polities not at war
+fn decay_war_exhaustion(world: &mut AggregateWorld) {
+    for polity in &mut world.polities {
+        if !polity.alive {
+            continue;
+        }
+
+        let at_war = polity.relations.values().any(|r| r.at_war);
+        if at_war {
+            continue;
+        }
+
+        match &mut polity.species_state {
+            SpeciesState::Human(s) => {
+                s.war_exhaustion = (s.war_exhaustion - 0.05).max(0.0);
+            }
+            SpeciesState::Dwarf(s) => {
+                s.war_exhaustion = (s.war_exhaustion - 0.03).max(0.0);
+            }
+            SpeciesState::Elf(s) => {
+                s.war_exhaustion = (s.war_exhaustion - 0.02).max(0.0);
+            }
+            _ => {}
         }
     }
 }

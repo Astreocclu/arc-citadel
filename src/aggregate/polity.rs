@@ -138,6 +138,16 @@ pub enum SpeciesState {
     Dryad(DryadState),
     Goblin(GoblinState),
     Troll(TrollState),
+    AbyssalDemons(AbyssalDemonsState),
+    Elemental(ElementalState),
+    Fey(FeyState),
+    StoneGiants(StoneGiantsState),
+    Golem(GolemState),
+    Merfolk(MerfolkState),
+    Naga(NagaState),
+    Revenant(RevenantState),
+    Vampire(VampireState),
+    Lupine(LupineState),
     // CODEGEN: species_state_variants
 }
 
@@ -148,6 +158,12 @@ pub struct HumanState {
     pub reputation: f32,
     pub piety: f32,
     pub factions: Vec<Faction>,
+    // Personality (set at generation, doesn't change)
+    pub boldness: f32,      // 0.0-1.0: willingness to take risks
+    pub caution: f32,       // 0.0-1.0: aversion to risk
+    // Dynamic state (changes based on events)
+    pub war_exhaustion: f32, // 0.0-1.0: accumulated war weariness
+    pub morale: f32,         // -1.0 to 1.0: recent successes/failures
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -164,6 +180,12 @@ pub struct DwarfState {
     pub oaths: Vec<Oath>,
     pub ancestral_sites: Vec<u32>,
     pub craft_focus: CraftType,
+    // Personality (set at generation, doesn't change)
+    pub boldness: f32,      // 0.0-1.0: willingness to take risks
+    pub caution: f32,       // 0.0-1.0: aversion to risk
+    // Dynamic state (changes based on events)
+    pub war_exhaustion: f32, // 0.0-1.0: accumulated war weariness
+    pub morale: f32,         // -1.0 to 1.0: recent successes/failures
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -202,6 +224,12 @@ pub struct ElfState {
     pub pending_decisions: Vec<PendingDecision>,
     pub core_territory: HashSet<u32>,
     pub pattern_assessment: f32,
+    // Personality (set at generation, doesn't change)
+    pub boldness: f32,      // 0.0-1.0: willingness to take risks
+    pub caution: f32,       // 0.0-1.0: aversion to risk
+    // Dynamic state (changes based on events)
+    pub war_exhaustion: f32, // 0.0-1.0: accumulated war weariness
+    pub morale: f32,         // -1.0 to 1.0: recent successes/failures
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -319,9 +347,90 @@ pub struct TrollState {
     pub hoard_value: f32,
     pub war_exhaustion: f32,
 }
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct AbyssalDemonsState {
+    pub grudge_list: Vec<u32>,
+    pub soul_hoard: u32,
+    pub corruption_seeds_planted: Vec<String>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct ElementalState {
+    pub grudge_list: Vec<u32>,
+    pub claimed_terrain: Vec<String>,
+    pub elemental_storm: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct FeyState {
+    pub grudge_list: Vec<u32>,
+    pub oath_ledger: Vec<String>,
+    pub mischief_targets: Vec<u32>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct StoneGiantsState {
+    pub grudge_list: Vec<String>,
+    pub hoard_value: f32,
+    pub tribute_demands: Vec<u32>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct GolemState {
+    pub grudge_list: Vec<u32>,
+    pub core_hoard_value: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct MerfolkState {
+    pub grudge_list: Vec<u32>,
+    pub hoard_value: f32,
+    pub trade_partners: Vec<u32>,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct NagaState {
+    pub grudge_list: Vec<u32>,
+    pub hoarded_secrets: Vec<String>,
+    pub sacred_sites_claimed: u32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct RevenantState {
+    pub grudge_list: Vec<u32>,
+    pub hoard_of_souls: u32,
+    pub war_exhaustion: f32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct VampireState {
+    pub thrall_network: Vec<u32>,
+    pub grudge_list: Vec<u32>,
+    pub hoard_value: f32,
+    pub blood_debt_owed: u32,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct LupineState {
+    pub grudge_list: Vec<u32>,
+    pub hoard_of_bones: u32,
+    pub moon_phase_tracker: f32,
+}
 // CODEGEN: species_state_structs
 
 impl Polity {
+    /// Calculate a dynamic threshold modifier based on personality and state.
+    /// Returns a modifier to apply to base thresholds.
+    /// Positive = more cautious, negative = more aggressive
+    pub fn decision_modifier(&self) -> f32 {
+        let (boldness, caution, exhaustion, morale) = match &self.species_state {
+            SpeciesState::Human(s) => (s.boldness, s.caution, s.war_exhaustion, s.morale),
+            SpeciesState::Dwarf(s) => (s.boldness, s.caution, s.war_exhaustion, s.morale),
+            SpeciesState::Elf(s) => (s.boldness, s.caution, s.war_exhaustion, s.morale),
+            _ => return 0.0, // Other species use base thresholds
+        };
+
+        // Personality influence: cautious polities need better odds
+        let personality_mod = (caution - boldness) * 0.3;
+
+        // State influence: exhausted/demoralized polities are more cautious
+        let exhaustion_mod = exhaustion * 0.2;
+        let morale_mod = -morale * 0.15; // High morale = lower threshold (more aggressive)
+
+        personality_mod + exhaustion_mod + morale_mod
+    }
+
     pub fn human_state(&self) -> Option<&HumanState> {
         match &self.species_state {
             SpeciesState::Human(s) => Some(s),
@@ -543,6 +652,146 @@ impl Polity {
     pub fn troll_state_mut(&mut self) -> Option<&mut TrollState> {
         match &mut self.species_state {
             SpeciesState::Troll(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn abyssal_demons_state(&self) -> Option<&AbyssalDemonsState> {
+        match &self.species_state {
+            SpeciesState::AbyssalDemons(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn abyssal_demons_state_mut(&mut self) -> Option<&mut AbyssalDemonsState> {
+        match &mut self.species_state {
+            SpeciesState::AbyssalDemons(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn elemental_state(&self) -> Option<&ElementalState> {
+        match &self.species_state {
+            SpeciesState::Elemental(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn elemental_state_mut(&mut self) -> Option<&mut ElementalState> {
+        match &mut self.species_state {
+            SpeciesState::Elemental(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn fey_state(&self) -> Option<&FeyState> {
+        match &self.species_state {
+            SpeciesState::Fey(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn fey_state_mut(&mut self) -> Option<&mut FeyState> {
+        match &mut self.species_state {
+            SpeciesState::Fey(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn stone_giants_state(&self) -> Option<&StoneGiantsState> {
+        match &self.species_state {
+            SpeciesState::StoneGiants(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn stone_giants_state_mut(&mut self) -> Option<&mut StoneGiantsState> {
+        match &mut self.species_state {
+            SpeciesState::StoneGiants(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn golem_state(&self) -> Option<&GolemState> {
+        match &self.species_state {
+            SpeciesState::Golem(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn golem_state_mut(&mut self) -> Option<&mut GolemState> {
+        match &mut self.species_state {
+            SpeciesState::Golem(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn merfolk_state(&self) -> Option<&MerfolkState> {
+        match &self.species_state {
+            SpeciesState::Merfolk(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn merfolk_state_mut(&mut self) -> Option<&mut MerfolkState> {
+        match &mut self.species_state {
+            SpeciesState::Merfolk(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn naga_state(&self) -> Option<&NagaState> {
+        match &self.species_state {
+            SpeciesState::Naga(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn naga_state_mut(&mut self) -> Option<&mut NagaState> {
+        match &mut self.species_state {
+            SpeciesState::Naga(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn revenant_state(&self) -> Option<&RevenantState> {
+        match &self.species_state {
+            SpeciesState::Revenant(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn revenant_state_mut(&mut self) -> Option<&mut RevenantState> {
+        match &mut self.species_state {
+            SpeciesState::Revenant(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn vampire_state(&self) -> Option<&VampireState> {
+        match &self.species_state {
+            SpeciesState::Vampire(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn vampire_state_mut(&mut self) -> Option<&mut VampireState> {
+        match &mut self.species_state {
+            SpeciesState::Vampire(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn lupine_state(&self) -> Option<&LupineState> {
+        match &self.species_state {
+            SpeciesState::Lupine(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn lupine_state_mut(&mut self) -> Option<&mut LupineState> {
+        match &mut self.species_state {
+            SpeciesState::Lupine(s) => Some(s),
             _ => None,
         }
     }

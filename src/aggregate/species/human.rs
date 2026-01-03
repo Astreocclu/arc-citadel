@@ -5,12 +5,12 @@ use crate::aggregate::world::{AggregateWorld, WarCause};
 use crate::aggregate::events::EventType;
 use crate::aggregate::systems::expansion::{find_expansion_targets, calculate_human_expansion_pressure};
 
-const EXPANSION_THRESHOLD: f32 = 0.6;
-const CIVIL_WAR_THRESHOLD: f32 = 0.3;
-const REPUTATION_CRISIS: f32 = 0.2;
-const BETRAYAL_THRESHOLD: f32 = 0.7;
+const EXPANSION_THRESHOLD: f32 = 0.3;  // More aggressive expansion
+const CIVIL_WAR_THRESHOLD: f32 = 0.4;  // More internal strife
+const REPUTATION_CRISIS: f32 = 0.3;    // More honor wars
+const BETRAYAL_THRESHOLD: f32 = 0.5;   // More backstabbing
 
-pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType> {
+pub fn tick(polity: &Polity, world: &AggregateWorld, _year: u32) -> Vec<EventType> {
     let mut events = Vec::new();
 
     let state = match polity.human_state() {
@@ -21,12 +21,13 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
     // AMBITION: Expansion pressure
     let expansion_pressure = calculate_human_expansion_pressure(polity, world);
 
-    if expansion_pressure > EXPANSION_THRESHOLD {
+    let dynamic_expansion_threshold = EXPANSION_THRESHOLD + polity.decision_modifier() * 0.5;
+    if expansion_pressure > dynamic_expansion_threshold {
         let targets = find_expansion_targets(polity, world);
 
         if let Some(&easy_target) = targets.unclaimed.first() {
             events.push(EventType::Expansion { polity: polity.id.0, region: easy_target });
-        } else if let Some(&(region, controller)) = targets.weak_neighbors.first() {
+        } else if let Some(&(_region, controller)) = targets.weak_neighbors.first() {
             // Consider war
             if should_declare_war(polity, controller, world) {
                 events.push(EventType::WarDeclared {
@@ -75,9 +76,14 @@ fn should_declare_war(polity: &Polity, target: u32, world: &AggregateWorld) -> b
         }
     }
 
-    // Compare strength
+    // Dynamic threshold based on personality and state
+    let base_threshold = 0.8;
+    let modifier = polity.decision_modifier();
+    let threshold = (base_threshold + modifier).clamp(0.5, 1.5);
+
+    // Compare strength with dynamic threshold
     if let Some(target_polity) = world.get_polity(target) {
-        polity.military_strength > target_polity.military_strength * 1.2
+        polity.military_strength > target_polity.military_strength * threshold
     } else {
         false
     }
@@ -99,8 +105,11 @@ fn should_betray_ally(polity: &Polity, _world: &AggregateWorld) -> bool {
         None => return false,
     };
 
-    // Low cohesion + high expansion pressure = betrayal
-    state.internal_cohesion < 0.5 && state.expansion_pressure > BETRAYAL_THRESHOLD
+    // Bold polities with low cohesion betray more easily
+    let boldness_factor = state.boldness * 0.2;
+    let adjusted_threshold = BETRAYAL_THRESHOLD - boldness_factor;
+
+    state.internal_cohesion < 0.5 && state.expansion_pressure > adjusted_threshold
 }
 
 fn pick_betrayal_victim(polity: &Polity, world: &AggregateWorld) -> Option<u32> {

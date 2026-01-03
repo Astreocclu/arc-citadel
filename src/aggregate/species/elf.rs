@@ -7,9 +7,9 @@ use crate::aggregate::systems::expansion::find_expansion_targets;
 use crate::aggregate::region::Terrain;
 use crate::core::types::Species;
 
-const GRIEF_PARALYSIS_THRESHOLD: f32 = 0.9;
-const GRIEF_ERUPTION_THRESHOLD: f32 = 0.7;
-const EXPANSION_POP_THRESHOLD: u32 = 8000;
+const GRIEF_PARALYSIS_THRESHOLD: f32 = 0.95;  // Harder to paralyze
+const GRIEF_ERUPTION_THRESHOLD: f32 = 0.5;   // Easier to provoke
+const EXPANSION_POP_THRESHOLD: u32 = 1500;   // Expand more readily
 
 pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType> {
     let mut events = Vec::new();
@@ -44,10 +44,15 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
 
     let total_grief = state.grief_level + grief_this_year;
 
-    if total_grief > GRIEF_PARALYSIS_THRESHOLD {
+    // Personality affects grief thresholds
+    let modifier = polity.decision_modifier();
+    let paralysis_threshold = (GRIEF_PARALYSIS_THRESHOLD - modifier * 0.1).clamp(0.8, 1.0);
+    let eruption_threshold = (GRIEF_ERUPTION_THRESHOLD + modifier * 0.2).clamp(0.3, 0.8);
+
+    if total_grief > paralysis_threshold {
         // Withdraw from world
         events.push(EventType::Isolation { polity: polity.id.0 });
-    } else if total_grief > GRIEF_ERUPTION_THRESHOLD {
+    } else if total_grief > eruption_threshold {
         // Lash out at primary grief source
         if let Some(target) = find_primary_grief_source(polity, world) {
             // Start deliberation about war (they don't attack immediately)
@@ -73,9 +78,11 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
         }
     }
 
-    // SLOW-GROWTH: Elves rarely expand
+    // SLOW-GROWTH: Elves prefer forests but will expand when needed
     if polity.population > EXPANSION_POP_THRESHOLD {
         let targets = find_expansion_targets(polity, world);
+
+        // First try perfect forest
         let perfect_forest: Option<u32> = targets.unclaimed.iter()
             .filter(|&&region_id| {
                 world.get_region(region_id)
@@ -88,7 +95,27 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
             .copied()
             .next();
 
-        if let Some(region) = perfect_forest {
+        // Fall back to any forest
+        let any_forest: Option<u32> = targets.unclaimed.iter()
+            .filter(|&&region_id| {
+                world.get_region(region_id)
+                    .map(|r| r.terrain == Terrain::Forest)
+                    .unwrap_or(false)
+            })
+            .copied()
+            .next();
+
+        // Finally, any acceptable terrain
+        let any_terrain: Option<u32> = targets.unclaimed.iter()
+            .filter(|&&region_id| {
+                world.get_region(region_id)
+                    .map(|r| r.fitness.get(&Species::Elf).unwrap_or(&0.0) > &0.3)
+                    .unwrap_or(false)
+            })
+            .copied()
+            .next();
+
+        if let Some(region) = perfect_forest.or(any_forest).or(any_terrain) {
             events.push(EventType::Expansion { polity: polity.id.0, region });
         }
     }

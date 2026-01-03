@@ -6,10 +6,10 @@ use crate::aggregate::events::EventType;
 use crate::aggregate::systems::expansion::find_expansion_targets;
 use crate::aggregate::region::Terrain;
 
-const GRUDGE_WAR_THRESHOLD: f32 = 0.8;
-const EXPANSION_POP_THRESHOLD: u32 = 5000;
+const GRUDGE_WAR_THRESHOLD: f32 = 0.4;  // Dwarves hold grudges easily
+const EXPANSION_POP_THRESHOLD: u32 = 1000;  // Expand earlier
 
-pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType> {
+pub fn tick(polity: &Polity, world: &AggregateWorld, _year: u32) -> Vec<EventType> {
     let mut events = Vec::new();
 
     let state = match polity.dwarf_state() {
@@ -21,7 +21,10 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
     for (&target_id, grudges) in &state.grudge_ledger {
         let total_severity: f32 = grudges.iter().map(|g| g.severity).sum();
 
-        if total_severity > GRUDGE_WAR_THRESHOLD {
+        // Cautious dwarves wait longer, bold dwarves act faster
+        let modifier = polity.decision_modifier();
+        let dynamic_threshold = (GRUDGE_WAR_THRESHOLD + modifier * 0.3).clamp(0.2, 0.8);
+        if total_severity > dynamic_threshold {
             // Check if we can reach them and aren't already at war
             if let Some(rel) = polity.relations.get(&target_id) {
                 if rel.at_war {
@@ -43,9 +46,11 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
         }
     }
 
-    // STONE-DEBT: Only expand into appropriate terrain
+    // STONE-DEBT: Prefer mountains/hills, but will take any terrain when necessary
     let targets = find_expansion_targets(polity, world);
-    let valid_expansion: Vec<u32> = targets.unclaimed.iter()
+
+    // First try preferred terrain
+    let preferred_expansion: Vec<u32> = targets.unclaimed.iter()
         .filter(|&&region_id| {
             world.get_region(region_id)
                 .map(|r| matches!(r.terrain, Terrain::Mountain | Terrain::Hills))
@@ -54,11 +59,23 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
         .copied()
         .collect();
 
-    if !valid_expansion.is_empty() && polity.population > EXPANSION_POP_THRESHOLD {
-        events.push(EventType::Expansion {
-            polity: polity.id.0,
-            region: valid_expansion[0],
-        });
+    // Fall back to any non-water terrain
+    let any_expansion: Vec<u32> = targets.unclaimed.iter()
+        .filter(|&&region_id| {
+            world.get_region(region_id)
+                .map(|r| !matches!(r.terrain, Terrain::Coast | Terrain::Marsh))
+                .unwrap_or(false)
+        })
+        .copied()
+        .collect();
+
+    if polity.population > EXPANSION_POP_THRESHOLD {
+        if let Some(&region) = preferred_expansion.first().or(any_expansion.first()) {
+            events.push(EventType::Expansion {
+                polity: polity.id.0,
+                region,
+            });
+        }
     }
 
     // ANCESTOR-WEIGHT: Check if ancestral sites are held by others
