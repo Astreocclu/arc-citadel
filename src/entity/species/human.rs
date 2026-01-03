@@ -1,5 +1,6 @@
 //! Human-specific archetype with SoA layout
 
+use crate::city::building::BuildingId;
 use crate::combat::CombatState;
 use crate::core::types::{EntityId, Vec2, Tick};
 use crate::entity::body::BodyState;
@@ -62,6 +63,8 @@ pub struct HumanArchetype {
     pub building_skills: Vec<f32>,
     /// Combat state for each entity
     pub combat_states: Vec<CombatState>,
+    /// Assigned housing (None = homeless)
+    pub assigned_houses: Vec<Option<BuildingId>>,
 }
 
 impl HumanArchetype {
@@ -82,6 +85,7 @@ impl HumanArchetype {
             event_buffers: Vec::new(),
             building_skills: Vec::new(),
             combat_states: Vec::new(),
+            assigned_houses: Vec::new(),
         }
     }
 
@@ -105,6 +109,7 @@ impl HumanArchetype {
         self.event_buffers.push(EventBuffer::default());
         self.building_skills.push(0.0);
         self.combat_states.push(CombatState::default());
+        self.assigned_houses.push(None);
     }
 
     pub fn index_of(&self, id: EntityId) -> Option<usize> {
@@ -157,5 +162,17 @@ mod tests {
 
         assert_eq!(archetype.combat_states.len(), 1);
         assert!(archetype.combat_states[0].can_fight());
+    }
+
+    #[test]
+    fn test_human_has_assigned_house() {
+        use crate::city::building::BuildingId;
+
+        let mut archetype = HumanArchetype::new();
+        let id = EntityId::new();
+        archetype.spawn(id, "Homeless Harry".into(), 0);
+
+        assert_eq!(archetype.assigned_houses.len(), 1);
+        assert_eq!(archetype.assigned_houses[0], None); // Starts homeless
     }
 }
