@@ -2,6 +2,7 @@
 
 use ahash::AHashMap;
 use crate::city::building::{BuildingArchetype, BuildingId, BuildingType};
+use crate::city::stockpile::Stockpile;
 use crate::core::types::{EntityId, Species, Vec2};
 use crate::core::astronomy::AstronomicalState;
 use crate::entity::species::human::HumanArchetype;
@@ -68,6 +69,8 @@ pub struct World {
     pub species_rules: SpeciesRules,
     /// All buildings in the world
     pub buildings: BuildingArchetype,
+    /// Global stockpile for resources (MVP - later per-settlement)
+    pub stockpile: Stockpile,
 }
 
 impl World {
@@ -98,6 +101,7 @@ impl World {
             astronomy: AstronomicalState::default(),
             species_rules,
             buildings: BuildingArchetype::new(),
+            stockpile: Stockpile::new(),
         }
     }
 
@@ -215,5 +219,19 @@ mod tests {
         assert_ne!(id2, id3);
         assert_ne!(id1, id3);
         assert_eq!(world.buildings.count(), 3);
+    }
+
+    #[test]
+    fn test_world_has_stockpile() {
+        use crate::simulation::resource_zone::ResourceType;
+
+        let mut world = World::new();
+
+        // Stockpile should exist and be empty
+        assert_eq!(world.stockpile.get(ResourceType::Food), 0);
+
+        // Should be able to add resources
+        world.stockpile.add(ResourceType::Food, 100);
+        assert_eq!(world.stockpile.get(ResourceType::Food), 100);
     }
 }
