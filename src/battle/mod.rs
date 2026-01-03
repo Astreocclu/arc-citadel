@@ -21,6 +21,7 @@ pub mod resolution;
 pub mod pathfinding;
 pub mod triggers;
 pub mod visibility;
+pub mod movement;
 
 // Re-exports for convenient access
 pub use constants::*;
@@ -60,3 +61,4 @@ pub use triggers::{
 pub use visibility::{
     ArmyVisibility, calculate_army_visibility, unit_vision_range, update_army_visibility,
 };
+pub use movement::{MovementResult, advance_unit_movement, move_routing_unit};
