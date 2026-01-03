@@ -122,6 +122,13 @@ impl HumanArchetype {
             .filter(|(_, &alive)| alive)
             .map(|(i, _)| i)
     }
+
+    pub fn iter_homeless(&self) -> impl Iterator<Item = usize> + '_ {
+        self.alive.iter()
+            .enumerate()
+            .filter(|(idx, &alive)| alive && self.assigned_houses[*idx].is_none())
+            .map(|(i, _)| i)
+    }
 }
 
 impl Default for HumanArchetype {
@@ -174,5 +181,27 @@ mod tests {
 
         assert_eq!(archetype.assigned_houses.len(), 1);
         assert_eq!(archetype.assigned_houses[0], None); // Starts homeless
+    }
+
+    #[test]
+    fn test_iter_homeless() {
+        use crate::city::building::BuildingId;
+
+        let mut archetype = HumanArchetype::new();
+
+        // Spawn 3 humans
+        archetype.spawn(EntityId::new(), "Housed".into(), 0);
+        archetype.spawn(EntityId::new(), "Homeless1".into(), 0);
+        archetype.spawn(EntityId::new(), "Homeless2".into(), 0);
+
+        // Assign first one to a house
+        archetype.assigned_houses[0] = Some(BuildingId::new());
+
+        let homeless: Vec<_> = archetype.iter_homeless().collect();
+
+        assert_eq!(homeless.len(), 2);
+        assert!(homeless.contains(&1));
+        assert!(homeless.contains(&2));
+        assert!(!homeless.contains(&0));
     }
 }
