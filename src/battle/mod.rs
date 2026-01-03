@@ -12,3 +12,5 @@ pub mod courier;
 pub mod resolution;
 
 pub use hex::{BattleHexCoord, HexDirection};
+pub use terrain::{BattleTerrain, TerrainFeature};
+pub use battle_map::{BattleHex, BattleMap, VisibilityState, Objective};
