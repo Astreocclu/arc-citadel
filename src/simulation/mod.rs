@@ -8,6 +8,7 @@ pub mod expectation_formation;
 pub mod violation_detection;
 pub mod rule_eval;
 pub mod value_dynamics;
+pub mod housing;
 
 pub use resource_zone::{ResourceZone, ResourceType};
 pub use expectation_formation::{record_observation, process_observations, infer_patterns_from_action};
