@@ -246,3 +246,322 @@ fn test_combat_state_component() {
     state.add_fatigue(0.9);
     assert_eq!(state.fatigue, 1.0);
 }
+
+// ============================================================================
+// COOL HISTORICAL SCENARIO TESTS
+// ============================================================================
+
+/// The Battle of Agincourt Problem: Why longbows beat French knights
+///
+/// French knights in full plate charged across muddy fields. The longbows
+/// couldn't penetrate plate... but they could exhaust and demoralize.
+#[test]
+fn test_agincourt_longbow_vs_plate() {
+    let longbow = WeaponProperties {
+        edge: Edge::Sharp,      // Broadhead arrows are sharp
+        mass: Mass::Light,      // Arrows are light
+        reach: Reach::Pike,     // Outranges everything
+        special: vec![],
+    };
+    let plate = ArmorProperties::plate();
+
+    // Arrows CANNOT penetrate plate
+    let pen = resolve_penetration(longbow.edge, plate.rigidity, false);
+    assert_eq!(pen, PenetrationResult::Deflect);
+
+    // Light mass = negligible trauma
+    let trauma = resolve_trauma(longbow.mass, plate.padding);
+    assert_eq!(trauma, TraumaResult::Negligible);
+
+    // No physical wound!
+    let wound = combine_results(pen, trauma, BodyZone::Torso);
+    assert_eq!(wound.severity, WoundSeverity::None);
+
+    // BUT: The morale path still works
+    // 500 yards of arrows while trudging through mud...
+    let mut french_knight_morale = MoraleState::default();
+
+    // Simulate being under fire for extended period
+    for _ in 0..20 {
+        french_knight_morale.apply_stress(StressSource::TakingFire);
+    }
+    // Near misses are terrifying even if they can't hurt you
+    for _ in 0..10 {
+        french_knight_morale.apply_stress(StressSource::NearMiss);
+    }
+
+    // After prolonged fire, morale degrades even without wounds
+    assert!(french_knight_morale.current_stress > 0.5);
+}
+
+/// The Zweihänder Solution: How landsknechts dealt with pike formations
+///
+/// Pike squares were nearly invincible... until someone got inside.
+/// Two-handed swords could break pikes and create gaps.
+#[test]
+fn test_zweihander_vs_pike_formation() {
+    let zweihander = WeaponProperties {
+        edge: Edge::Sharp,
+        mass: Mass::Heavy,      // 3-4kg of steel
+        reach: Reach::Long,     // Can parry pikes
+        special: vec![],
+    };
+
+    // Pikeman only has cloth beneath - leather vest doesn't cover limbs
+    let pikeman_armor = ArmorProperties::none(); // Cloth only
+
+    // Once inside pike range, the zweihänder is devastating
+    let pen = resolve_penetration(zweihander.edge, pikeman_armor.rigidity, false);
+    assert_eq!(pen, PenetrationResult::Cut); // Sharp vs Cloth = Cut
+
+    let trauma = resolve_trauma(zweihander.mass, pikeman_armor.padding);
+    assert_eq!(trauma, TraumaResult::KnockdownBruise); // Heavy vs None = Knockdown
+
+    // Combined: Serious wound (Cut + KnockdownBruise both map to Serious)
+    // The pikeman is cut AND knocked down - not fatal, but out of the fight
+    let wound = combine_results(pen, trauma, BodyZone::Torso);
+    assert_eq!(wound.severity, WoundSeverity::Serious);
+    assert!(wound.bleeding);       // Cut causes bleeding
+    assert!(wound.mobility_impact); // Knockdown affects mobility
+}
+
+/// The Murder Stroke: When swords become hammers
+///
+/// Knights in armor would grip their sword by the blade and use the
+/// crossguard as a hammer. Called "Mordhau" (murder-stroke).
+/// The concentrated weight of pommel + crossguard hits like a mace.
+#[test]
+fn test_mordhau_murder_stroke() {
+    // Sword held by blade, pommel/guard used as bludgeon
+    // The concentrated mass hitting a small point = effective heavy weapon
+    let mordhau = WeaponProperties {
+        edge: Edge::Blunt,      // Using the guard, not the edge
+        mass: Mass::Heavy,      // Concentrated impact = effectively heavy
+        reach: Reach::Short,    // Half-sword grip = shorter reach
+        special: vec![],
+    };
+    let plate = ArmorProperties::plate();
+
+    // Blunt doesn't try to cut
+    let pen = resolve_penetration(mordhau.edge, plate.rigidity, false);
+    assert_eq!(pen, PenetrationResult::NoPenetrationAttempt);
+
+    // BUT: Trauma still transfers through plate
+    let trauma = resolve_trauma(mordhau.mass, plate.padding);
+    assert_eq!(trauma, TraumaResult::Fatigue);
+
+    // This is why mordhau was used: concuss through the helmet
+    let head_wound = combine_results(pen, trauma, BodyZone::Head);
+    // No penetration, but repeated blows cause fatigue and disorientation
+    assert!(!head_wound.bleeding); // Blunt trauma doesn't bleed externally
+}
+
+/// The Stiletto Problem: Why assassins love thin blades
+///
+/// Stilettos and rondel daggers were designed to find gaps in armor.
+#[test]
+fn test_stiletto_vs_mail() {
+    let stiletto = WeaponProperties {
+        edge: Edge::Razor,      // Needle-sharp point
+        mass: Mass::Light,      // Dagger weight
+        reach: Reach::Grapple,  // Grappling range
+        special: vec![arc_citadel::combat::WeaponSpecial::Piercing], // Finds gaps!
+    };
+    let mail = ArmorProperties::mail();
+
+    // WITHOUT piercing: razor vs mail = snag (gets caught in rings)
+    let pen_no_pierce = resolve_penetration(Edge::Razor, Rigidity::Mail, false);
+    assert_eq!(pen_no_pierce, PenetrationResult::Snag);
+
+    // WITH piercing: finds the gaps between rings
+    // Piercing upgrades Snag → ShallowCut (one category better)
+    let pen_pierce = resolve_penetration(stiletto.edge, mail.rigidity,
+        stiletto.has_special(arc_citadel::combat::WeaponSpecial::Piercing));
+    assert_eq!(pen_pierce, PenetrationResult::ShallowCut);
+
+    // A stiletto to the armpit (gap in armor) causes a wound
+    let wound = combine_results(pen_pierce, TraumaResult::Negligible, BodyZone::Torso);
+    assert_eq!(wound.severity, WoundSeverity::Minor); // ShallowCut = Minor
+    assert!(!wound.bleeding); // ShallowCut doesn't bleed (only Cut and DeepCut)
+}
+
+/// The Cavalry Charge: Mass times velocity equals terror
+///
+/// A horse and rider weighing 600kg+ at full gallop is Massive mass.
+#[test]
+fn test_cavalry_charge_impact() {
+    let lance_charge = WeaponProperties {
+        edge: Edge::Sharp,      // Lance point
+        mass: Mass::Massive,    // Horse + rider + momentum
+        reach: Reach::Pike,     // Couched lance
+        special: vec![],
+    };
+
+    // Even plate cannot withstand a direct lance hit
+    let plate = ArmorProperties::plate();
+
+    // Penetration: Sharp vs Plate still deflects
+    let pen = resolve_penetration(lance_charge.edge, plate.rigidity, false);
+    assert_eq!(pen, PenetrationResult::Deflect);
+
+    // BUT: Massive trauma overwhelms even heavy padding
+    let trauma = resolve_trauma(lance_charge.mass, plate.padding);
+    assert_eq!(trauma, TraumaResult::Stagger); // Heavy padding reduces to stagger
+
+    // Against leather (light padding): brutal knockdown
+    let leather = ArmorProperties::leather();
+    let trauma_vs_leather = resolve_trauma(lance_charge.mass, leather.padding);
+    assert_eq!(trauma_vs_leather, TraumaResult::KnockdownBruise); // Internal injuries
+
+    // Against unarmored: catastrophic
+    let unarmored = ArmorProperties::none();
+    let trauma_vs_unarmored = resolve_trauma(lance_charge.mass, unarmored.padding);
+    assert_eq!(trauma_vs_unarmored, TraumaResult::KnockdownCrush); // Broken bones
+
+    // And the morale impact...
+    let mut infantry_morale = MoraleState::default();
+    infantry_morale.apply_stress(StressSource::CavalryCharge);
+    assert!(infantry_morale.current_stress >= 0.20);
+}
+
+/// The Phalanx Problem: Reach determines who strikes first
+///
+/// Spears beat swords. Pikes beat spears. Getting inside pike range beats pikes.
+#[test]
+fn test_reach_advantage_cascade() {
+    // Pike (longest) > Spear > Sword > Dagger (shortest)
+    assert!(Reach::Pike > Reach::Long);
+    assert!(Reach::Long > Reach::Medium);
+    assert!(Reach::Medium > Reach::Short);
+    assert!(Reach::Short > Reach::Grapple);
+
+    // In an exchange, longer reach strikes first
+    let pikeman = Combatant::test_spearman(); // Has Long reach
+    let mut swordsman = Combatant::test_swordsman(); // Has Short reach
+    swordsman.stance = CombatStance::Pressing;
+
+    let result = resolve_exchange(&pikeman, &swordsman);
+    assert!(result.attacker_struck_first); // Pike always strikes first
+
+    // BUT if you get inside pike range (grappling), the pike is useless
+    let dagger_fighter = Combatant {
+        weapon: WeaponProperties::dagger(),
+        armor: ArmorProperties::none(),
+        stance: CombatStance::Pressing,
+        skill: arc_citadel::combat::CombatSkill::veteran(),
+    };
+
+    // At grapple range, the dagger fighter has the advantage
+    // (This would require getting past the pike first - a different system)
+    assert_eq!(dagger_fighter.weapon.reach, Reach::Grapple);
+}
+
+/// The Rout Cascade: When one unit breaks, others follow
+///
+/// Morale is contagious. Seeing your allies flee destroys your will to fight.
+#[test]
+fn test_morale_cascade() {
+    use arc_citadel::core::types::EntityId;
+
+    let mut unit_a_morale = MoraleState::default();
+    let mut unit_b_morale = MoraleState::default();
+    let mut unit_c_morale = MoraleState::default();
+
+    // Unit A takes devastating punishment:
+    // - OfficerKilled: 0.30
+    // - FlankAttack: 0.20
+    // - AmbushSprung: 0.25
+    // - WoundReceived: 0.15
+    // - TakingCasualties x3: 0.15
+    // Total: 1.05 (exceeds 1.0 threshold)
+    unit_a_morale.apply_stress(StressSource::OfficerKilled);
+    unit_a_morale.apply_stress(StressSource::FlankAttack);
+    unit_a_morale.apply_stress(StressSource::AmbushSprung);
+    unit_a_morale.apply_stress(StressSource::WoundReceived);
+    unit_a_morale.apply_stress(StressSource::TakingCasualties);
+    unit_a_morale.apply_stress(StressSource::TakingCasualties);
+    unit_a_morale.apply_stress(StressSource::TakingCasualties);
+
+    // Unit A breaks (stress > 1.0 threshold)
+    assert_eq!(unit_a_morale.check_break(), BreakResult::Breaking);
+
+    // Unit B sees Unit A breaking
+    unit_b_morale.apply_stress(StressSource::AlliesBreaking);
+    unit_b_morale.apply_stress(StressSource::AlliesBreaking);
+
+    // Unit B is now also stressed
+    assert!(unit_b_morale.current_stress >= 0.20);
+
+    // Unit C is now alone and exposed
+    unit_c_morale.apply_stress(StressSource::AloneExposed);
+    unit_c_morale.apply_stress(StressSource::Surrounded);
+
+    // The cascade continues...
+    assert!(unit_c_morale.current_stress > 0.0);
+
+    // Formation-level view
+    let entities: Vec<EntityId> = (0..100).map(|_| EntityId::new()).collect();
+    let mut formation = FormationState::new(entities);
+
+    // 40% casualties = formation breaks
+    formation.broken_count = 40;
+    assert!(formation.is_broken());
+}
+
+/// The Exhaustion Death Spiral: Fatigue makes everything worse
+///
+/// A tired fighter makes mistakes. Mistakes lead to wounds. Wounds cause fatigue.
+#[test]
+fn test_exhaustion_death_spiral() {
+    let mut state = CombatState::default();
+
+    // Fresh fighter can attack
+    assert!(state.stance.can_attack());
+    assert_eq!(state.fatigue, 0.0);
+
+    // After sustained combat...
+    state.add_fatigue(0.3); // From melee violence
+    state.add_fatigue(0.2); // From attacking
+    state.add_fatigue(0.2); // From defending
+
+    // Getting tired (70% fatigue)
+    assert!(state.fatigue >= 0.7);
+
+    // Near exhaustion threshold (0.9 in constants)
+    state.add_fatigue(0.2);
+    assert!(state.fatigue >= 0.9);
+
+    // In a real fight, this would force a stance transition to Recovering
+    // where the fighter is vulnerable to free hits
+}
+
+/// The Shield Wall: Why formations matter
+///
+/// Individual fighters lose to coordinated units. Cohesion is everything.
+#[test]
+fn test_formation_cohesion() {
+    use arc_citadel::core::types::EntityId;
+
+    // Tight shield wall
+    let entities: Vec<EntityId> = (0..30).map(|_| EntityId::new()).collect();
+    let mut shield_wall = FormationState::new(entities);
+
+    assert_eq!(shield_wall.cohesion, 1.0); // Perfect cohesion at start
+    assert_eq!(shield_wall.pressure, 0.0); // Neutral pressure
+
+    // Taking pressure but holding
+    shield_wall.apply_pressure_delta(-0.2);
+    assert_eq!(shield_wall.pressure_category(), PressureCategory::Neutral);
+
+    // Heavy pressure - losing ground
+    shield_wall.apply_pressure_delta(-0.3);
+    assert_eq!(shield_wall.pressure_category(), PressureCategory::Losing);
+
+    // Casualties start breaking cohesion
+    shield_wall.broken_count = 5; // ~17% casualties
+    assert!(!shield_wall.is_broken()); // Not broken yet (threshold is 40%)
+
+    // More casualties...
+    shield_wall.broken_count = 12; // 40% casualties
+    assert!(shield_wall.is_broken()); // Formation breaks!
+}
