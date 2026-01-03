@@ -19,6 +19,7 @@ pub mod courier;
 pub mod execution;
 pub mod resolution;
 pub mod pathfinding;
+pub mod visibility;
 
 // Re-exports for convenient access
 pub use constants::*;
@@ -51,3 +52,6 @@ pub use resolution::{
     resolve_unit_combat, resolve_shock_attack, determine_combat_lod,
 };
 pub use pathfinding::{find_path, path_cost};
+pub use visibility::{
+    ArmyVisibility, calculate_army_visibility, unit_vision_range, update_army_visibility,
+};
