@@ -234,6 +234,19 @@ impl BattleFormation {
     pub fn is_broken(&self) -> bool {
         self.percentage_routing() >= 0.5
     }
+
+    /// Get approximate commander position (center of formation)
+    pub fn commander_position(&self) -> Option<BattleHexCoord> {
+        if self.units.is_empty() {
+            return None;
+        }
+
+        let sum_q: i32 = self.units.iter().map(|u| u.position.q).sum();
+        let sum_r: i32 = self.units.iter().map(|u| u.position.r).sum();
+        let count = self.units.len() as i32;
+
+        Some(BattleHexCoord::new(sum_q / count, sum_r / count))
+    }
 }
 
 /// An army (collection of formations for a battle)

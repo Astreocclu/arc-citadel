@@ -47,7 +47,7 @@ pub use courier::{
     CourierStatus, CourierInFlight, CourierSystem,
 };
 pub use execution::{
-    BattlePhase, BattleOutcome, BattleEvent, BattleEventType,
+    BattlePhase, BattleOutcome, BattleEvent, BattleEventType, BattleEventLog,
     RoutingUnit, ActiveCombat, BattleState, check_battle_end,
 };
 pub use resolution::{

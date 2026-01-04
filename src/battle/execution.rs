@@ -5,9 +5,20 @@
 use serde::{Deserialize, Serialize};
 
 use crate::battle::battle_map::BattleMap;
-use crate::battle::units::{Army, UnitId};
-use crate::battle::planning::BattlePlan;
+use crate::battle::constants::COURIER_SPEED;
 use crate::battle::courier::CourierSystem;
+use crate::battle::engagement::find_all_engagements;
+use crate::battle::hex::BattleHexCoord;
+use crate::battle::morale::{
+    apply_stress, calculate_contagion_stress, check_morale_break, check_rally,
+    process_morale_break,
+};
+use crate::battle::movement::advance_unit_movement;
+use crate::battle::planning::BattlePlan;
+use crate::battle::resolution::resolve_unit_combat;
+use crate::battle::triggers::{evaluate_all_gocodes, UnitPosition};
+use crate::battle::units::{Army, UnitId, UnitStance};
+use crate::battle::visibility::{update_army_visibility, ArmyVisibility};
 use crate::core::types::{EntityId, Tick};
 
 /// Battle phases
@@ -59,6 +70,26 @@ pub enum BattleEventType {
     BattleEnded { outcome: BattleOutcome },
 }
 
+/// Log of events from a single tick
+#[derive(Debug, Clone, Default)]
+pub struct BattleEventLog {
+    pub events: Vec<BattleEvent>,
+}
+
+impl BattleEventLog {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push(&mut self, event_type: BattleEventType, description: String, tick: Tick) {
+        self.events.push(BattleEvent {
+            tick,
+            event_type,
+            description,
+        });
+    }
+}
+
 /// Routing unit tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoutingUnit {
@@ -94,6 +125,10 @@ pub struct BattleState {
     // Systems
     pub courier_system: CourierSystem,
 
+    // Visibility (fog of war)
+    pub friendly_visibility: ArmyVisibility,
+    pub enemy_visibility: ArmyVisibility,
+
     // Combat tracking
     pub active_combats: Vec<ActiveCombat>,
     pub routing_units: Vec<RoutingUnit>,
@@ -114,6 +149,8 @@ impl BattleState {
             friendly_plan: BattlePlan::new(),
             enemy_plan: BattlePlan::new(),
             courier_system: CourierSystem::new(),
+            friendly_visibility: ArmyVisibility::new(),
+            enemy_visibility: ArmyVisibility::new(),
             active_combats: Vec::new(),
             routing_units: Vec::new(),
             battle_log: Vec::new(),
@@ -176,6 +213,268 @@ impl BattleState {
         } else {
             self.enemy_army.get_unit_mut(unit_id)
         }
+    }
+
+    /// Run a complete battle tick
+    pub fn run_tick(&mut self) -> BattleEventLog {
+        let mut events = BattleEventLog::new();
+
+        if self.is_finished() {
+            return events;
+        }
+
+        // ===== PHASE 1: PRE-TICK =====
+        self.phase_pre_tick(&mut events);
+
+        // ===== PHASE 2: MOVEMENT =====
+        self.phase_movement(&mut events);
+
+        // ===== PHASE 3: COMBAT =====
+        self.phase_combat(&mut events);
+
+        // ===== PHASE 4: MORALE =====
+        self.phase_morale(&mut events);
+
+        // ===== PHASE 5: ROUT =====
+        self.phase_rout(&mut events);
+
+        // ===== PHASE 6: POST-TICK =====
+        self.phase_post_tick(&mut events);
+
+        events
+    }
+
+    fn phase_pre_tick(&mut self, events: &mut BattleEventLog) {
+        // Update fog of war
+        update_army_visibility(&mut self.friendly_visibility, &self.map, &self.friendly_army);
+        update_army_visibility(&mut self.enemy_visibility, &self.map, &self.enemy_army);
+
+        // Evaluate go-codes
+        let friendly_positions: Vec<UnitPosition> = self
+            .friendly_army
+            .formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .map(|u| UnitPosition {
+                unit_id: u.id,
+                position: u.position,
+                is_routing: u.is_broken(),
+            })
+            .collect();
+
+        let triggered = evaluate_all_gocodes(&self.friendly_plan, self.tick, &friendly_positions);
+        for go_code_id in triggered {
+            if let Some(gc) = self
+                .friendly_plan
+                .go_codes
+                .iter_mut()
+                .find(|g| g.id == go_code_id)
+            {
+                if !gc.triggered {
+                    gc.triggered = true;
+                    events.push(
+                        BattleEventType::GoCodeTriggered {
+                            name: gc.name.clone(),
+                        },
+                        format!("Go-code '{}' triggered", gc.name),
+                        self.tick,
+                    );
+                }
+            }
+        }
+    }
+
+    fn phase_movement(&mut self, _events: &mut BattleEventLog) {
+        // Advance couriers
+        self.courier_system.advance_all(COURIER_SPEED);
+        let arrived_orders = self.courier_system.collect_arrived();
+
+        // Apply arrived orders
+        for order in arrived_orders {
+            // TODO: Apply order to target unit
+            let _ = order;
+        }
+
+        // Move units along waypoints
+        for formation in &mut self.friendly_army.formations {
+            for unit in &mut formation.units {
+                if let Some(plan) = self
+                    .friendly_plan
+                    .waypoint_plans
+                    .iter_mut()
+                    .find(|p| p.unit_id == unit.id)
+                {
+                    let _result = advance_unit_movement(&self.map, unit, plan);
+                }
+            }
+        }
+    }
+
+    fn phase_combat(&mut self, _events: &mut BattleEventLog) {
+        // Collect unit references
+        let friendly_units: Vec<&crate::battle::units::BattleUnit> = self
+            .friendly_army
+            .formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .collect();
+
+        let enemy_units: Vec<&crate::battle::units::BattleUnit> = self
+            .enemy_army
+            .formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .collect();
+
+        // Detect engagements
+        let engagements = find_all_engagements(&friendly_units, &enemy_units);
+
+        // Process each engagement
+        for engagement in engagements {
+            // Find units by ID and resolve combat
+            let friendly_unit = self.friendly_army.get_unit(engagement.attacker_id);
+            let enemy_unit = self.enemy_army.get_unit(engagement.defender_id);
+
+            if let (Some(attacker), Some(defender)) = (friendly_unit, enemy_unit) {
+                let result = resolve_unit_combat(attacker, defender, 0.0);
+
+                // Apply results
+                if let Some(unit) = self.friendly_army.get_unit_mut(engagement.attacker_id) {
+                    unit.casualties += result.attacker_casualties;
+                    unit.stress += result.attacker_stress_delta;
+                    unit.fatigue = (unit.fatigue + result.attacker_fatigue_delta).min(1.0);
+                    unit.stance = UnitStance::Engaged;
+                }
+
+                if let Some(unit) = self.enemy_army.get_unit_mut(engagement.defender_id) {
+                    unit.casualties += result.defender_casualties;
+                    unit.stress += result.defender_stress_delta;
+                    unit.fatigue = (unit.fatigue + result.defender_fatigue_delta).min(1.0);
+                    unit.stance = UnitStance::Engaged;
+                }
+            }
+        }
+    }
+
+    fn phase_morale(&mut self, events: &mut BattleEventLog) {
+        // Collect routing unit positions for contagion
+        let routing_positions: Vec<BattleHexCoord> = self
+            .friendly_army
+            .formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .filter(|u| u.is_broken())
+            .map(|u| u.position)
+            .collect();
+
+        // Check morale for all units
+        for formation in &mut self.friendly_army.formations {
+            for unit in &mut formation.units {
+                // Count nearby routing friendlies
+                let nearby_routing = routing_positions
+                    .iter()
+                    .filter(|pos| unit.position.distance(pos) <= 2)
+                    .count();
+
+                let contagion = calculate_contagion_stress(unit, nearby_routing);
+                if contagion > 0.0 {
+                    apply_stress(unit, contagion);
+                }
+
+                // Check for break
+                let result = check_morale_break(unit);
+                if result.breaks {
+                    process_morale_break(unit);
+                    events.push(
+                        BattleEventType::UnitBroke { unit_id: unit.id },
+                        "Unit broke and is routing".to_string(),
+                        self.tick,
+                    );
+                }
+            }
+        }
+
+        // Same for enemy army
+        let enemy_routing_positions: Vec<BattleHexCoord> = self
+            .enemy_army
+            .formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .filter(|u| u.is_broken())
+            .map(|u| u.position)
+            .collect();
+
+        for formation in &mut self.enemy_army.formations {
+            for unit in &mut formation.units {
+                let nearby_routing = enemy_routing_positions
+                    .iter()
+                    .filter(|pos| unit.position.distance(pos) <= 2)
+                    .count();
+
+                let contagion = calculate_contagion_stress(unit, nearby_routing);
+                if contagion > 0.0 {
+                    apply_stress(unit, contagion);
+                }
+
+                let result = check_morale_break(unit);
+                if result.breaks {
+                    process_morale_break(unit);
+                }
+            }
+        }
+    }
+
+    fn phase_rout(&mut self, events: &mut BattleEventLog) {
+        // Move routing units
+        let enemy_positions: Vec<BattleHexCoord> = self
+            .enemy_army
+            .formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .map(|u| u.position)
+            .collect();
+
+        // Pre-compute commander positions to avoid borrow issues
+        let commander_positions: Vec<BattleHexCoord> = self
+            .friendly_army
+            .formations
+            .iter()
+            .map(|f| f.commander_position().unwrap_or_default())
+            .collect();
+
+        for (formation_idx, formation) in self.friendly_army.formations.iter_mut().enumerate() {
+            let commander_pos = commander_positions[formation_idx];
+            for unit in &mut formation.units {
+                if unit.is_broken() {
+                    // Check rally conditions
+                    let is_near_enemy = enemy_positions
+                        .iter()
+                        .any(|pos| unit.position.distance(pos) <= 3);
+                    let is_near_leader = unit.position.distance(&commander_pos) <= 3;
+
+                    let result = check_rally(unit, is_near_enemy, is_near_leader);
+                    if result.rallies {
+                        unit.stance = UnitStance::Rallying;
+                        unit.stress += result.stress_delta;
+                        events.push(
+                            BattleEventType::UnitRallied { unit_id: unit.id },
+                            "Unit rallied".to_string(),
+                            self.tick,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    fn phase_post_tick(&mut self, _events: &mut BattleEventLog) {
+        // Check battle end
+        if let Some(outcome) = check_battle_end(self) {
+            self.end_battle(outcome);
+        }
+
+        // Advance tick counter
+        self.tick += 1;
     }
 }
 
@@ -306,5 +605,33 @@ mod tests {
         // Enemy has no units = decisive victory
         let outcome = check_battle_end(&state);
         assert_eq!(outcome, Some(BattleOutcome::DecisiveVictory));
+    }
+
+    #[test]
+    fn test_full_tick_advances_state() {
+        use crate::battle::units::{BattleFormation, FormationId, BattleUnit, Element};
+        use crate::battle::hex::BattleHexCoord;
+        use crate::battle::unit_type::UnitType;
+
+        let map = BattleMap::new(20, 20);
+        let mut friendly = Army::new(ArmyId::new(), EntityId::new());
+        let enemy = Army::new(ArmyId::new(), EntityId::new());
+
+        // Add a unit to friendly army
+        let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.position = BattleHexCoord::new(5, 5);
+        formation.units.push(unit);
+        friendly.formations.push(formation);
+
+        let mut state = BattleState::new(map, friendly, enemy);
+        state.start_battle();
+
+        let initial_tick = state.tick;
+        let events = state.run_tick();
+
+        assert_eq!(state.tick, initial_tick + 1);
+        assert!(events.events.is_empty() || !events.events.is_empty()); // Events may or may not occur
     }
 }

@@ -4,6 +4,8 @@
 
 use std::collections::HashSet;
 
+use serde::{Deserialize, Serialize};
+
 use crate::battle::battle_map::BattleMap;
 use crate::battle::constants::{BASE_VISION_RANGE, ELEVATION_VISION_BONUS, SCOUT_VISION_BONUS};
 use crate::battle::hex::BattleHexCoord;
@@ -11,7 +13,7 @@ use crate::battle::unit_type::UnitType;
 use crate::battle::units::{Army, BattleUnit};
 
 /// Visibility state for an army
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ArmyVisibility {
     /// Currently visible hexes
     pub visible: HashSet<BattleHexCoord>,
