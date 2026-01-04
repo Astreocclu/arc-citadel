@@ -634,4 +634,106 @@ mod tests {
         assert_eq!(state.tick, initial_tick + 1);
         assert!(events.events.is_empty() || !events.events.is_empty()); // Events may or may not occur
     }
+
+    // ===== Integration Tests =====
+
+    #[test]
+    fn test_battle_scenario_simple_engagement() {
+        use crate::battle::units::{BattleFormation, FormationId, BattleUnit, Element};
+        use crate::battle::hex::BattleHexCoord;
+        use crate::battle::unit_type::UnitType;
+
+        // Setup map
+        let map = BattleMap::new(30, 30);
+
+        // Setup friendly army
+        let mut friendly = Army::new(ArmyId::new(), EntityId::new());
+        let mut friendly_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+
+        let mut friendly_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+        friendly_unit.elements.push(Element::new(vec![EntityId::new(); 100]));
+        friendly_unit.position = BattleHexCoord::new(10, 15);
+        friendly_formation.units.push(friendly_unit);
+        friendly.formations.push(friendly_formation);
+
+        // Setup enemy army
+        let mut enemy = Army::new(ArmyId::new(), EntityId::new());
+        let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+
+        let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+        enemy_unit.elements.push(Element::new(vec![EntityId::new(); 100]));
+        enemy_unit.position = BattleHexCoord::new(11, 15); // Adjacent to friendly
+        enemy_formation.units.push(enemy_unit);
+        enemy.formations.push(enemy_formation);
+
+        // Create battle state
+        let mut state = BattleState::new(map, friendly, enemy);
+        state.start_battle();
+
+        // Run several ticks
+        for _ in 0..10 {
+            let _events = state.run_tick();
+        }
+
+        // Verify combat occurred (casualties inflicted)
+        let friendly_casualties: u32 = state.friendly_army.formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .map(|u| u.casualties)
+            .sum();
+
+        let enemy_casualties: u32 = state.enemy_army.formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .map(|u| u.casualties)
+            .sum();
+
+        assert!(friendly_casualties > 0 || enemy_casualties > 0, "Combat should have occurred");
+        assert_eq!(state.tick, 10, "Should have advanced 10 ticks");
+    }
+
+    #[test]
+    fn test_battle_ends_when_army_destroyed() {
+        use crate::battle::units::{BattleFormation, FormationId, BattleUnit, Element};
+        use crate::battle::hex::BattleHexCoord;
+        use crate::battle::unit_type::UnitType;
+
+        let map = BattleMap::new(20, 20);
+
+        // Strong friendly army
+        let mut friendly = Army::new(ArmyId::new(), EntityId::new());
+        let mut friendly_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let mut friendly_unit = BattleUnit::new(UnitId::new(), UnitType::HeavyCavalry);
+        friendly_unit.elements.push(Element::new(vec![EntityId::new(); 200]));
+        friendly_unit.position = BattleHexCoord::new(10, 10);
+        friendly_formation.units.push(friendly_unit);
+        friendly.formations.push(friendly_formation);
+
+        // Weak enemy army (using Levy - cheap, unreliable with low stress threshold)
+        let mut enemy = Army::new(ArmyId::new(), EntityId::new());
+        let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Levy);
+        enemy_unit.elements.push(Element::new(vec![EntityId::new(); 10]));
+        enemy_unit.position = BattleHexCoord::new(11, 10); // Adjacent
+        enemy_formation.units.push(enemy_unit);
+        enemy.formations.push(enemy_formation);
+
+        let mut state = BattleState::new(map, friendly, enemy);
+        state.start_battle();
+
+        // Run until battle ends or max ticks
+        for _ in 0..500 {
+            let _events = state.run_tick();
+            if state.is_finished() {
+                break;
+            }
+        }
+
+        // Battle should end in victory (enemy destroyed)
+        assert!(state.is_finished(), "Battle should have ended");
+        assert!(
+            matches!(state.outcome, BattleOutcome::Victory | BattleOutcome::DecisiveVictory),
+            "Should be a victory, got {:?}", state.outcome
+        );
+    }
 }
