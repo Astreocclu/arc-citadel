@@ -88,6 +88,62 @@ pub fn is_waiting(plan: &WaypointPlan, current_tick: u64) -> bool {
     }
 }
 
+use crate::battle::units::UnitId;
+
+/// Check if a unit is blocked by wait condition (with full context)
+///
+/// This function extends `is_waiting` to handle context-dependent wait conditions:
+/// - UnitArrives: wait until target unit arrives at THIS waypoint's position
+/// - EnemySighted: wait until enemy is visible (any hex in enemy_visible_hexes)
+/// - Attacked: wait until this unit is under attack (unit_id in units_under_attack)
+///
+/// # Arguments
+/// * `plan` - The waypoint plan to check
+/// * `current_tick` - The current simulation tick
+/// * `unit_positions` - Slice of (UnitId, BattleHexCoord) tuples for all units
+/// * `enemy_visible_hexes` - Hexes where enemies are visible
+/// * `units_under_attack` - Unit IDs that are currently under attack
+pub fn is_waiting_with_context(
+    plan: &WaypointPlan,
+    current_tick: u64,
+    unit_positions: &[(UnitId, BattleHexCoord)],
+    enemy_visible_hexes: &[BattleHexCoord],
+    units_under_attack: &[UnitId],
+) -> bool {
+    let Some(waypoint) = plan.current() else {
+        return false;
+    };
+
+    match &waypoint.wait_condition {
+        None => false,
+        Some(WaitCondition::Duration(ticks)) => {
+            // Check if we've waited long enough
+            match plan.wait_start_tick {
+                None => false, // Haven't started waiting yet
+                Some(start) => current_tick < start + *ticks,
+            }
+        }
+        Some(WaitCondition::GoCode(_)) => {
+            // Evaluated separately by triggers system
+            true
+        }
+        Some(WaitCondition::UnitArrives(target_unit_id)) => {
+            // Wait until target unit arrives at THIS waypoint's position
+            !unit_positions
+                .iter()
+                .any(|(id, pos)| *id == *target_unit_id && *pos == waypoint.position)
+        }
+        Some(WaitCondition::EnemySighted) => {
+            // Wait until enemy is visible
+            enemy_visible_hexes.is_empty()
+        }
+        Some(WaitCondition::Attacked) => {
+            // Wait until this unit is under attack
+            !units_under_attack.contains(&plan.unit_id)
+        }
+    }
+}
+
 /// Advance a unit's movement by one tick
 pub fn advance_unit_movement(
     map: &BattleMap,
@@ -493,5 +549,124 @@ mod tests {
 
         // At tick 15, definitely not waiting
         assert!(!is_waiting(&plan, 15));
+    }
+
+    #[test]
+    fn test_unit_arrives_wait_condition() {
+        use crate::battle::planning::WaitCondition;
+
+        let target_unit_id = UnitId::new();
+        let waypoint_position = BattleHexCoord::new(0, 0);
+
+        let mut plan = WaypointPlan::new(UnitId::new());
+        plan.add_waypoint(
+            Waypoint::new(waypoint_position, WaypointBehavior::HoldAt)
+                .with_wait(WaitCondition::UnitArrives(target_unit_id)),
+        );
+
+        // Create unit positions - target NOT at waypoint position
+        let unit_positions = vec![(target_unit_id, BattleHexCoord::new(10, 10))];
+
+        // Should be waiting - target hasn't arrived at our position
+        assert!(is_waiting_with_context(&plan, 0, &unit_positions, &[], &[]));
+
+        // Target arrives at our waypoint position
+        let unit_positions = vec![(target_unit_id, waypoint_position)];
+
+        // Should NOT be waiting anymore
+        assert!(!is_waiting_with_context(&plan, 0, &unit_positions, &[], &[]));
+    }
+
+    #[test]
+    fn test_enemy_sighted_wait_condition() {
+        use crate::battle::planning::WaitCondition;
+
+        let mut plan = WaypointPlan::new(UnitId::new());
+        plan.add_waypoint(
+            Waypoint::new(BattleHexCoord::new(0, 0), WaypointBehavior::HoldAt)
+                .with_wait(WaitCondition::EnemySighted),
+        );
+
+        // No enemies visible - should be waiting
+        assert!(is_waiting_with_context(&plan, 0, &[], &[], &[]));
+
+        // Enemy visible at some hex - should NOT be waiting
+        let visible = vec![BattleHexCoord::new(5, 5)];
+        assert!(!is_waiting_with_context(&plan, 0, &[], &visible, &[]));
+    }
+
+    #[test]
+    fn test_attacked_wait_condition() {
+        use crate::battle::planning::WaitCondition;
+
+        let unit_id = UnitId::new();
+        let mut plan = WaypointPlan::new(unit_id);
+        plan.add_waypoint(
+            Waypoint::new(BattleHexCoord::new(0, 0), WaypointBehavior::HoldAt)
+                .with_wait(WaitCondition::Attacked),
+        );
+
+        // Not under attack - should be waiting
+        assert!(is_waiting_with_context(&plan, 0, &[], &[], &[]));
+
+        // Under attack - should NOT be waiting
+        let under_attack = vec![unit_id];
+        assert!(!is_waiting_with_context(&plan, 0, &[], &[], &under_attack));
+    }
+
+    #[test]
+    fn test_duration_wait_condition_with_context() {
+        use crate::battle::planning::WaitCondition;
+
+        let mut plan = WaypointPlan::new(UnitId::new());
+        plan.add_waypoint(
+            Waypoint::new(BattleHexCoord::new(0, 0), WaypointBehavior::HoldAt)
+                .with_wait(WaitCondition::Duration(10)),
+        );
+
+        // No wait_start_tick set yet - should not be waiting
+        assert!(!is_waiting_with_context(&plan, 0, &[], &[], &[]));
+
+        // Set wait start tick
+        plan.wait_start_tick = Some(0);
+
+        // At tick 5, should still be waiting (5 < 10)
+        assert!(is_waiting_with_context(&plan, 5, &[], &[], &[]));
+
+        // At tick 10, wait is complete
+        assert!(!is_waiting_with_context(&plan, 10, &[], &[], &[]));
+    }
+
+    #[test]
+    fn test_go_code_wait_condition_with_context() {
+        use crate::battle::planning::{GoCodeId, WaitCondition};
+
+        let mut plan = WaypointPlan::new(UnitId::new());
+        plan.add_waypoint(
+            Waypoint::new(BattleHexCoord::new(0, 0), WaypointBehavior::HoldAt)
+                .with_wait(WaitCondition::GoCode(GoCodeId::new())),
+        );
+
+        // GoCode wait should always return true (evaluated separately by triggers system)
+        assert!(is_waiting_with_context(&plan, 0, &[], &[], &[]));
+    }
+
+    #[test]
+    fn test_no_wait_condition_with_context() {
+        let mut plan = WaypointPlan::new(UnitId::new());
+        plan.add_waypoint(
+            Waypoint::new(BattleHexCoord::new(0, 0), WaypointBehavior::HoldAt),
+        );
+
+        // No wait condition - should not be waiting
+        assert!(!is_waiting_with_context(&plan, 0, &[], &[], &[]));
+    }
+
+    #[test]
+    fn test_no_waypoint_with_context() {
+        let plan = WaypointPlan::new(UnitId::new());
+
+        // No waypoints at all - should not be waiting
+        assert!(!is_waiting_with_context(&plan, 0, &[], &[], &[]));
     }
 }
