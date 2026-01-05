@@ -10,8 +10,7 @@ use crate::battle::courier::CourierSystem;
 use crate::battle::engagement::find_all_engagements;
 use crate::battle::hex::BattleHexCoord;
 use crate::battle::morale::{
-    apply_stress, calculate_contagion_stress, check_morale_break, check_rally,
-    process_morale_break,
+    apply_stress, calculate_contagion_stress, check_morale_break, check_rally, process_morale_break,
 };
 use crate::battle::movement::advance_unit_movement;
 use crate::battle::planning::BattlePlan;
@@ -25,7 +24,7 @@ use crate::core::types::{EntityId, Tick};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum BattlePhase {
     #[default]
-    Planning,   // Pre-battle planning
+    Planning, // Pre-battle planning
     Deployment, // Placing units
     Active,     // Battle in progress
     Finished,   // Battle over
@@ -207,7 +206,10 @@ impl BattleState {
     }
 
     /// Get a mutable unit from either army
-    pub fn get_unit_mut(&mut self, unit_id: UnitId) -> Option<&mut crate::battle::units::BattleUnit> {
+    pub fn get_unit_mut(
+        &mut self,
+        unit_id: UnitId,
+    ) -> Option<&mut crate::battle::units::BattleUnit> {
         if self.friendly_army.get_unit(unit_id).is_some() {
             self.friendly_army.get_unit_mut(unit_id)
         } else {
@@ -246,7 +248,11 @@ impl BattleState {
 
     fn phase_pre_tick(&mut self, events: &mut BattleEventLog) {
         // Update fog of war
-        update_army_visibility(&mut self.friendly_visibility, &self.map, &self.friendly_army);
+        update_army_visibility(
+            &mut self.friendly_visibility,
+            &self.map,
+            &self.friendly_army,
+        );
         update_army_visibility(&mut self.enemy_visibility, &self.map, &self.enemy_army);
 
         // Evaluate go-codes
@@ -285,14 +291,31 @@ impl BattleState {
     }
 
     fn phase_movement(&mut self, _events: &mut BattleEventLog) {
+        use crate::battle::orders::apply_order;
+
         // Advance couriers
         self.courier_system.advance_all(COURIER_SPEED);
         let arrived_orders = self.courier_system.collect_arrived();
 
         // Apply arrived orders
-        for order in arrived_orders {
-            // TODO: Apply order to target unit
-            let _ = order;
+        for order in &arrived_orders {
+            // Determine which army this order targets
+            match &order.target {
+                crate::battle::courier::OrderTarget::Unit(unit_id) => {
+                    if self.friendly_army.get_unit(*unit_id).is_some() {
+                        apply_order(order, &mut self.friendly_army, &mut self.friendly_plan);
+                    } else if self.enemy_army.get_unit(*unit_id).is_some() {
+                        apply_order(order, &mut self.enemy_army, &mut self.enemy_plan);
+                    }
+                }
+                crate::battle::courier::OrderTarget::Formation(formation_id) => {
+                    if self.friendly_army.formations.iter().any(|f| f.id == *formation_id) {
+                        apply_order(order, &mut self.friendly_army, &mut self.friendly_plan);
+                    } else if self.enemy_army.formations.iter().any(|f| f.id == *formation_id) {
+                        apply_order(order, &mut self.enemy_army, &mut self.enemy_plan);
+                    }
+                }
+            }
         }
 
         // Move units along waypoints
@@ -596,7 +619,10 @@ mod tests {
             crate::battle::units::UnitId::new(),
             crate::battle::unit_type::UnitType::Infantry,
         );
-        unit.elements.push(crate::battle::units::Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(crate::battle::units::Element::new(vec![
+            EntityId::new();
+            50
+        ]));
         formation.units.push(unit);
         friendly.formations.push(formation);
 
@@ -609,9 +635,9 @@ mod tests {
 
     #[test]
     fn test_full_tick_advances_state() {
-        use crate::battle::units::{BattleFormation, FormationId, BattleUnit, Element};
         use crate::battle::hex::BattleHexCoord;
         use crate::battle::unit_type::UnitType;
+        use crate::battle::units::{BattleFormation, BattleUnit, Element, FormationId};
 
         let map = BattleMap::new(20, 20);
         let mut friendly = Army::new(ArmyId::new(), EntityId::new());
@@ -639,9 +665,9 @@ mod tests {
 
     #[test]
     fn test_battle_scenario_simple_engagement() {
-        use crate::battle::units::{BattleFormation, FormationId, BattleUnit, Element};
         use crate::battle::hex::BattleHexCoord;
         use crate::battle::unit_type::UnitType;
+        use crate::battle::units::{BattleFormation, BattleUnit, Element, FormationId};
 
         // Setup map
         let map = BattleMap::new(30, 30);
@@ -651,7 +677,9 @@ mod tests {
         let mut friendly_formation = BattleFormation::new(FormationId::new(), EntityId::new());
 
         let mut friendly_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        friendly_unit.elements.push(Element::new(vec![EntityId::new(); 100]));
+        friendly_unit
+            .elements
+            .push(Element::new(vec![EntityId::new(); 100]));
         friendly_unit.position = BattleHexCoord::new(10, 15);
         friendly_formation.units.push(friendly_unit);
         friendly.formations.push(friendly_formation);
@@ -661,7 +689,9 @@ mod tests {
         let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
 
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        enemy_unit.elements.push(Element::new(vec![EntityId::new(); 100]));
+        enemy_unit
+            .elements
+            .push(Element::new(vec![EntityId::new(); 100]));
         enemy_unit.position = BattleHexCoord::new(11, 15); // Adjacent to friendly
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);
@@ -676,27 +706,34 @@ mod tests {
         }
 
         // Verify combat occurred (casualties inflicted)
-        let friendly_casualties: u32 = state.friendly_army.formations
+        let friendly_casualties: u32 = state
+            .friendly_army
+            .formations
             .iter()
             .flat_map(|f| f.units.iter())
             .map(|u| u.casualties)
             .sum();
 
-        let enemy_casualties: u32 = state.enemy_army.formations
+        let enemy_casualties: u32 = state
+            .enemy_army
+            .formations
             .iter()
             .flat_map(|f| f.units.iter())
             .map(|u| u.casualties)
             .sum();
 
-        assert!(friendly_casualties > 0 || enemy_casualties > 0, "Combat should have occurred");
+        assert!(
+            friendly_casualties > 0 || enemy_casualties > 0,
+            "Combat should have occurred"
+        );
         assert_eq!(state.tick, 10, "Should have advanced 10 ticks");
     }
 
     #[test]
     fn test_battle_ends_when_army_destroyed() {
-        use crate::battle::units::{BattleFormation, FormationId, BattleUnit, Element};
         use crate::battle::hex::BattleHexCoord;
         use crate::battle::unit_type::UnitType;
+        use crate::battle::units::{BattleFormation, BattleUnit, Element, FormationId};
 
         let map = BattleMap::new(20, 20);
 
@@ -704,7 +741,9 @@ mod tests {
         let mut friendly = Army::new(ArmyId::new(), EntityId::new());
         let mut friendly_formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut friendly_unit = BattleUnit::new(UnitId::new(), UnitType::HeavyCavalry);
-        friendly_unit.elements.push(Element::new(vec![EntityId::new(); 200]));
+        friendly_unit
+            .elements
+            .push(Element::new(vec![EntityId::new(); 200]));
         friendly_unit.position = BattleHexCoord::new(10, 10);
         friendly_formation.units.push(friendly_unit);
         friendly.formations.push(friendly_formation);
@@ -713,7 +752,9 @@ mod tests {
         let mut enemy = Army::new(ArmyId::new(), EntityId::new());
         let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Levy);
-        enemy_unit.elements.push(Element::new(vec![EntityId::new(); 10]));
+        enemy_unit
+            .elements
+            .push(Element::new(vec![EntityId::new(); 10]));
         enemy_unit.position = BattleHexCoord::new(11, 10); // Adjacent
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);
@@ -732,8 +773,70 @@ mod tests {
         // Battle should end in victory (enemy destroyed)
         assert!(state.is_finished(), "Battle should have ended");
         assert!(
-            matches!(state.outcome, BattleOutcome::Victory | BattleOutcome::DecisiveVictory),
-            "Should be a victory, got {:?}", state.outcome
+            matches!(
+                state.outcome,
+                BattleOutcome::Victory | BattleOutcome::DecisiveVictory
+            ),
+            "Should be a victory, got {:?}",
+            state.outcome
         );
+    }
+
+    #[test]
+    fn test_order_application_in_phase_movement() {
+        use crate::battle::courier::Order;
+        use crate::battle::hex::BattleHexCoord;
+        use crate::battle::unit_type::UnitType;
+        use crate::battle::units::{BattleFormation, BattleUnit, Element, FormationId};
+
+        let map = BattleMap::new(20, 20);
+        let mut friendly = Army::new(ArmyId::new(), EntityId::new());
+
+        let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let unit_id = UnitId::new();
+        let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
+        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.position = BattleHexCoord::new(5, 5);
+        formation.units.push(unit);
+        friendly.formations.push(formation);
+
+        // Enemy army needs units so battle doesn't end with DecisiveVictory immediately
+        let mut enemy = Army::new(ArmyId::new(), EntityId::new());
+        let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+        enemy_unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        enemy_unit.position = BattleHexCoord::new(15, 15); // Far from friendly unit
+        enemy_formation.units.push(enemy_unit);
+        enemy.formations.push(enemy_formation);
+
+        let mut state = BattleState::new(map, friendly, enemy);
+        state.start_battle();
+
+        // Dispatch an order (same source/dest means courier path has 1 element)
+        let destination = BattleHexCoord::new(10, 10);
+        state.courier_system.dispatch(
+            EntityId::new(),
+            Order::move_to(unit_id, destination),
+            BattleHexCoord::new(5, 5),
+            BattleHexCoord::new(5, 5), // Same position
+        );
+
+        // Verify courier was dispatched
+        assert_eq!(state.courier_system.in_flight.len(), 1, "Courier should be in flight");
+
+        // Run multiple ticks - COURIER_SPEED is 0.30, so we need ~4 ticks for courier to arrive
+        // (progress needs to reach 1.0 to drain the single-element path)
+        for _ in 0..10 {
+            let _events = state.run_tick();
+            // Check if order was applied
+            if state.friendly_plan.get_waypoint_plan(unit_id).is_some() {
+                break;
+            }
+        }
+
+        // Check that waypoint plan was created by the order application
+        let wp_plan = state.friendly_plan.get_waypoint_plan(unit_id);
+        assert!(wp_plan.is_some(), "Waypoint plan should be created after courier arrives");
+        assert_eq!(wp_plan.unwrap().waypoints[0].position, destination);
     }
 }
