@@ -1,40 +1,54 @@
 //! World and polity generation
 
-use std::collections::{HashMap, HashSet};
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
+use std::collections::{HashMap, HashSet};
 
-use crate::core::types::{Species, PolityId, PolityTier, GovernmentType, RulerId};
-use crate::aggregate::region::{Region, Terrain, ResourceType};
 use crate::aggregate::polity::{
-    Polity, PolityType, CulturalDrift, Relation, SpeciesState,
-    HumanState, DwarfState, ElfState, OrcState, CraftType,
-    KoboldState,
-    GnollState,
-    LizardfolkState,
-    HobgoblinState,
-    OgreState,
-    HarpyState,
-    CentaurState,
-    MinotaurState,
-    SatyrState,
-    DryadState,
-    GoblinState,
-    TrollState,
     AbyssalDemonsState,
+    CentaurState,
+    CraftType,
+    CulturalDrift,
+    DryadState,
+    DwarfCulturalDrift,
+    DwarfState,
     ElementalState,
+    ElfCulturalDrift,
+    ElfState,
     FeyState,
-    StoneGiantsState,
+    FoundingConditions,
+    FoundingType,
+    GenericCulturalDrift,
+    GnollState,
+    GoblinState,
     GolemState,
-    MerfolkState,
-    NagaState,
-    RevenantState,
-    VampireState,
+    HarpyState,
+    HobgoblinState,
+    HumanCulturalDrift,
+    HumanState,
+    KoboldState,
+    LizardfolkState,
     LupineState,
     // CODEGEN: species_state_imports
+    MerfolkState,
+    MinotaurState,
+    NagaState,
+    OgreState,
+    OrcState,
+    Polity,
+    PolityType,
+    Relation,
+    RevenantState,
+    SatyrState,
+    SpeciesState,
+    StoneGiantsState,
+    TrollState,
+    VampireState,
 };
+use crate::aggregate::region::{Region, ResourceType, Terrain};
 use crate::aggregate::simulation::{MapConfig, PolityConfig};
 use crate::aggregate::world::AggregateWorld;
+use crate::core::types::{GovernmentType, PolityId, PolityTier, RulerId, Species};
 
 /// Generate the pseudo-node map
 pub fn generate_map(config: &MapConfig, mut rng: ChaCha8Rng) -> Vec<Region> {
@@ -78,7 +92,10 @@ fn generate_terrain(x: u32, y: u32, config: &MapConfig, rng: &mut ChaCha8Rng) ->
     let noise = simple_noise(x, y, config.seed);
 
     // Edge of map tends to be coast/water
-    let edge_dist = (x.min(config.width - 1 - x).min(y).min(config.height - 1 - y)) as f32;
+    let edge_dist = (x
+        .min(config.width - 1 - x)
+        .min(y)
+        .min(config.height - 1 - y)) as f32;
     let edge_factor = (edge_dist / 5.0).min(1.0);
 
     if edge_factor < 0.3 && rng.gen::<f32>() < config.water_frequency {
@@ -110,7 +127,8 @@ fn generate_terrain(x: u32, y: u32, config: &MapConfig, rng: &mut ChaCha8Rng) ->
 
 fn simple_noise(x: u32, y: u32, seed: u64) -> f32 {
     // Very simple pseudo-noise
-    let n = (x as u64).wrapping_mul(374761393)
+    let n = (x as u64)
+        .wrapping_mul(374761393)
         .wrapping_add((y as u64).wrapping_mul(668265263))
         .wrapping_add(seed);
     let n = n.wrapping_mul(n).wrapping_mul(n);
@@ -126,27 +144,45 @@ fn generate_resources(terrain: Terrain, rng: &mut ChaCha8Rng) -> ResourceType {
 
     match terrain {
         Terrain::Mountain => {
-            if roll < 0.2 { ResourceType::Gold }
-            else if roll < 0.35 { ResourceType::Gems }
-            else if roll < 0.5 { ResourceType::Iron }
-            else { ResourceType::Stone }
+            if roll < 0.2 {
+                ResourceType::Gold
+            } else if roll < 0.35 {
+                ResourceType::Gems
+            } else if roll < 0.5 {
+                ResourceType::Iron
+            } else {
+                ResourceType::Stone
+            }
         }
         Terrain::Hills => {
-            if roll < 0.3 { ResourceType::Iron }
-            else if roll < 0.5 { ResourceType::Stone }
-            else { ResourceType::None }
+            if roll < 0.3 {
+                ResourceType::Iron
+            } else if roll < 0.5 {
+                ResourceType::Stone
+            } else {
+                ResourceType::None
+            }
         }
         Terrain::Forest => {
-            if roll < 0.5 { ResourceType::Timber }
-            else { ResourceType::None }
+            if roll < 0.5 {
+                ResourceType::Timber
+            } else {
+                ResourceType::None
+            }
         }
         Terrain::Plains => {
-            if roll < 0.4 { ResourceType::Grain }
-            else { ResourceType::None }
+            if roll < 0.4 {
+                ResourceType::Grain
+            } else {
+                ResourceType::None
+            }
         }
         Terrain::Coast | Terrain::River => {
-            if roll < 0.4 { ResourceType::Fish }
-            else { ResourceType::None }
+            if roll < 0.4 {
+                ResourceType::Fish
+            } else {
+                ResourceType::None
+            }
         }
         _ => ResourceType::None,
     }
@@ -181,8 +217,10 @@ fn get_neighbors(id: u32, width: u32, height: u32) -> Vec<u32> {
 
     // 6-directional (hex-like) neighbors
     let offsets: [(i32, i32); 6] = [
-        (-1, 0), (1, 0),  // Left, right
-        (0, -1), (0, 1),  // Up, down
+        (-1, 0),
+        (1, 0), // Left, right
+        (0, -1),
+        (0, 1), // Up, down
         (-1, if y % 2 == 0 { -1 } else { 1 }),
         (1, if y % 2 == 0 { -1 } else { 1 }),
     ];
@@ -215,19 +253,37 @@ pub fn generate_polities(
 
     // Generate polities for each species
     let (human_polities, human_assignments) = generate_species_polities(
-        Species::Human, config.human_count, regions, &mut claimed, &mut rng, config, &mut next_id
+        Species::Human,
+        config.human_count,
+        regions,
+        &mut claimed,
+        &mut rng,
+        config,
+        &mut next_id,
     );
     polities.extend(human_polities);
     assignments.extend(human_assignments);
 
     let (dwarf_polities, dwarf_assignments) = generate_species_polities(
-        Species::Dwarf, config.dwarf_count, regions, &mut claimed, &mut rng, config, &mut next_id
+        Species::Dwarf,
+        config.dwarf_count,
+        regions,
+        &mut claimed,
+        &mut rng,
+        config,
+        &mut next_id,
     );
     polities.extend(dwarf_polities);
     assignments.extend(dwarf_assignments);
 
     let (elf_polities, elf_assignments) = generate_species_polities(
-        Species::Elf, config.elf_count, regions, &mut claimed, &mut rng, config, &mut next_id
+        Species::Elf,
+        config.elf_count,
+        regions,
+        &mut claimed,
+        &mut rng,
+        config,
+        &mut next_id,
     );
     polities.extend(elf_polities);
     assignments.extend(elf_assignments);
@@ -248,7 +304,8 @@ fn generate_species_polities(
     let mut assignments = Vec::new();
 
     // Find high-fitness regions for this species
-    let mut candidates: Vec<(u32, f32)> = regions.iter()
+    let mut candidates: Vec<(u32, f32)> = regions
+        .iter()
         .filter(|r| !claimed.contains(&r.id))
         .map(|r| (r.id, *r.fitness.get(&species).unwrap_or(&0.0)))
         .collect();
@@ -302,145 +359,251 @@ fn generate_species_polities(
         *next_id += 1;
         let polity_type = match species {
             Species::Human => {
-                if territory.len() > 20 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::CityState }
-                else { PolityType::Tribe }
+                if territory.len() > 20 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::CityState
+                } else {
+                    PolityType::Tribe
+                }
             }
             Species::Dwarf => {
-                if territory.len() > 10 { PolityType::Hold }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Hold
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Elf => {
-                if territory.len() > 15 { PolityType::Court }
-                else { PolityType::Grove }
+                if territory.len() > 15 {
+                    PolityType::Court
+                } else {
+                    PolityType::Grove
+                }
             }
             Species::Orc => {
-                if territory.len() > 10 { PolityType::Horde }
-                else { PolityType::Warband }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else {
+                    PolityType::Warband
+                }
             }
             Species::Kobold => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Gnoll => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Warband }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Warband
+                }
             }
             Species::Lizardfolk => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Hobgoblin => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Hold }
-                else { PolityType::Warband }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Hold
+                } else {
+                    PolityType::Warband
+                }
             }
             Species::Ogre => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Harpy => {
-                if territory.len() > 10 { PolityType::Court }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Court
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Centaur => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Minotaur => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Hold }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Hold
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Satyr => {
-                if territory.len() > 10 { PolityType::Court }
-                else if territory.len() > 5 { PolityType::Court }
-                else { PolityType::Grove }
+                if territory.len() > 10 {
+                    PolityType::Court
+                } else if territory.len() > 5 {
+                    PolityType::Court
+                } else {
+                    PolityType::Grove
+                }
             }
             Species::Dryad => {
-                if territory.len() > 10 { PolityType::Court }
-                else if territory.len() > 5 { PolityType::Grove }
-                else { PolityType::Grove }
+                if territory.len() > 10 {
+                    PolityType::Court
+                } else if territory.len() > 5 {
+                    PolityType::Grove
+                } else {
+                    PolityType::Grove
+                }
             }
             Species::Goblin => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Troll => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::AbyssalDemons => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Court }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Court
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Elemental => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Court }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Court
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Fey => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Court }
-                else { PolityType::Grove }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Court
+                } else {
+                    PolityType::Grove
+                }
             }
             Species::StoneGiants => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Hold }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Hold
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Golem => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Hold }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Hold
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Merfolk => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Tribe }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Tribe
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Naga => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Court }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Court
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Revenant => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Warband }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Warband
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Vampire => {
-                if territory.len() > 10 { PolityType::Kingdom }
-                else if territory.len() > 5 { PolityType::Court }
-                else { PolityType::Clan }
+                if territory.len() > 10 {
+                    PolityType::Kingdom
+                } else if territory.len() > 5 {
+                    PolityType::Court
+                } else {
+                    PolityType::Clan
+                }
             }
             Species::Lupine => {
-                if territory.len() > 10 { PolityType::Horde }
-                else if territory.len() > 5 { PolityType::Clan }
-                else { PolityType::Warband }
-            }
-            // CODEGEN: species_polity_type
+                if territory.len() > 10 {
+                    PolityType::Horde
+                } else if territory.len() > 5 {
+                    PolityType::Clan
+                } else {
+                    PolityType::Warband
+                }
+            } // CODEGEN: species_polity_type
         };
 
         // Species-specific starting population density
         // Long-lived species have more established, denser populations
         let pop_per_region = match species {
             Species::Human => 500,
-            Species::Dwarf => 1500,   // Ancient holds, very high density
-            Species::Elf => 1500,     // Ancient immortal populations
-            Species::Orc => 400,      // Aggressive but sparse
+            Species::Dwarf => 1500, // Ancient holds, very high density
+            Species::Elf => 1500,   // Ancient immortal populations
+            Species::Orc => 400,    // Aggressive but sparse
             _ => 500,
         };
         let population = territory.len() as u32 * pop_per_region + rng.gen_range(100..1000);
+
+        // Calculate founding conditions from environment
+        let founding_conditions = calculate_founding_conditions(capital_id, &territory, regions, rng);
+
+        // Generate species-specific cultural drift
+        let cultural_drift = generate_cultural_drift(species, &founding_conditions, rng);
 
         let species_state = match species {
             Species::Human => SpeciesState::Human(HumanState {
@@ -449,9 +612,6 @@ fn generate_species_polities(
                 reputation: rng.gen_range(0.4..0.8),
                 piety: rng.gen_range(0.2..0.8),
                 factions: Vec::new(),
-                // Humans: balanced personality distribution
-                boldness: rng.gen_range(0.3..0.7),
-                caution: rng.gen_range(0.3..0.7),
                 war_exhaustion: 0.0,
                 morale: rng.gen_range(-0.1..0.1),
             }),
@@ -460,9 +620,6 @@ fn generate_species_polities(
                 oaths: Vec::new(),
                 ancestral_sites: vec![capital_id],
                 craft_focus: CraftType::Stone,
-                // Dwarves: cautious but bold when honor demands
-                boldness: rng.gen_range(0.4..0.8),
-                caution: rng.gen_range(0.5..0.9),
                 war_exhaustion: 0.0,
                 morale: rng.gen_range(0.0..0.2),
             }),
@@ -472,9 +629,6 @@ fn generate_species_polities(
                 pending_decisions: Vec::new(),
                 core_territory: territory.clone(),
                 pattern_assessment: rng.gen_range(0.5..0.8),
-                // Elves: very cautious, low boldness
-                boldness: rng.gen_range(0.1..0.4),
-                caution: rng.gen_range(0.6..0.9),
                 war_exhaustion: 0.0,
                 morale: rng.gen_range(-0.2..0.1),
             }),
@@ -620,8 +774,8 @@ fn generate_species_polities(
         // Species-specific strength multipliers (matching population.rs)
         let (mil_mult, econ_mult) = match species {
             Species::Human => (1.0, 1.0),
-            Species::Dwarf => (2.5, 3.0),   // Master craftsmen, legendary equipment
-            Species::Elf => (3.0, 2.5),     // Ancient magic, immortal warriors
+            Species::Dwarf => (2.5, 3.0), // Master craftsmen, legendary equipment
+            Species::Elf => (3.0, 2.5),   // Ancient magic, immortal warriors
             Species::Orc => (1.2, 0.6),
             _ => (1.0, 1.0),
         };
@@ -633,14 +787,15 @@ fn generate_species_polities(
             polity_type,
             tier,
             government: GovernmentType::Autocracy,
-            parent: None, // All polities start as sovereign
+            parent: None,                     // All polities start as sovereign
             rulers: vec![RulerId(polity_id)], // Create a ruler with same ID as polity
             council_roles: HashMap::new(),
             population,
             capital: capital_id,
             military_strength: population as f32 * 0.1 * mil_mult,
             economic_strength: population as f32 * 0.08 * econ_mult,
-            cultural_drift: CulturalDrift::default(),
+            founding_conditions,
+            cultural_drift,
             relations: HashMap::new(),
             species_state,
             alive: true,
@@ -659,62 +814,214 @@ fn generate_species_polities(
 
 fn generate_polity_name(species: Species, rng: &mut ChaCha8Rng) -> String {
     let prefixes = match species {
-        Species::Human => ["Alden", "Bran", "Cael", "Dorn", "Eld", "Frey", "Grim", "Hal", "Isen", "Kael"],
-        Species::Dwarf => ["Kaz", "Dun", "Bel", "Thor", "Grun", "Mor", "Dur", "Bal", "Khor", "Zar"],
-        Species::Elf => ["Aen", "Cel", "Ith", "Lor", "Mel", "Sil", "Thal", "Val", "Yen", "Zeph"],
-        Species::Orc => ["Grak", "Thok", "Zug", "Mog", "Gor", "Skul", "Nar", "Krag", "Urg", "Drak"],
-        Species::Kobold => ["Mik", "Pok", "Sniv", "Krik", "Yik", "Drak", "Snik", "Tik", "Rik", "Zik"],
-        Species::Gnoll => ["Gnar", "Yeen", "Rip", "Shak", "Kro", "Fang", "Howl", "Pak", "Gor", "Snarl"],
-        Species::Lizardfolk => ["Ssi", "Keth", "Ras", "Vex", "Zal", "Thresh", "Sek", "Kar", "Nax", "Ish"],
-        Species::Hobgoblin => ["Karg", "Dur", "Maz", "Gol", "Tar", "Brak", "Vor", "Zog", "Nar", "Kul"],
-        Species::Ogre => ["Grug", "Mog", "Thud", "Krag", "Bonk", "Smash", "Grub", "Lunk", "Durg", "Glob"],
-        Species::Harpy => ["Shri", "Kee", "Scr", "Wail", "Sky", "Tal", "Fea", "Wing", "Caw", "Rav"],
-        Species::Centaur => ["Chir", "Nes", "Phol", "Sag", "Ther", "Rix", "Gal", "Oran", "Stell", "Vor"],
-        Species::Minotaur => ["Ast", "Bov", "Kron", "Maz", "Thor", "Gor", "Bel", "Tar", "Vor", "Krag"],
-        Species::Satyr => ["Pan", "Sil", "Bac", "Fen", "Riv", "Glen", "Pip", "Mer", "Fawn", "Tyl"],
-        Species::Dryad => ["Oak", "Wil", "Ash", "Elm", "Bir", "Ivy", "Fern", "Moss", "Haze", "Mist"],
-        Species::Goblin => ["Snik", "Griz", "Mog", "Krag", "Zog", "Snarl", "Drik", "Fizz", "Glob", "Rikk"],
-        Species::Troll => ["Stone", "Mire", "River", "Bog", "Moss", "Crag", "Deep", "Old", "Grim", "Silent"],
-        Species::AbyssalDemons => ["Ash", "Blight", "Cinder", "Dread", "Gloom", "Harrow", "Mire", "Scorch", "Vile", "Wrath"],
-        Species::Elemental => ["Ember", "Stone", "Tide", "Gale", "Cinder", "Slate", "Torrent", "Zephyr", "Magma", "Frost"],
-        Species::Fey => ["Glimmer", "Whisper", "Mist", "Thorn", "Puck", "Trick", "Willow", "Briar", "Gossamer", "Riddle"],
-        Species::StoneGiants => ["Stone", "Iron", "Granite", "Thunder", "Crag", "Boulder", "Mountain", "Deep", "High", "Grim"],
-        Species::Golem => ["Stone", "Iron", "Clay", "Granite", "Obsidian", "Ancient", "Weathered", "Runic", "Silent", "Guardian"],
-        Species::Merfolk => ["Coral", "Pearl", "Abyssal", "Tidal", "Azure", "Siren", "Kelp", "Nautilus", "Trident", "Deep"],
-        Species::Naga => ["Sesha", "Vasuki", "Nagini", "Apep", "Jormun", "Tiamat", "Quetzal", "Mucalinda", "Ananta", "Shesha"],
-        Species::Revenant => ["Bone", "Rot", "Grim", "Ash", "Dust", "Shade", "Wight", "Crypt", "Grave", "Carrion"],
-        Species::Vampire => ["Blood", "Shadow", "Night", "Crimson", "Obsidian", "Ancient", "Eternal", "Pale", "Silent", "Veiled"],
-        Species::Lupine => ["Grey", "Blood", "Moon", "Night", "Iron", "Stone", "Fang", "Shadow", "Winter", "Howling"],
+        Species::Human => [
+            "Alden", "Bran", "Cael", "Dorn", "Eld", "Frey", "Grim", "Hal", "Isen", "Kael",
+        ],
+        Species::Dwarf => [
+            "Kaz", "Dun", "Bel", "Thor", "Grun", "Mor", "Dur", "Bal", "Khor", "Zar",
+        ],
+        Species::Elf => [
+            "Aen", "Cel", "Ith", "Lor", "Mel", "Sil", "Thal", "Val", "Yen", "Zeph",
+        ],
+        Species::Orc => [
+            "Grak", "Thok", "Zug", "Mog", "Gor", "Skul", "Nar", "Krag", "Urg", "Drak",
+        ],
+        Species::Kobold => [
+            "Mik", "Pok", "Sniv", "Krik", "Yik", "Drak", "Snik", "Tik", "Rik", "Zik",
+        ],
+        Species::Gnoll => [
+            "Gnar", "Yeen", "Rip", "Shak", "Kro", "Fang", "Howl", "Pak", "Gor", "Snarl",
+        ],
+        Species::Lizardfolk => [
+            "Ssi", "Keth", "Ras", "Vex", "Zal", "Thresh", "Sek", "Kar", "Nax", "Ish",
+        ],
+        Species::Hobgoblin => [
+            "Karg", "Dur", "Maz", "Gol", "Tar", "Brak", "Vor", "Zog", "Nar", "Kul",
+        ],
+        Species::Ogre => [
+            "Grug", "Mog", "Thud", "Krag", "Bonk", "Smash", "Grub", "Lunk", "Durg", "Glob",
+        ],
+        Species::Harpy => [
+            "Shri", "Kee", "Scr", "Wail", "Sky", "Tal", "Fea", "Wing", "Caw", "Rav",
+        ],
+        Species::Centaur => [
+            "Chir", "Nes", "Phol", "Sag", "Ther", "Rix", "Gal", "Oran", "Stell", "Vor",
+        ],
+        Species::Minotaur => [
+            "Ast", "Bov", "Kron", "Maz", "Thor", "Gor", "Bel", "Tar", "Vor", "Krag",
+        ],
+        Species::Satyr => [
+            "Pan", "Sil", "Bac", "Fen", "Riv", "Glen", "Pip", "Mer", "Fawn", "Tyl",
+        ],
+        Species::Dryad => [
+            "Oak", "Wil", "Ash", "Elm", "Bir", "Ivy", "Fern", "Moss", "Haze", "Mist",
+        ],
+        Species::Goblin => [
+            "Snik", "Griz", "Mog", "Krag", "Zog", "Snarl", "Drik", "Fizz", "Glob", "Rikk",
+        ],
+        Species::Troll => [
+            "Stone", "Mire", "River", "Bog", "Moss", "Crag", "Deep", "Old", "Grim", "Silent",
+        ],
+        Species::AbyssalDemons => [
+            "Ash", "Blight", "Cinder", "Dread", "Gloom", "Harrow", "Mire", "Scorch", "Vile",
+            "Wrath",
+        ],
+        Species::Elemental => [
+            "Ember", "Stone", "Tide", "Gale", "Cinder", "Slate", "Torrent", "Zephyr", "Magma",
+            "Frost",
+        ],
+        Species::Fey => [
+            "Glimmer", "Whisper", "Mist", "Thorn", "Puck", "Trick", "Willow", "Briar", "Gossamer",
+            "Riddle",
+        ],
+        Species::StoneGiants => [
+            "Stone", "Iron", "Granite", "Thunder", "Crag", "Boulder", "Mountain", "Deep", "High",
+            "Grim",
+        ],
+        Species::Golem => [
+            "Stone",
+            "Iron",
+            "Clay",
+            "Granite",
+            "Obsidian",
+            "Ancient",
+            "Weathered",
+            "Runic",
+            "Silent",
+            "Guardian",
+        ],
+        Species::Merfolk => [
+            "Coral", "Pearl", "Abyssal", "Tidal", "Azure", "Siren", "Kelp", "Nautilus", "Trident",
+            "Deep",
+        ],
+        Species::Naga => [
+            "Sesha",
+            "Vasuki",
+            "Nagini",
+            "Apep",
+            "Jormun",
+            "Tiamat",
+            "Quetzal",
+            "Mucalinda",
+            "Ananta",
+            "Shesha",
+        ],
+        Species::Revenant => [
+            "Bone", "Rot", "Grim", "Ash", "Dust", "Shade", "Wight", "Crypt", "Grave", "Carrion",
+        ],
+        Species::Vampire => [
+            "Blood", "Shadow", "Night", "Crimson", "Obsidian", "Ancient", "Eternal", "Pale",
+            "Silent", "Veiled",
+        ],
+        Species::Lupine => [
+            "Grey", "Blood", "Moon", "Night", "Iron", "Stone", "Fang", "Shadow", "Winter",
+            "Howling",
+        ],
         // CODEGEN: species_name_prefixes
     };
 
     let suffixes = match species {
-        Species::Human => ["mark", "ford", "heim", "dale", "wick", "ton", "bury", "wood", "vale", "gate"],
-        Species::Dwarf => ["heim", "hold", "delve", "deep", "forge", "gard", "mount", "hall", "peak", "stone"],
-        Species::Elf => ["wen", "dor", "las", "iel", "ion", "eth", "ath", "oth", "ril", "dal"],
-        Species::Orc => ["gash", "gore", "skull", "bone", "rot", "maw", "fang", "claw", "blood", "war"],
-        Species::Kobold => ["-nak", "-pik", "-snit", "-krak", "-yap", "-dig", "-trap", "-claw", "-scale", "-tail"],
-        Species::Gnoll => ["-ak", "-ul", "-ek", "-maw", "-fang", "-claw", "-blood", "-bone", "-pack", "-hunt"],
-        Species::Lizardfolk => ["-ith", "-ax", "-ul", "-ek", "-os", "-ar", "-ix", "-eth", "-ak", "-is"],
-        Species::Hobgoblin => ["-oth", "-uk", "-ar", "-ash", "-or", "-az", "-ul", "-ek", "-os", "-ag"],
-        Species::Ogre => ["-ug", "-ash", "-uk", "-og", "-unk", "-ag", "-ulk", "-ub", "-ok", "-um"],
-        Species::Harpy => ["-iek", "-eek", "-aal", "-iss", "-ara", "-ina", "-ona", "-yx", "-ia", "-ela"],
-        Species::Centaur => ["-on", "-us", "-ax", "-ion", "-or", "-an", "-is", "-eus", "-os", "-ar"],
-        Species::Minotaur => ["-ion", "-os", "-ax", "-ur", "-oth", "-an", "-is", "-uk", "-ar", "-ul"],
-        Species::Satyr => ["-us", "-an", "-os", "-ix", "-el", "-ion", "-yr", "-is", "-eon", "-as"],
-        Species::Dryad => ["-ara", "-iel", "-yn", "-wen", "-eth", "-ia", "-ora", "-ine", "-ana", "-ina"],
-        Species::Goblin => ["-git", "-snatch", "-grab", "-ear", "-fang", "-claw", "-sneak", "-grin", "-tooth", "-eye"],
-        Species::Troll => ["Gut", "Hide", "Fang", "Claw", "Bone", "Tusk", "Maw", "Scale", "Wart", "Spine"],
-        Species::AbyssalDemons => ["bane", "claw", "fang", "fiend", "maw", "rend", "shade", "spawn", "thorn", "wraith"],
-        Species::Elemental => ["Heart", "Fury", "Spire", "Crash", "Brand", "Crag", "Surge", "Howl", "Flow", "Core"],
-        Species::Fey => ["dancer", "tongue", "shadow", "leaf", "bind", "weaver", "spark", "thorn", "song", "trick"],
-        Species::StoneGiants => ["breaker", "hewer", "fist", "back", "heart", "roar", "hold", "fall", "crusher", "lord"],
-        Species::Golem => ["Sentinel", "Warden", "Construct", "Monolith", "Colossus", "Watcher", "Remnant", "Golem", "Statue", "Automaton"],
-        Species::Merfolk => ["Reef", "Tide", "Current", "Depths", "Shoal", "Breaker", "Crest", "Grotto", "Spire", "Shell"],
-        Species::Naga => ["-Guardian", "-Watcher", "-Coiled", "-the-Keeper", "-of-Secrets", "-Venom-Tongue", "-Ancient-Scale", "-Temple-Born", "-Oracle", "-the-Cursed"],
-        Species::Revenant => ["Bane", "Claw", "Walker", "Shambler", "Wraith", "Reaper", "Husk", "Blight", "Howler", "Keeper"],
-        Species::Vampire => ["Fang", "Claw", "Court", "Keep", "Sanctum", "Masque", "Vein", "Shroud", "Crypt", "Thirst"],
-        Species::Lupine => ["maw", "hide", "claw", "runner", "stalker", "bane", "heart", "caller", "pelt", "hunter"],
+        Species::Human => [
+            "mark", "ford", "heim", "dale", "wick", "ton", "bury", "wood", "vale", "gate",
+        ],
+        Species::Dwarf => [
+            "heim", "hold", "delve", "deep", "forge", "gard", "mount", "hall", "peak", "stone",
+        ],
+        Species::Elf => [
+            "wen", "dor", "las", "iel", "ion", "eth", "ath", "oth", "ril", "dal",
+        ],
+        Species::Orc => [
+            "gash", "gore", "skull", "bone", "rot", "maw", "fang", "claw", "blood", "war",
+        ],
+        Species::Kobold => [
+            "-nak", "-pik", "-snit", "-krak", "-yap", "-dig", "-trap", "-claw", "-scale", "-tail",
+        ],
+        Species::Gnoll => [
+            "-ak", "-ul", "-ek", "-maw", "-fang", "-claw", "-blood", "-bone", "-pack", "-hunt",
+        ],
+        Species::Lizardfolk => [
+            "-ith", "-ax", "-ul", "-ek", "-os", "-ar", "-ix", "-eth", "-ak", "-is",
+        ],
+        Species::Hobgoblin => [
+            "-oth", "-uk", "-ar", "-ash", "-or", "-az", "-ul", "-ek", "-os", "-ag",
+        ],
+        Species::Ogre => [
+            "-ug", "-ash", "-uk", "-og", "-unk", "-ag", "-ulk", "-ub", "-ok", "-um",
+        ],
+        Species::Harpy => [
+            "-iek", "-eek", "-aal", "-iss", "-ara", "-ina", "-ona", "-yx", "-ia", "-ela",
+        ],
+        Species::Centaur => [
+            "-on", "-us", "-ax", "-ion", "-or", "-an", "-is", "-eus", "-os", "-ar",
+        ],
+        Species::Minotaur => [
+            "-ion", "-os", "-ax", "-ur", "-oth", "-an", "-is", "-uk", "-ar", "-ul",
+        ],
+        Species::Satyr => [
+            "-us", "-an", "-os", "-ix", "-el", "-ion", "-yr", "-is", "-eon", "-as",
+        ],
+        Species::Dryad => [
+            "-ara", "-iel", "-yn", "-wen", "-eth", "-ia", "-ora", "-ine", "-ana", "-ina",
+        ],
+        Species::Goblin => [
+            "-git", "-snatch", "-grab", "-ear", "-fang", "-claw", "-sneak", "-grin", "-tooth",
+            "-eye",
+        ],
+        Species::Troll => [
+            "Gut", "Hide", "Fang", "Claw", "Bone", "Tusk", "Maw", "Scale", "Wart", "Spine",
+        ],
+        Species::AbyssalDemons => [
+            "bane", "claw", "fang", "fiend", "maw", "rend", "shade", "spawn", "thorn", "wraith",
+        ],
+        Species::Elemental => [
+            "Heart", "Fury", "Spire", "Crash", "Brand", "Crag", "Surge", "Howl", "Flow", "Core",
+        ],
+        Species::Fey => [
+            "dancer", "tongue", "shadow", "leaf", "bind", "weaver", "spark", "thorn", "song",
+            "trick",
+        ],
+        Species::StoneGiants => [
+            "breaker", "hewer", "fist", "back", "heart", "roar", "hold", "fall", "crusher", "lord",
+        ],
+        Species::Golem => [
+            "Sentinel",
+            "Warden",
+            "Construct",
+            "Monolith",
+            "Colossus",
+            "Watcher",
+            "Remnant",
+            "Golem",
+            "Statue",
+            "Automaton",
+        ],
+        Species::Merfolk => [
+            "Reef", "Tide", "Current", "Depths", "Shoal", "Breaker", "Crest", "Grotto", "Spire",
+            "Shell",
+        ],
+        Species::Naga => [
+            "-Guardian",
+            "-Watcher",
+            "-Coiled",
+            "-the-Keeper",
+            "-of-Secrets",
+            "-Venom-Tongue",
+            "-Ancient-Scale",
+            "-Temple-Born",
+            "-Oracle",
+            "-the-Cursed",
+        ],
+        Species::Revenant => [
+            "Bane", "Claw", "Walker", "Shambler", "Wraith", "Reaper", "Husk", "Blight", "Howler",
+            "Keeper",
+        ],
+        Species::Vampire => [
+            "Fang", "Claw", "Court", "Keep", "Sanctum", "Masque", "Vein", "Shroud", "Crypt",
+            "Thirst",
+        ],
+        Species::Lupine => [
+            "maw", "hide", "claw", "runner", "stalker", "bane", "heart", "caller", "pelt", "hunter",
+        ],
         // CODEGEN: species_name_suffixes
     };
 
@@ -724,12 +1031,236 @@ fn generate_polity_name(species: Species, rng: &mut ChaCha8Rng) -> String {
     format!("{}{}", prefix, suffix)
 }
 
+/// Calculate founding conditions from the environment at polity creation
+fn calculate_founding_conditions(
+    capital_id: u32,
+    territory: &HashSet<u32>,
+    regions: &[Region],
+    rng: &mut ChaCha8Rng,
+) -> FoundingConditions {
+    let capital = &regions[capital_id as usize];
+
+    // Calculate terrain harshness from capital and surrounding territory
+    let terrain_harshness = territory
+        .iter()
+        .map(|&id| {
+            let region = &regions[id as usize];
+            match region.terrain {
+                Terrain::Mountain => 0.9,
+                Terrain::Desert => 0.85,
+                Terrain::Marsh => 0.7,
+                Terrain::Hills => 0.5,
+                Terrain::Forest => 0.4,
+                Terrain::Plains => 0.2,
+                Terrain::River => 0.15,
+                Terrain::Coast => 0.3,
+            }
+        })
+        .sum::<f32>()
+        / territory.len().max(1) as f32;
+
+    // Calculate isolation - fewer neighbors with other controllers = more isolated
+    let claimed_neighbors = capital
+        .neighbors
+        .iter()
+        .filter(|&&n| regions.get(n as usize).map(|r| r.controller.is_some()).unwrap_or(false))
+        .count();
+    let initial_isolation = 1.0 - (claimed_neighbors as f32 / capital.neighbors.len().max(1) as f32);
+
+    // Determine founding context (random with environmental bias)
+    let founding_context = if terrain_harshness > 0.7 {
+        // Harsh terrain suggests refugees or exiles
+        if rng.gen::<f32>() < 0.4 {
+            FoundingType::Refugee
+        } else if rng.gen::<f32>() < 0.3 {
+            FoundingType::Exile
+        } else {
+            FoundingType::Organic
+        }
+    } else if initial_isolation < 0.3 {
+        // Many neighbors - could be colony or conquest
+        if rng.gen::<f32>() < 0.3 {
+            FoundingType::Colony
+        } else if rng.gen::<f32>() < 0.2 {
+            FoundingType::Conquest
+        } else {
+            FoundingType::Organic
+        }
+    } else {
+        // Normal conditions
+        let roll: f32 = rng.gen();
+        if roll < 0.6 {
+            FoundingType::Organic
+        } else if roll < 0.75 {
+            FoundingType::Colony
+        } else if roll < 0.85 {
+            FoundingType::Religious
+        } else if roll < 0.92 {
+            FoundingType::Conquest
+        } else {
+            FoundingType::Refugee
+        }
+    };
+
+    // Neighbor pressure based on how many neighbors there are
+    let neighbor_pressure = (capital.neighbors.len() as f32 / 6.0).min(1.0) * rng.gen_range(0.5..1.0);
+
+    // Resource scarcity based on territory resources
+    let resource_count = territory
+        .iter()
+        .filter(|&&id| regions[id as usize].resources != ResourceType::None)
+        .count();
+    let resource_scarcity = 1.0 - (resource_count as f32 / territory.len().max(1) as f32);
+
+    FoundingConditions {
+        terrain_harshness,
+        initial_isolation,
+        founding_context,
+        neighbor_pressure,
+        resource_scarcity,
+    }
+}
+
+/// Generate species-specific cultural drift based on founding conditions
+fn generate_cultural_drift(
+    species: Species,
+    founding: &FoundingConditions,
+    rng: &mut ChaCha8Rng,
+) -> CulturalDrift {
+    // Small random variation bounded by ±0.2 at founding
+    let mut small_drift = || rng.gen_range(-0.15..0.15);
+
+    match species {
+        Species::Human => {
+            // Humans: founding context strongly influences initial culture
+            let mut drift = HumanCulturalDrift::default();
+
+            match founding.founding_context {
+                FoundingType::Conquest => {
+                    drift.martial_tradition = 0.2 + small_drift();
+                    drift.expansionist_drive = 0.15 + small_drift();
+                }
+                FoundingType::Refugee => {
+                    drift.martial_tradition = -0.1 + small_drift();
+                    drift.piety_emphasis = 0.1 + small_drift();
+                }
+                FoundingType::Colony => {
+                    drift.merchant_culture = 0.15 + small_drift();
+                    drift.expansionist_drive = 0.1 + small_drift();
+                }
+                FoundingType::Religious => {
+                    drift.piety_emphasis = 0.25 + small_drift();
+                }
+                _ => {
+                    // Organic and Exile start near baseline
+                    drift.martial_tradition = small_drift();
+                    drift.merchant_culture = small_drift();
+                }
+            }
+
+            // Environment modifies drift
+            if founding.terrain_harshness > 0.6 {
+                drift.martial_tradition += 0.1; // Harsh lands breed warriors
+            }
+            if founding.resource_scarcity > 0.6 {
+                drift.expansionist_drive += 0.1; // Scarcity drives expansion
+            }
+
+            // Clamp all values to bounds
+            drift.martial_tradition = drift.martial_tradition.clamp(-0.5, 0.5);
+            drift.merchant_culture = drift.merchant_culture.clamp(-0.5, 0.5);
+            drift.piety_emphasis = drift.piety_emphasis.clamp(-0.5, 0.5);
+            drift.expansionist_drive = drift.expansionist_drive.clamp(-0.5, 0.5);
+            drift.honor_culture = drift.honor_culture.clamp(-0.5, 0.5);
+
+            CulturalDrift::Human(drift)
+        }
+        Species::Dwarf => {
+            let mut drift = DwarfCulturalDrift::default();
+
+            // Dwarves in mountains have stronger craft pride
+            if founding.terrain_harshness > 0.7 {
+                drift.craft_pride = 0.2 + small_drift();
+                drift.stone_debt = 0.15 + small_drift();
+            }
+
+            // Isolated dwarves develop stronger hold loyalty
+            if founding.initial_isolation > 0.6 {
+                drift.hold_loyalty = 0.2 + small_drift();
+            }
+
+            // Conquest-founded holds have quicker grudge trigger
+            if matches!(founding.founding_context, FoundingType::Conquest) {
+                drift.grudge_threshold = 0.15 + small_drift();
+            }
+
+            // Clamp all values
+            drift.grudge_threshold = drift.grudge_threshold.clamp(-0.5, 0.5);
+            drift.craft_pride = drift.craft_pride.clamp(-0.5, 0.5);
+            drift.hold_loyalty = drift.hold_loyalty.clamp(-0.5, 0.5);
+            drift.stone_debt = drift.stone_debt.clamp(-0.5, 0.5);
+            drift.ancestor_weight = drift.ancestor_weight.clamp(-0.5, 0.5);
+
+            CulturalDrift::Dwarf(drift)
+        }
+        Species::Elf => {
+            let mut drift = ElfCulturalDrift::default();
+
+            // Elves in forests have stronger attachment
+            if founding.terrain_harshness < 0.4 {
+                drift.forest_attachment = 0.2 + small_drift();
+            }
+
+            // Isolated elves weight memory more heavily
+            if founding.initial_isolation > 0.5 {
+                drift.memory_weight = 0.15 + small_drift();
+                drift.mortal_patience = -0.1 + small_drift(); // Less exposure to mortals
+            }
+
+            // Refugee elves have stronger pattern focus (learned from loss)
+            if matches!(founding.founding_context, FoundingType::Refugee) {
+                drift.pattern_focus = 0.2 + small_drift();
+                drift.change_tolerance = -0.15 + small_drift(); // Fear change
+            }
+
+            // Clamp all values
+            drift.memory_weight = drift.memory_weight.clamp(-0.5, 0.5);
+            drift.change_tolerance = drift.change_tolerance.clamp(-0.5, 0.5);
+            drift.forest_attachment = drift.forest_attachment.clamp(-0.5, 0.5);
+            drift.mortal_patience = drift.mortal_patience.clamp(-0.5, 0.5);
+            drift.pattern_focus = drift.pattern_focus.clamp(-0.5, 0.5);
+
+            CulturalDrift::Elf(drift)
+        }
+        _ => {
+            // Generic drift for other species
+            let mut drift = GenericCulturalDrift::default();
+
+            // High terrain harshness increases aggression (survival)
+            if founding.terrain_harshness > 0.6 {
+                drift.aggression = 0.1 + small_drift();
+            }
+
+            // High isolation increases isolationism
+            if founding.initial_isolation > 0.6 {
+                drift.isolationism = 0.15 + small_drift();
+            }
+
+            // Clamp values
+            drift.aggression = drift.aggression.clamp(-0.5, 0.5);
+            drift.isolationism = drift.isolationism.clamp(-0.5, 0.5);
+            drift.traditionalism = drift.traditionalism.clamp(-0.5, 0.5);
+
+            CulturalDrift::Generic(drift)
+        }
+    }
+}
+
 /// Initialize relations between all polities
 pub fn initialize_relations(world: &mut AggregateWorld) {
     let polity_ids: Vec<PolityId> = world.polities.iter().map(|p| p.id).collect();
-    let species_map: HashMap<PolityId, Species> = world.polities.iter()
-        .map(|p| (p.id, p.species))
-        .collect();
+    let species_map: HashMap<PolityId, Species> =
+        world.polities.iter().map(|p| (p.id, p.species)).collect();
 
     for polity in &mut world.polities {
         for &other_id in &polity_ids {
@@ -737,17 +1268,24 @@ pub fn initialize_relations(world: &mut AggregateWorld) {
                 let other_species = species_map.get(&other_id).unwrap();
 
                 // Same species = slightly positive, different = slightly negative
-                let base_opinion = if polity.species == *other_species { 10 } else { -10 };
+                let base_opinion = if polity.species == *other_species {
+                    10
+                } else {
+                    -10
+                };
 
                 // Relations are keyed by the inner u32 for backwards compatibility
-                polity.relations.insert(other_id.0, Relation {
-                    opinion: base_opinion,
-                    trust: 0,
-                    at_war: false,
-                    alliance: false,
-                    grudges: Vec::new(),
-                    treaties: Vec::new(),
-                });
+                polity.relations.insert(
+                    other_id.0,
+                    Relation {
+                        opinion: base_opinion,
+                        trust: 0,
+                        at_war: false,
+                        alliance: false,
+                        grudges: Vec::new(),
+                        treaties: Vec::new(),
+                    },
+                );
             }
         }
     }

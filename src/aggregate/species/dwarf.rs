@@ -1,13 +1,13 @@
 //! Dwarf species behavior - grudges, oaths, stone-bound
 
-use crate::aggregate::polity::{Polity, GrudgeReason};
-use crate::aggregate::world::{AggregateWorld, WarCause};
 use crate::aggregate::events::EventType;
-use crate::aggregate::systems::expansion::find_expansion_targets;
+use crate::aggregate::polity::{GrudgeReason, Polity};
 use crate::aggregate::region::Terrain;
+use crate::aggregate::systems::expansion::find_expansion_targets;
+use crate::aggregate::world::{AggregateWorld, WarCause};
 
-const GRUDGE_WAR_THRESHOLD: f32 = 0.4;  // Dwarves hold grudges easily
-const EXPANSION_POP_THRESHOLD: u32 = 1000;  // Expand earlier
+const GRUDGE_WAR_THRESHOLD: f32 = 0.4; // Dwarves hold grudges easily
+const EXPANSION_POP_THRESHOLD: u32 = 1000; // Expand earlier
 
 pub fn tick(polity: &Polity, world: &AggregateWorld, _year: u32) -> Vec<EventType> {
     let mut events = Vec::new();
@@ -50,9 +50,12 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, _year: u32) -> Vec<EventTyp
     let targets = find_expansion_targets(polity, world);
 
     // First try preferred terrain
-    let preferred_expansion: Vec<u32> = targets.unclaimed.iter()
+    let preferred_expansion: Vec<u32> = targets
+        .unclaimed
+        .iter()
         .filter(|&&region_id| {
-            world.get_region(region_id)
+            world
+                .get_region(region_id)
                 .map(|r| matches!(r.terrain, Terrain::Mountain | Terrain::Hills))
                 .unwrap_or(false)
         })
@@ -60,9 +63,12 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, _year: u32) -> Vec<EventTyp
         .collect();
 
     // Fall back to any non-water terrain
-    let any_expansion: Vec<u32> = targets.unclaimed.iter()
+    let any_expansion: Vec<u32> = targets
+        .unclaimed
+        .iter()
         .filter(|&&region_id| {
-            world.get_region(region_id)
+            world
+                .get_region(region_id)
                 .map(|r| !matches!(r.terrain, Terrain::Coast | Terrain::Marsh))
                 .unwrap_or(false)
         })

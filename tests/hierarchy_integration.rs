@@ -2,11 +2,15 @@
 
 use std::collections::HashMap;
 
-use arc_citadel::core::types::{PolityId, RulerId, PolityTier, GovernmentType, Species, LocationId};
-use arc_citadel::aggregate::polity::{Polity, PolityType, CulturalDrift, SpeciesState, HumanState};
-use arc_citadel::aggregate::ruler::{Ruler, PersonalityTrait, Skills, Family, Opinion};
-use arc_citadel::aggregate::hierarchy::{get_sovereign, get_vassals, get_all_vassals, is_vassal_of, same_realm};
+use arc_citadel::aggregate::hierarchy::{
+    get_all_vassals, get_sovereign, get_vassals, is_vassal_of, same_realm,
+};
+use arc_citadel::aggregate::polity::{CulturalDrift, FoundingConditions, HumanState, Polity, PolityType, SpeciesState};
+use arc_citadel::aggregate::ruler::{Family, Opinion, PersonalityTrait, Ruler, Skills};
 use arc_citadel::campaign::Location;
+use arc_citadel::core::types::{
+    GovernmentType, LocationId, PolityId, PolityTier, RulerId, Species,
+};
 
 fn create_test_hierarchy() -> (HashMap<PolityId, Polity>, HashMap<RulerId, Ruler>) {
     // Create: Empire(1) -> Kingdom(2) -> Duchy(3)
@@ -27,25 +31,29 @@ fn create_test_hierarchy() -> (HashMap<PolityId, Polity>, HashMap<RulerId, Ruler
     );
     rulers.insert(emperor.id, emperor);
 
-    polities.insert(PolityId(1), Polity {
-        id: PolityId(1),
-        name: "Empire of Aldoria".to_string(),
-        species: Species::Human,
-        polity_type: PolityType::Kingdom,
-        tier: PolityTier::Empire,
-        government: GovernmentType::Autocracy,
-        parent: None,
-        rulers: vec![RulerId(1)],
-        council_roles: HashMap::new(),
-        capital: 0,
-        population: 100000,
-        military_strength: 1000.0,
-        economic_strength: 1000.0,
-        cultural_drift: CulturalDrift::default(),
-        relations: HashMap::new(),
-        species_state: SpeciesState::Human(HumanState::default()),
-        alive: true,
-    });
+    polities.insert(
+        PolityId(1),
+        Polity {
+            id: PolityId(1),
+            name: "Empire of Aldoria".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom,
+            tier: PolityTier::Empire,
+            government: GovernmentType::Autocracy,
+            parent: None,
+            rulers: vec![RulerId(1)],
+            council_roles: HashMap::new(),
+            capital: 0,
+            population: 100000,
+            military_strength: 1000.0,
+            economic_strength: 1000.0,
+            founding_conditions: FoundingConditions::default(),
+            cultural_drift: CulturalDrift::default(),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        },
+    );
 
     // Kingdom under Empire
     let king = Ruler::new(
@@ -59,25 +67,29 @@ fn create_test_hierarchy() -> (HashMap<PolityId, Polity>, HashMap<RulerId, Ruler
     );
     rulers.insert(king.id, king);
 
-    polities.insert(PolityId(2), Polity {
-        id: PolityId(2),
-        name: "Kingdom of Valheim".to_string(),
-        species: Species::Human,
-        polity_type: PolityType::Kingdom,
-        tier: PolityTier::Kingdom,
-        government: GovernmentType::Autocracy,
-        parent: Some(PolityId(1)),
-        rulers: vec![RulerId(2)],
-        council_roles: HashMap::new(),
-        capital: 1,
-        population: 50000,
-        military_strength: 500.0,
-        economic_strength: 500.0,
-        cultural_drift: CulturalDrift::default(),
-        relations: HashMap::new(),
-        species_state: SpeciesState::Human(HumanState::default()),
-        alive: true,
-    });
+    polities.insert(
+        PolityId(2),
+        Polity {
+            id: PolityId(2),
+            name: "Kingdom of Valheim".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom,
+            tier: PolityTier::Kingdom,
+            government: GovernmentType::Autocracy,
+            parent: Some(PolityId(1)),
+            rulers: vec![RulerId(2)],
+            council_roles: HashMap::new(),
+            capital: 1,
+            population: 50000,
+            military_strength: 500.0,
+            economic_strength: 500.0,
+            founding_conditions: FoundingConditions::default(),
+            cultural_drift: CulturalDrift::default(),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        },
+    );
 
     // Duchy under Kingdom
     let duke = Ruler::new(
@@ -91,46 +103,54 @@ fn create_test_hierarchy() -> (HashMap<PolityId, Polity>, HashMap<RulerId, Ruler
     );
     rulers.insert(duke.id, duke);
 
-    polities.insert(PolityId(3), Polity {
-        id: PolityId(3),
-        name: "Duchy of Ironhold".to_string(),
-        species: Species::Human,
-        polity_type: PolityType::Kingdom,
-        tier: PolityTier::Duchy,
-        government: GovernmentType::Autocracy,
-        parent: Some(PolityId(2)),
-        rulers: vec![RulerId(3)],
-        council_roles: HashMap::new(),
-        capital: 2,
-        population: 20000,
-        military_strength: 200.0,
-        economic_strength: 200.0,
-        cultural_drift: CulturalDrift::default(),
-        relations: HashMap::new(),
-        species_state: SpeciesState::Human(HumanState::default()),
-        alive: true,
-    });
+    polities.insert(
+        PolityId(3),
+        Polity {
+            id: PolityId(3),
+            name: "Duchy of Ironhold".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom,
+            tier: PolityTier::Duchy,
+            government: GovernmentType::Autocracy,
+            parent: Some(PolityId(2)),
+            rulers: vec![RulerId(3)],
+            council_roles: HashMap::new(),
+            capital: 2,
+            population: 20000,
+            military_strength: 200.0,
+            economic_strength: 200.0,
+            founding_conditions: FoundingConditions::default(),
+            cultural_drift: CulturalDrift::default(),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        },
+    );
 
     // Another Kingdom under Empire
-    polities.insert(PolityId(4), Polity {
-        id: PolityId(4),
-        name: "Kingdom of Eastmarch".to_string(),
-        species: Species::Human,
-        polity_type: PolityType::Kingdom,
-        tier: PolityTier::Kingdom,
-        government: GovernmentType::Autocracy,
-        parent: Some(PolityId(1)),
-        rulers: vec![RulerId(4)],
-        council_roles: HashMap::new(),
-        capital: 3,
-        population: 40000,
-        military_strength: 400.0,
-        economic_strength: 400.0,
-        cultural_drift: CulturalDrift::default(),
-        relations: HashMap::new(),
-        species_state: SpeciesState::Human(HumanState::default()),
-        alive: true,
-    });
+    polities.insert(
+        PolityId(4),
+        Polity {
+            id: PolityId(4),
+            name: "Kingdom of Eastmarch".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom,
+            tier: PolityTier::Kingdom,
+            government: GovernmentType::Autocracy,
+            parent: Some(PolityId(1)),
+            rulers: vec![RulerId(4)],
+            council_roles: HashMap::new(),
+            capital: 3,
+            population: 40000,
+            military_strength: 400.0,
+            economic_strength: 400.0,
+            founding_conditions: FoundingConditions::default(),
+            cultural_drift: CulturalDrift::default(),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        },
+    );
 
     (polities, rulers)
 }
@@ -169,11 +189,17 @@ fn test_ruler_opinions() {
 
     // Emperor forms opinions of vassal kingdoms
     let emperor = rulers.get_mut(&RulerId(1)).unwrap();
-    emperor.set_opinion(PolityId(2), Opinion::new(50));  // Likes Kingdom
+    emperor.set_opinion(PolityId(2), Opinion::new(50)); // Likes Kingdom
     emperor.set_opinion(PolityId(4), Opinion::new(-20)); // Dislikes other Kingdom
 
-    assert_eq!(emperor.get_opinion(PolityId(2)).unwrap().effective_value(), 50);
-    assert_eq!(emperor.get_opinion(PolityId(4)).unwrap().effective_value(), -20);
+    assert_eq!(
+        emperor.get_opinion(PolityId(2)).unwrap().effective_value(),
+        50
+    );
+    assert_eq!(
+        emperor.get_opinion(PolityId(4)).unwrap().effective_value(),
+        -20
+    );
 
     // King forms opinion of liege
     let king = rulers.get_mut(&RulerId(2)).unwrap();

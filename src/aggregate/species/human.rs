@@ -1,14 +1,16 @@
 //! Human species behavior - expansion, fragmentation, ambition
 
-use crate::aggregate::polity::Polity;
-use crate::aggregate::world::{AggregateWorld, WarCause};
 use crate::aggregate::events::EventType;
-use crate::aggregate::systems::expansion::{find_expansion_targets, calculate_human_expansion_pressure};
+use crate::aggregate::polity::Polity;
+use crate::aggregate::systems::expansion::{
+    calculate_human_expansion_pressure, find_expansion_targets,
+};
+use crate::aggregate::world::{AggregateWorld, WarCause};
 
-const EXPANSION_THRESHOLD: f32 = 0.3;  // More aggressive expansion
-const CIVIL_WAR_THRESHOLD: f32 = 0.4;  // More internal strife
-const REPUTATION_CRISIS: f32 = 0.3;    // More honor wars
-const BETRAYAL_THRESHOLD: f32 = 0.5;   // More backstabbing
+const EXPANSION_THRESHOLD: f32 = 0.3; // More aggressive expansion
+const CIVIL_WAR_THRESHOLD: f32 = 0.4; // More internal strife
+const REPUTATION_CRISIS: f32 = 0.3; // More honor wars
+const BETRAYAL_THRESHOLD: f32 = 0.5; // More backstabbing
 
 pub fn tick(polity: &Polity, world: &AggregateWorld, _year: u32) -> Vec<EventType> {
     let mut events = Vec::new();
@@ -26,7 +28,10 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, _year: u32) -> Vec<EventTyp
         let targets = find_expansion_targets(polity, world);
 
         if let Some(&easy_target) = targets.unclaimed.first() {
-            events.push(EventType::Expansion { polity: polity.id.0, region: easy_target });
+            events.push(EventType::Expansion {
+                polity: polity.id.0,
+                region: easy_target,
+            });
         } else if let Some(&(_region, controller)) = targets.weak_neighbors.first() {
             // Consider war
             if should_declare_war(polity, controller, world) {
@@ -61,7 +66,10 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, _year: u32) -> Vec<EventTyp
     // BETRAYAL: Humans can break alliances
     if should_betray_ally(polity, world) {
         if let Some(victim) = pick_betrayal_victim(polity, world) {
-            events.push(EventType::Betrayal { betrayer: polity.id.0, victim });
+            events.push(EventType::Betrayal {
+                betrayer: polity.id.0,
+                victim,
+            });
         }
     }
 
@@ -91,7 +99,9 @@ fn should_declare_war(polity: &Polity, target: u32, world: &AggregateWorld) -> b
 
 fn find_honor_target(polity: &Polity, world: &AggregateWorld) -> Option<u32> {
     // Find a weak neighbor to pick a fight with
-    polity.relations.iter()
+    polity
+        .relations
+        .iter()
         .filter(|(_, rel)| !rel.at_war && !rel.alliance && rel.opinion < 0)
         .filter_map(|(&id, _)| world.get_polity(id).map(|p| (id, p)))
         .filter(|(_, other)| other.alive && other.military_strength < polity.military_strength)
@@ -105,15 +115,18 @@ fn should_betray_ally(polity: &Polity, _world: &AggregateWorld) -> bool {
         None => return false,
     };
 
-    // Bold polities with low cohesion betray more easily
-    let boldness_factor = state.boldness * 0.2;
-    let adjusted_threshold = BETRAYAL_THRESHOLD - boldness_factor;
+    // Expansionist cultures with low cohesion betray more easily
+    // Use decision_modifier which incorporates cultural drift
+    let drift_factor = -polity.decision_modifier() * 0.3; // More aggressive = more likely to betray
+    let adjusted_threshold = BETRAYAL_THRESHOLD - drift_factor;
 
     state.internal_cohesion < 0.5 && state.expansion_pressure > adjusted_threshold
 }
 
 fn pick_betrayal_victim(polity: &Polity, world: &AggregateWorld) -> Option<u32> {
-    polity.relations.iter()
+    polity
+        .relations
+        .iter()
         .filter(|(_, rel)| rel.alliance)
         .filter_map(|(&id, _)| world.get_polity(id).map(|p| (id, p)))
         .filter(|(_, other)| other.alive && other.military_strength < polity.military_strength)

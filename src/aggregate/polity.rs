@@ -1,7 +1,7 @@
 //! Polity - nation/tribe/hold/grove and species-specific state
 
-use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 use crate::core::types::{GovernmentType, PolityId, PolityTier, RulerId, Species};
 
@@ -16,17 +16,18 @@ pub struct Polity {
     // Hierarchy fields
     pub tier: PolityTier,
     pub government: GovernmentType,
-    pub parent: Option<PolityId>,  // None = sovereign
-    pub rulers: Vec<RulerId>,       // len=1 for autocracy, len=N for council
+    pub parent: Option<PolityId>, // None = sovereign
+    pub rulers: Vec<RulerId>,     // len=1 for autocracy, len=N for council
     pub council_roles: HashMap<CouncilRole, RulerId>,
 
     // Physical state (territory removed - Location.controller is source of truth)
     pub population: u32,
-    pub capital: u32,  // Region ID
+    pub capital: u32, // Region ID
     pub military_strength: f32,
     pub economic_strength: f32,
 
-    // Cultural drift from species baseline
+    // Personality: immutable founding context + slowly-drifting cultural emphasis
+    pub founding_conditions: FoundingConditions,
     pub cultural_drift: CulturalDrift,
 
     // Relations with other polities (treaties, not opinions)
@@ -42,10 +43,10 @@ pub struct Polity {
 /// Council roles for government
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CouncilRole {
-    Chancellor,   // Diplomacy
-    Marshal,      // Military
-    Steward,      // Economy
-    Spymaster,    // Intrigue
+    Chancellor, // Diplomacy
+    Marshal,    // Military
+    Steward,    // Economy
+    Spymaster,  // Intrigue
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -65,17 +66,97 @@ pub enum PolityType {
     Horde,
 }
 
+/// How this polity was founded - immutable formative context
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FoundingConditions {
+    pub terrain_harshness: f32,   // 0.0-1.0: how difficult the environment was
+    pub initial_isolation: f32,   // 0.0-1.0: how cut off from others
+    pub founding_context: FoundingType,
+    pub neighbor_pressure: f32,   // 0.0-1.0: threat level at founding
+    pub resource_scarcity: f32,   // 0.0-1.0: how scarce resources were
+}
+
+impl Default for FoundingConditions {
+    fn default() -> Self {
+        Self {
+            terrain_harshness: 0.5,
+            initial_isolation: 0.5,
+            founding_context: FoundingType::Organic,
+            neighbor_pressure: 0.3,
+            resource_scarcity: 0.5,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct CulturalDrift {
-    pub primary_drift: Option<(String, f32)>,
-    pub secondary_drift: Option<(String, f32)>,
-    pub traditions: Vec<String>,
+pub enum FoundingType {
+    #[default]
+    Organic,    // Natural growth from settlement
+    Refugee,    // Fled from disaster/conquest
+    Colony,     // Deliberate expansion from parent
+    Conquest,   // Founded by military victory
+    Religious,  // Founded around sacred site/mission
+    Exile,      // Outcasts forming new society
+}
+
+/// Cultural drift from species baseline - species-specific value emphasis
+/// Drift bounds: max ±0.5 from species baseline
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum CulturalDrift {
+    Human(HumanCulturalDrift),
+    Dwarf(DwarfCulturalDrift),
+    Elf(ElfCulturalDrift),
+    Generic(GenericCulturalDrift), // For species without specific drift yet
+}
+
+impl Default for CulturalDrift {
+    fn default() -> Self {
+        CulturalDrift::Generic(GenericCulturalDrift::default())
+    }
+}
+
+/// Human cultural drift - emphasis within human value vocabulary
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct HumanCulturalDrift {
+    pub martial_tradition: f32,    // -0.5 to 0.5: emphasis on military
+    pub merchant_culture: f32,     // -0.5 to 0.5: emphasis on trade
+    pub piety_emphasis: f32,       // -0.5 to 0.5: emphasis on religion
+    pub expansionist_drive: f32,   // -0.5 to 0.5: emphasis on growth
+    pub honor_culture: f32,        // -0.5 to 0.5: emphasis on reputation
+}
+
+/// Dwarf cultural drift - emphasis within dwarf value vocabulary
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct DwarfCulturalDrift {
+    pub grudge_threshold: f32,     // -0.5 to 0.5: quicker/slower to take offense
+    pub craft_pride: f32,          // -0.5 to 0.5: emphasis on craftsmanship
+    pub hold_loyalty: f32,         // -0.5 to 0.5: attachment to home
+    pub stone_debt: f32,           // -0.5 to 0.5: obligation to ancestral sites
+    pub ancestor_weight: f32,      // -0.5 to 0.5: importance of tradition
+}
+
+/// Elf cultural drift - emphasis within elf value vocabulary
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct ElfCulturalDrift {
+    pub memory_weight: f32,        // -0.5 to 0.5: how much past defines present
+    pub change_tolerance: f32,     // -0.5 to 0.5: acceptance of change
+    pub forest_attachment: f32,    // -0.5 to 0.5: bond to natural territory
+    pub mortal_patience: f32,      // -0.5 to 0.5: tolerance of shorter-lived species
+    pub pattern_focus: f32,        // -0.5 to 0.5: attention to historical cycles
+}
+
+/// Generic drift for species without specific cultural dimensions
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct GenericCulturalDrift {
+    pub aggression: f32,           // -0.5 to 0.5
+    pub isolationism: f32,         // -0.5 to 0.5
+    pub traditionalism: f32,       // -0.5 to 0.5
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Relation {
-    pub opinion: i32,  // -100 to +100
-    pub trust: i32,    // -100 to +100
+    pub opinion: i32, // -100 to +100
+    pub trust: i32,   // -100 to +100
     pub at_war: bool,
     pub alliance: bool,
     pub grudges: Vec<Grudge>,
@@ -158,9 +239,6 @@ pub struct HumanState {
     pub reputation: f32,
     pub piety: f32,
     pub factions: Vec<Faction>,
-    // Personality (set at generation, doesn't change)
-    pub boldness: f32,      // 0.0-1.0: willingness to take risks
-    pub caution: f32,       // 0.0-1.0: aversion to risk
     // Dynamic state (changes based on events)
     pub war_exhaustion: f32, // 0.0-1.0: accumulated war weariness
     pub morale: f32,         // -1.0 to 1.0: recent successes/failures
@@ -180,9 +258,6 @@ pub struct DwarfState {
     pub oaths: Vec<Oath>,
     pub ancestral_sites: Vec<u32>,
     pub craft_focus: CraftType,
-    // Personality (set at generation, doesn't change)
-    pub boldness: f32,      // 0.0-1.0: willingness to take risks
-    pub caution: f32,       // 0.0-1.0: aversion to risk
     // Dynamic state (changes based on events)
     pub war_exhaustion: f32, // 0.0-1.0: accumulated war weariness
     pub morale: f32,         // -1.0 to 1.0: recent successes/failures
@@ -224,9 +299,6 @@ pub struct ElfState {
     pub pending_decisions: Vec<PendingDecision>,
     pub core_territory: HashSet<u32>,
     pub pattern_assessment: f32,
-    // Personality (set at generation, doesn't change)
-    pub boldness: f32,      // 0.0-1.0: willingness to take risks
-    pub caution: f32,       // 0.0-1.0: aversion to risk
     // Dynamic state (changes based on events)
     pub war_exhaustion: f32, // 0.0-1.0: accumulated war weariness
     pub morale: f32,         // -1.0 to 1.0: recent successes/failures
@@ -410,25 +482,56 @@ pub struct LupineState {
 // CODEGEN: species_state_structs
 
 impl Polity {
-    /// Calculate a dynamic threshold modifier based on personality and state.
+    /// Calculate a dynamic threshold modifier based on cultural drift and state.
     /// Returns a modifier to apply to base thresholds.
     /// Positive = more cautious, negative = more aggressive
     pub fn decision_modifier(&self) -> f32 {
-        let (boldness, caution, exhaustion, morale) = match &self.species_state {
-            SpeciesState::Human(s) => (s.boldness, s.caution, s.war_exhaustion, s.morale),
-            SpeciesState::Dwarf(s) => (s.boldness, s.caution, s.war_exhaustion, s.morale),
-            SpeciesState::Elf(s) => (s.boldness, s.caution, s.war_exhaustion, s.morale),
-            _ => return 0.0, // Other species use base thresholds
+        // Get dynamic state (exhaustion, morale)
+        let (exhaustion, morale) = match &self.species_state {
+            SpeciesState::Human(s) => (s.war_exhaustion, s.morale),
+            SpeciesState::Dwarf(s) => (s.war_exhaustion, s.morale),
+            SpeciesState::Elf(s) => (s.war_exhaustion, s.morale),
+            _ => (0.0, 0.0), // Other species start with base values
         };
 
-        // Personality influence: cautious polities need better odds
-        let personality_mod = (caution - boldness) * 0.3;
+        // Cultural drift influence - species-specific
+        let drift_mod = match &self.cultural_drift {
+            CulturalDrift::Human(d) => {
+                // Martial tradition and expansionist drive make more aggressive
+                (-d.martial_tradition - d.expansionist_drive) * 0.3
+            }
+            CulturalDrift::Dwarf(d) => {
+                // Grudge threshold affects how quickly they take offense
+                // Hold loyalty makes them more defensive (cautious about foreign adventures)
+                (-d.grudge_threshold + d.hold_loyalty * 0.5) * 0.3
+            }
+            CulturalDrift::Elf(d) => {
+                // Change tolerance affects willingness to act
+                // Memory weight can make them more cautious (learned from past)
+                (d.memory_weight - d.change_tolerance) * 0.3
+            }
+            CulturalDrift::Generic(d) => {
+                // Simple: aggression makes more aggressive
+                -d.aggression * 0.3
+            }
+        };
+
+        // Founding conditions influence - refugees are more cautious, conquest founders more bold
+        let founding_mod = match self.founding_conditions.founding_context {
+            FoundingType::Conquest => -0.1, // Aggressive heritage
+            FoundingType::Refugee => 0.15,  // Cautious heritage
+            FoundingType::Exile => 0.1,     // Wary of conflict
+            _ => 0.0,
+        };
+
+        // Terrain harshness makes polities more cautious (survival focus)
+        let environment_mod = self.founding_conditions.terrain_harshness * 0.1;
 
         // State influence: exhausted/demoralized polities are more cautious
         let exhaustion_mod = exhaustion * 0.2;
         let morale_mod = -morale * 0.15; // High morale = lower threshold (more aggressive)
 
-        personality_mod + exhaustion_mod + morale_mod
+        drift_mod + founding_mod + environment_mod + exhaustion_mod + morale_mod
     }
 
     pub fn human_state(&self) -> Option<&HumanState> {
@@ -472,7 +575,6 @@ impl Polity {
             _ => None,
         }
     }
-
 
     pub fn orc_state(&self) -> Option<&OrcState> {
         match &self.species_state {
@@ -821,7 +923,7 @@ impl Polity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::{PolityId, RulerId, PolityTier, GovernmentType};
+    use crate::core::types::{GovernmentType, PolityId, PolityTier, RulerId};
 
     #[test]
     fn test_polity_has_new_fields() {
@@ -839,7 +941,8 @@ mod tests {
             population: 10000,
             military_strength: 100.0,
             economic_strength: 100.0,
-            cultural_drift: CulturalDrift::default(),
+            founding_conditions: FoundingConditions::default(),
+            cultural_drift: CulturalDrift::Human(HumanCulturalDrift::default()),
             relations: HashMap::new(),
             species_state: SpeciesState::Human(HumanState::default()),
             alive: true,
@@ -859,14 +962,15 @@ mod tests {
             polity_type: PolityType::Kingdom, // Cultural type
             tier: PolityTier::Duchy,          // Hierarchy rank
             government: GovernmentType::Autocracy,
-            parent: Some(PolityId(1)),        // Vassal of polity 1
+            parent: Some(PolityId(1)), // Vassal of polity 1
             rulers: vec![RulerId(2)],
             council_roles: HashMap::new(),
             capital: 1,
             population: 5000,
             military_strength: 50.0,
             economic_strength: 50.0,
-            cultural_drift: CulturalDrift::default(),
+            founding_conditions: FoundingConditions::default(),
+            cultural_drift: CulturalDrift::Human(HumanCulturalDrift::default()),
             relations: HashMap::new(),
             species_state: SpeciesState::Human(HumanState::default()),
             alive: true,
@@ -874,5 +978,96 @@ mod tests {
 
         assert!(!polity.is_sovereign());
         assert_eq!(polity.parent, Some(PolityId(1)));
+    }
+
+    #[test]
+    fn test_cultural_drift_affects_decision_modifier() {
+        // Test that martial human culture makes more aggressive decisions
+        let martial_polity = Polity {
+            id: PolityId(1),
+            name: "Warrior Kingdom".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom,
+            tier: PolityTier::Kingdom,
+            government: GovernmentType::Autocracy,
+            parent: None,
+            rulers: vec![RulerId(1)],
+            council_roles: HashMap::new(),
+            capital: 0,
+            population: 10000,
+            military_strength: 100.0,
+            economic_strength: 100.0,
+            founding_conditions: FoundingConditions::default(),
+            cultural_drift: CulturalDrift::Human(HumanCulturalDrift {
+                martial_tradition: 0.4, // Strong martial culture
+                expansionist_drive: 0.3,
+                ..Default::default()
+            }),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        };
+
+        let peaceful_polity = Polity {
+            id: PolityId(2),
+            name: "Merchant Republic".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom,
+            tier: PolityTier::Kingdom,
+            government: GovernmentType::Autocracy,
+            parent: None,
+            rulers: vec![RulerId(2)],
+            council_roles: HashMap::new(),
+            capital: 0,
+            population: 10000,
+            military_strength: 100.0,
+            economic_strength: 100.0,
+            founding_conditions: FoundingConditions::default(),
+            cultural_drift: CulturalDrift::Human(HumanCulturalDrift {
+                martial_tradition: -0.3, // Pacifist culture
+                merchant_culture: 0.4,
+                ..Default::default()
+            }),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        };
+
+        // Martial should be more aggressive (lower/more negative modifier)
+        assert!(martial_polity.decision_modifier() < peaceful_polity.decision_modifier());
+    }
+
+    #[test]
+    fn test_founding_context_affects_decisions() {
+        let mut conquest_polity = Polity {
+            id: PolityId(1),
+            name: "Conquest Empire".to_string(),
+            species: Species::Human,
+            polity_type: PolityType::Kingdom,
+            tier: PolityTier::Kingdom,
+            government: GovernmentType::Autocracy,
+            parent: None,
+            rulers: vec![RulerId(1)],
+            council_roles: HashMap::new(),
+            capital: 0,
+            population: 10000,
+            military_strength: 100.0,
+            economic_strength: 100.0,
+            founding_conditions: FoundingConditions {
+                founding_context: FoundingType::Conquest,
+                ..Default::default()
+            },
+            cultural_drift: CulturalDrift::Human(HumanCulturalDrift::default()),
+            relations: HashMap::new(),
+            species_state: SpeciesState::Human(HumanState::default()),
+            alive: true,
+        };
+
+        let mut refugee_polity = conquest_polity.clone();
+        refugee_polity.id = PolityId(2);
+        refugee_polity.founding_conditions.founding_context = FoundingType::Refugee;
+
+        // Conquest founding should be more aggressive
+        assert!(conquest_polity.decision_modifier() < refugee_polity.decision_modifier());
     }
 }

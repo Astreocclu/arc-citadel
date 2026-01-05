@@ -4,14 +4,17 @@
 //! All polities form a forest (collection of trees) where each tree
 //! is rooted at a sovereign polity.
 
-use std::collections::HashMap;
-use crate::core::types::PolityId;
 use crate::aggregate::polity::Polity;
+use crate::core::types::PolityId;
+use std::collections::HashMap;
 
 /// Get the sovereign (root) polity for a given polity.
 /// Returns None if the polity doesn't exist.
 /// A sovereign polity returns itself.
-pub fn get_sovereign(polity_id: PolityId, polities: &HashMap<PolityId, Polity>) -> Option<PolityId> {
+pub fn get_sovereign(
+    polity_id: PolityId,
+    polities: &HashMap<PolityId, Polity>,
+) -> Option<PolityId> {
     let mut current = polity_id;
     let mut visited = std::collections::HashSet::new();
 
@@ -53,7 +56,11 @@ pub fn get_all_vassals(polity_id: PolityId, polities: &HashMap<PolityId, Polity>
 }
 
 /// Check if subject is a vassal of lord (at any level)
-pub fn is_vassal_of(subject: PolityId, lord: PolityId, polities: &HashMap<PolityId, Polity>) -> bool {
+pub fn is_vassal_of(
+    subject: PolityId,
+    lord: PolityId,
+    polities: &HashMap<PolityId, Polity>,
+) -> bool {
     if subject == lord {
         return false; // Not a vassal of yourself
     }
@@ -92,9 +99,9 @@ pub fn get_liege(polity_id: PolityId, polities: &HashMap<PolityId, Polity>) -> O
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::{PolityTier, GovernmentType, RulerId};
-    use crate::aggregate::polity::{PolityType, CulturalDrift, SpeciesState, HumanState};
+    use crate::aggregate::polity::{CulturalDrift, FoundingConditions, HumanState, PolityType, SpeciesState};
     use crate::core::types::Species;
+    use crate::core::types::{GovernmentType, PolityTier, RulerId};
 
     fn make_polity(id: u32, parent: Option<u32>) -> Polity {
         Polity {
@@ -111,6 +118,7 @@ mod tests {
             population: 1000,
             military_strength: 10.0,
             economic_strength: 10.0,
+            founding_conditions: FoundingConditions::default(),
             cultural_drift: CulturalDrift::default(),
             relations: HashMap::new(),
             species_state: SpeciesState::Human(HumanState::default()),
@@ -133,9 +141,9 @@ mod tests {
     fn test_get_sovereign_chain() {
         // Empire(1) -> Kingdom(2) -> Duchy(3)
         let polities = make_polity_map(vec![
-            make_polity(1, None),      // Empire (sovereign)
-            make_polity(2, Some(1)),   // Kingdom under Empire
-            make_polity(3, Some(2)),   // Duchy under Kingdom
+            make_polity(1, None),    // Empire (sovereign)
+            make_polity(2, Some(1)), // Kingdom under Empire
+            make_polity(3, Some(2)), // Duchy under Kingdom
         ]);
 
         assert_eq!(get_sovereign(PolityId(1), &polities), Some(PolityId(1)));
@@ -193,10 +201,7 @@ mod tests {
 
     #[test]
     fn test_is_vassal_of_direct() {
-        let polities = make_polity_map(vec![
-            make_polity(1, None),
-            make_polity(2, Some(1)),
-        ]);
+        let polities = make_polity_map(vec![make_polity(1, None), make_polity(2, Some(1))]);
 
         assert!(is_vassal_of(PolityId(2), PolityId(1), &polities));
         assert!(!is_vassal_of(PolityId(1), PolityId(2), &polities));
