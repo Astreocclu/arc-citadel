@@ -35,10 +35,7 @@ impl Default for MovementResult {
 
 /// Get base speed for a unit type and pace
 fn base_speed(unit_type: UnitType, pace: MovementPace) -> f32 {
-    let is_cavalry = matches!(
-        unit_type,
-        UnitType::LightCavalry | UnitType::HeavyCavalry
-    );
+    let is_cavalry = matches!(unit_type, UnitType::LightCavalry | UnitType::HeavyCavalry);
 
     if is_cavalry {
         match pace {
@@ -58,16 +55,19 @@ fn base_speed(unit_type: UnitType, pace: MovementPace) -> f32 {
 }
 
 /// Check if a unit is blocked by wait condition
-pub fn is_waiting(plan: &WaypointPlan, _current_tick: u64) -> bool {
+pub fn is_waiting(plan: &WaypointPlan, current_tick: u64) -> bool {
     let Some(waypoint) = plan.current() else {
         return false;
     };
 
     match &waypoint.wait_condition {
         None => false,
-        Some(WaitCondition::Duration(_)) => {
-            // TODO: Track wait start time
-            false
+        Some(WaitCondition::Duration(ticks)) => {
+            // Check if we've waited long enough
+            match plan.wait_start_tick {
+                None => false, // Haven't started waiting yet
+                Some(start) => current_tick < start + *ticks,
+            }
         }
         Some(WaitCondition::GoCode(_)) => {
             // Evaluated separately by triggers system
@@ -467,5 +467,31 @@ mod tests {
 
         // In this implementation they're the same, but test documents the behavior
         assert_eq!(light, heavy);
+    }
+
+    #[test]
+    fn test_duration_wait_condition() {
+        use crate::battle::planning::WaitCondition;
+
+        let mut plan = WaypointPlan::new(UnitId::new());
+        plan.add_waypoint(
+            Waypoint::new(BattleHexCoord::new(0, 0), WaypointBehavior::HoldAt)
+                .with_wait(WaitCondition::Duration(10)),
+        );
+
+        // No wait_start_tick set yet - should not be waiting
+        assert!(!is_waiting(&plan, 0));
+
+        // Set wait start tick
+        plan.wait_start_tick = Some(0);
+
+        // At tick 5, should still be waiting (5 < 10)
+        assert!(is_waiting(&plan, 5));
+
+        // At tick 10, wait is complete
+        assert!(!is_waiting(&plan, 10));
+
+        // At tick 15, definitely not waiting
+        assert!(!is_waiting(&plan, 15));
     }
 }
