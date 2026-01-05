@@ -28,11 +28,11 @@ impl Default for GoCodeId {
 /// Movement pace
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum MovementPace {
-    Walk,       // Preserve stamina
+    Walk, // Preserve stamina
     #[default]
-    Quick,      // Faster, some fatigue
-    Run,        // Fast, tiring
-    Charge,     // Maximum speed, exhausting, triggers shock
+    Quick, // Faster, some fatigue
+    Run,  // Fast, tiring
+    Charge, // Maximum speed, exhausting, triggers shock
 }
 
 impl MovementPace {
@@ -61,7 +61,7 @@ impl MovementPace {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum WaypointBehavior {
     #[default]
-    MoveTo,     // Just get there
+    MoveTo, // Just get there
     HoldAt,     // Stop and defend
     AttackFrom, // Assault from this position
     ScanFrom,   // Observe, report
@@ -71,11 +71,11 @@ pub enum WaypointBehavior {
 /// Condition to wait for at waypoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WaitCondition {
-    Duration(u64),              // Wait for N ticks
-    GoCode(GoCodeId),           // Wait for go-code
-    UnitArrives(UnitId),        // Wait for another unit
-    EnemySighted,               // Wait until enemy seen
-    Attacked,                   // Wait until attacked
+    Duration(u64),       // Wait for N ticks
+    GoCode(GoCodeId),    // Wait for go-code
+    UnitArrives(UnitId), // Wait for another unit
+    EnemySighted,        // Wait until enemy seen
+    Attacked,            // Wait until attacked
 }
 
 /// A waypoint in a movement plan
@@ -114,6 +114,7 @@ pub struct WaypointPlan {
     pub unit_id: UnitId,
     pub waypoints: Vec<Waypoint>,
     pub current_waypoint: usize,
+    pub wait_start_tick: Option<Tick>,  // When waiting started
 }
 
 impl WaypointPlan {
@@ -122,6 +123,7 @@ impl WaypointPlan {
             unit_id,
             waypoints: Vec::new(),
             current_waypoint: 0,
+            wait_start_tick: None,
         }
     }
 
@@ -147,10 +149,10 @@ impl WaypointPlan {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum EngagementRule {
     #[default]
-    Aggressive,     // Attack enemies on sight
-    Defensive,      // Only attack if attacked first
-    HoldFire,       // No attacking unless directly ordered
-    Skirmish,       // Engage then withdraw
+    Aggressive, // Attack enemies on sight
+    Defensive, // Only attack if attacked first
+    HoldFire,  // No attacking unless directly ordered
+    Skirmish,  // Engage then withdraw
 }
 
 impl EngagementRule {
@@ -166,8 +168,8 @@ impl EngagementRule {
 /// Go-code trigger condition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GoCodeTrigger {
-    Manual,                     // Player activates
-    Time(Tick),                 // At specific tick
+    Manual,     // Player activates
+    Time(Tick), // At specific tick
     UnitPosition {
         unit: UnitId,
         position: BattleHexCoord,
@@ -212,16 +214,16 @@ pub enum ContingencyTrigger {
     CommanderDies,
     PositionLost(BattleHexCoord),
     EnemyFlanking,
-    CasualtiesExceed(f32),      // Percentage
+    CasualtiesExceed(f32), // Percentage
 }
 
 /// Contingency response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ContingencyResponse {
-    ExecutePlan(UnitId),        // Execute unit's backup plan
+    ExecutePlan(UnitId),          // Execute unit's backup plan
     Retreat(Vec<BattleHexCoord>), // Retreat route
-    Rally(BattleHexCoord),      // Rally point
-    Signal(GoCodeId),           // Trigger a go-code
+    Rally(BattleHexCoord),        // Rally point
+    Signal(GoCodeId),             // Trigger a go-code
 }
 
 /// A contingency (pre-planned response)
@@ -336,8 +338,14 @@ mod tests {
     #[test]
     fn test_waypoint_plan_advance() {
         let mut plan = WaypointPlan::new(UnitId::new());
-        plan.add_waypoint(Waypoint::new(BattleHexCoord::new(0, 0), WaypointBehavior::MoveTo));
-        plan.add_waypoint(Waypoint::new(BattleHexCoord::new(5, 5), WaypointBehavior::HoldAt));
+        plan.add_waypoint(Waypoint::new(
+            BattleHexCoord::new(0, 0),
+            WaypointBehavior::MoveTo,
+        ));
+        plan.add_waypoint(Waypoint::new(
+            BattleHexCoord::new(5, 5),
+            WaypointBehavior::HoldAt,
+        ));
 
         assert_eq!(plan.current_waypoint, 0);
         assert!(plan.advance());
@@ -362,5 +370,11 @@ mod tests {
     fn test_movement_pace_speed() {
         assert!(MovementPace::Charge.speed_multiplier() > MovementPace::Run.speed_multiplier());
         assert!(MovementPace::Run.speed_multiplier() > MovementPace::Quick.speed_multiplier());
+    }
+
+    #[test]
+    fn test_waypoint_plan_has_wait_start_tick() {
+        let plan = WaypointPlan::new(UnitId::new());
+        assert!(plan.wait_start_tick.is_none());
     }
 }
