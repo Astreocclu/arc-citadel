@@ -247,6 +247,11 @@ impl BattleState {
     }
 
     fn phase_pre_tick(&mut self, events: &mut BattleEventLog) {
+        use crate::battle::courier::Order;
+        use crate::battle::orders::apply_order;
+        use crate::battle::planning::ContingencyResponse;
+        use crate::battle::triggers::evaluate_all_contingencies;
+
         // Update fog of war
         update_army_visibility(
             &mut self.friendly_visibility,
@@ -283,6 +288,125 @@ impl BattleState {
                             name: gc.name.clone(),
                         },
                         format!("Go-code '{}' triggered", gc.name),
+                        self.tick,
+                    );
+                }
+            }
+        }
+
+        // ===== CONTINGENCY EVALUATION =====
+
+        // Calculate casualties percentage
+        let total_strength = self.friendly_army.total_strength();
+        let effective_strength = self.friendly_army.effective_strength();
+        let casualties_percent = if total_strength > 0 {
+            1.0 - (effective_strength as f32 / total_strength as f32)
+        } else {
+            0.0
+        };
+
+        // Check if commander is alive (simplified: check if any formation has units)
+        let commander_alive = !self.friendly_army.formations.is_empty()
+            && self
+                .friendly_army
+                .formations
+                .iter()
+                .any(|f| !f.units.is_empty());
+
+        // Get enemy positions
+        let enemy_positions: Vec<BattleHexCoord> = self
+            .enemy_army
+            .formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .map(|u| u.position)
+            .collect();
+
+        // Get friendly positions (just hex coords for PositionLost check)
+        let friendly_hex_positions: Vec<BattleHexCoord> = self
+            .friendly_army
+            .formations
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .map(|u| u.position)
+            .collect();
+
+        // Evaluate contingencies
+        let triggered_contingencies = evaluate_all_contingencies(
+            &self.friendly_plan,
+            &friendly_positions,
+            casualties_percent,
+            commander_alive,
+            &enemy_positions,
+            &friendly_hex_positions,
+        );
+
+        // Process triggered contingencies - collect orders first to avoid borrow issues
+        let mut orders_to_apply: Vec<Order> = Vec::new();
+        let mut go_codes_to_trigger: Vec<crate::battle::planning::GoCodeId> = Vec::new();
+
+        for idx in &triggered_contingencies {
+            if let Some(contingency) = self.friendly_plan.contingencies.get(*idx) {
+                if !contingency.activated {
+                    match &contingency.response {
+                        ContingencyResponse::ExecutePlan(_unit_id) => {
+                            // Handled by waypoint system - backup plan execution
+                        }
+                        ContingencyResponse::Retreat(route) => {
+                            // Order all units to retreat via this route
+                            for formation in &self.friendly_army.formations {
+                                for unit in &formation.units {
+                                    orders_to_apply.push(Order::retreat(unit.id, route.clone()));
+                                }
+                            }
+                        }
+                        ContingencyResponse::Rally(position) => {
+                            // Order all routing units to rally at position
+                            for formation in &self.friendly_army.formations {
+                                for unit in &formation.units {
+                                    if unit.is_broken() {
+                                        orders_to_apply.push(Order::move_to(unit.id, *position));
+                                    }
+                                }
+                            }
+                        }
+                        ContingencyResponse::Signal(go_code_id) => {
+                            go_codes_to_trigger.push(*go_code_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Mark contingencies as activated
+        for idx in triggered_contingencies {
+            if let Some(contingency) = self.friendly_plan.contingencies.get_mut(idx) {
+                if !contingency.activated {
+                    contingency.activated = true;
+                }
+            }
+        }
+
+        // Apply collected orders
+        for order in &orders_to_apply {
+            apply_order(order, &mut self.friendly_army, &mut self.friendly_plan);
+        }
+
+        // Trigger go-codes from contingencies
+        for go_code_id in go_codes_to_trigger {
+            if let Some(gc) = self
+                .friendly_plan
+                .go_codes
+                .iter_mut()
+                .find(|g| g.id == go_code_id)
+            {
+                if !gc.triggered {
+                    gc.triggered = true;
+                    events.push(
+                        BattleEventType::GoCodeTriggered {
+                            name: gc.name.clone(),
+                        },
+                        format!("Go-code '{}' triggered by contingency", gc.name),
                         self.tick,
                     );
                 }
@@ -838,5 +962,54 @@ mod tests {
         let wp_plan = state.friendly_plan.get_waypoint_plan(unit_id);
         assert!(wp_plan.is_some(), "Waypoint plan should be created after courier arrives");
         assert_eq!(wp_plan.unwrap().waypoints[0].position, destination);
+    }
+
+    #[test]
+    fn test_contingency_triggers_in_phase_pre_tick() {
+        use crate::battle::hex::BattleHexCoord;
+        use crate::battle::planning::{Contingency, ContingencyResponse, ContingencyTrigger};
+        use crate::battle::unit_type::UnitType;
+        use crate::battle::units::{BattleFormation, BattleUnit, Element, FormationId};
+
+        let map = BattleMap::new(20, 20);
+        let mut friendly = Army::new(ArmyId::new(), EntityId::new());
+
+        let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+        unit.elements.push(Element::new(vec![EntityId::new(); 100]));
+        unit.casualties = 40; // 40% casualties
+        unit.position = BattleHexCoord::new(5, 5);
+        formation.units.push(unit);
+        friendly.formations.push(formation);
+
+        // Enemy army needs units so battle doesn't end with DecisiveVictory immediately
+        let mut enemy = Army::new(ArmyId::new(), EntityId::new());
+        let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+        enemy_unit
+            .elements
+            .push(Element::new(vec![EntityId::new(); 50]));
+        enemy_unit.position = BattleHexCoord::new(15, 15);
+        enemy_formation.units.push(enemy_unit);
+        enemy.formations.push(enemy_formation);
+
+        let mut state = BattleState::new(map, friendly, enemy);
+
+        // Add contingency: rally at (0,0) if casualties exceed 30%
+        state.friendly_plan.contingencies.push(Contingency::new(
+            ContingencyTrigger::CasualtiesExceed(0.3),
+            ContingencyResponse::Rally(BattleHexCoord::new(0, 0)),
+        ));
+
+        state.start_battle();
+
+        // Run a tick - contingency should trigger
+        let _events = state.run_tick();
+
+        // Check contingency was activated
+        assert!(
+            state.friendly_plan.contingencies[0].activated,
+            "Contingency should be activated"
+        );
     }
 }
