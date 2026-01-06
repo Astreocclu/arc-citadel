@@ -78,6 +78,14 @@ impl BattleHexCoord {
         Self::new(rq as i32, rr as i32)
     }
 
+    /// Linear interpolation between two hex coordinates
+    /// t should be between 0.0 and 1.0
+    pub fn lerp(&self, other: &Self, t: f32) -> Self {
+        let q = self.q as f32 + (other.q - self.q) as f32 * t;
+        let r = self.r as f32 + (other.r - self.r) as f32 * t;
+        Self::round(q, r)
+    }
+
     /// Get all hexes within range (inclusive)
     pub fn hexes_in_range(&self, range: u32) -> Vec<BattleHexCoord> {
         let range = range as i32;
