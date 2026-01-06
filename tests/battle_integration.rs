@@ -15,10 +15,7 @@ fn test_full_battle_setup() {
     map.set_terrain(BattleHexCoord::new(15, 12), BattleTerrain::Forest);
 
     // Forest should block LOS
-    assert!(!map.has_line_of_sight(
-        BattleHexCoord::new(10, 11),
-        BattleHexCoord::new(20, 11)
-    ));
+    assert!(!map.has_line_of_sight(BattleHexCoord::new(10, 11), BattleHexCoord::new(20, 11)));
 
     // Create armies
     let mut friendly = Army::new(ArmyId::new(), EntityId::new());
@@ -27,7 +24,9 @@ fn test_full_battle_setup() {
     // Create a friendly formation with infantry
     let mut friendly_formation = BattleFormation::new(FormationId::new(), EntityId::new());
     let mut infantry = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-    infantry.elements.push(Element::new(vec![EntityId::new(); 100]));
+    infantry
+        .elements
+        .push(Element::new(vec![EntityId::new(); 100]));
     infantry.position = BattleHexCoord::new(5, 15);
     friendly_formation.units.push(infantry);
     friendly.formations.push(friendly_formation);
@@ -35,7 +34,9 @@ fn test_full_battle_setup() {
     // Create enemy formation
     let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
     let mut enemy_infantry = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-    enemy_infantry.elements.push(Element::new(vec![EntityId::new(); 80]));
+    enemy_infantry
+        .elements
+        .push(Element::new(vec![EntityId::new(); 80]));
     enemy_infantry.position = BattleHexCoord::new(25, 15);
     enemy_formation.units.push(enemy_infantry);
     enemy.formations.push(enemy_formation);
@@ -108,15 +109,15 @@ fn test_go_code_planning() {
     let mut waypoint_plan = WaypointPlan::new(cavalry_id);
     waypoint_plan.add_waypoint(
         Waypoint::new(BattleHexCoord::new(20, 5), WaypointBehavior::MoveTo)
-            .with_pace(MovementPace::Quick)
+            .with_pace(MovementPace::Quick),
     );
     waypoint_plan.add_waypoint(
         Waypoint::new(BattleHexCoord::new(25, 10), WaypointBehavior::HoldAt)
-            .with_wait(WaitCondition::GoCode(plan.go_codes[0].id))
+            .with_wait(WaitCondition::GoCode(plan.go_codes[0].id)),
     );
     waypoint_plan.add_waypoint(
         Waypoint::new(BattleHexCoord::new(25, 15), WaypointBehavior::AttackFrom)
-            .with_pace(MovementPace::Charge)
+            .with_pace(MovementPace::Charge),
     );
 
     plan.waypoint_plans.push(waypoint_plan);
@@ -150,4 +151,65 @@ fn test_combat_resolution_no_percentage_modifiers() {
             "Deltas should be consistent for additive behavior"
         );
     }
+}
+
+#[test]
+fn test_ai_controlled_army_issues_orders() {
+    use arc_citadel::battle::ai::{AiCommander, AiPersonality};
+    use arc_citadel::battle::hex::BattleHexCoord;
+    use arc_citadel::battle::unit_type::UnitType;
+    use arc_citadel::battle::units::{
+        Army, ArmyId, BattleFormation, BattleUnit, Element, FormationId, UnitId, UnitStance,
+    };
+
+    let map = BattleMap::new(30, 30);
+
+    // Friendly army (player-controlled)
+    let mut friendly = Army::new(ArmyId::new(), EntityId::new());
+    let mut friendly_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+    let mut friendly_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+    friendly_unit
+        .elements
+        .push(Element::new(vec![EntityId::new(); 50]));
+    friendly_unit.position = BattleHexCoord::new(5, 5);
+    friendly_formation.units.push(friendly_unit);
+    friendly.formations.push(friendly_formation);
+
+    // Enemy army (AI-controlled)
+    let mut enemy = Army::new(ArmyId::new(), EntityId::new());
+    enemy.hq_position = BattleHexCoord::new(25, 25);
+    enemy.courier_pool = vec![EntityId::new(); 5]; // Give couriers
+    let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+    let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+    enemy_unit
+        .elements
+        .push(Element::new(vec![EntityId::new(); 50]));
+    enemy_unit.position = BattleHexCoord::new(20, 20);
+    enemy_unit.stance = UnitStance::Formed;
+    enemy_formation.units.push(enemy_unit);
+    enemy.formations.push(enemy_formation);
+
+    let mut state = BattleState::new(map, friendly, enemy);
+
+    // Set up AI controller
+    let mut personality = AiPersonality::default();
+    personality.behavior.aggression = 0.8;
+    personality.preferences.re_evaluation_interval = 1;
+    personality.difficulty.mistake_chance = 0.0; // No mistakes for deterministic test
+    personality.difficulty.ignores_fog_of_war = true; // Allow AI to see all enemies
+    let ai = AiCommander::new(personality);
+    state.set_enemy_ai(Some(Box::new(ai)));
+
+    state.start_battle();
+
+    // Run several ticks
+    for _ in 0..15 {
+        state.run_tick();
+    }
+
+    // AI should have dispatched orders via courier
+    assert!(
+        !state.courier_system.delivered.is_empty() || !state.courier_system.in_flight.is_empty(),
+        "AI should have issued orders"
+    );
 }

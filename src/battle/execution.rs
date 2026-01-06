@@ -4,6 +4,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::battle::ai::{BattleAI, DecisionContext};
+
 use crate::battle::battle_map::BattleMap;
 use crate::battle::constants::COURIER_SPEED;
 use crate::battle::courier::CourierSystem;
@@ -105,7 +107,7 @@ pub struct ActiveCombat {
 }
 
 /// Complete battle state
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct BattleState {
     // Core state
     pub map: BattleMap,
@@ -134,6 +136,54 @@ pub struct BattleState {
 
     // Log
     pub battle_log: Vec<BattleEvent>,
+
+    /// Enemy AI controller (None = player controlled)
+    #[serde(skip)]
+    pub enemy_ai: Option<Box<dyn BattleAI>>,
+}
+
+impl std::fmt::Debug for BattleState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BattleState")
+            .field("map", &self.map)
+            .field("friendly_army", &self.friendly_army)
+            .field("enemy_army", &self.enemy_army)
+            .field("tick", &self.tick)
+            .field("phase", &self.phase)
+            .field("outcome", &self.outcome)
+            .field("friendly_plan", &self.friendly_plan)
+            .field("enemy_plan", &self.enemy_plan)
+            .field("courier_system", &self.courier_system)
+            .field("friendly_visibility", &self.friendly_visibility)
+            .field("enemy_visibility", &self.enemy_visibility)
+            .field("active_combats", &self.active_combats)
+            .field("routing_units", &self.routing_units)
+            .field("battle_log", &self.battle_log)
+            .field("enemy_ai", &self.enemy_ai.as_ref().map(|_| "<AI Controller>"))
+            .finish()
+    }
+}
+
+impl Clone for BattleState {
+    fn clone(&self) -> Self {
+        Self {
+            map: self.map.clone(),
+            friendly_army: self.friendly_army.clone(),
+            enemy_army: self.enemy_army.clone(),
+            tick: self.tick,
+            phase: self.phase,
+            outcome: self.outcome,
+            friendly_plan: self.friendly_plan.clone(),
+            enemy_plan: self.enemy_plan.clone(),
+            courier_system: self.courier_system.clone(),
+            friendly_visibility: self.friendly_visibility.clone(),
+            enemy_visibility: self.enemy_visibility.clone(),
+            active_combats: self.active_combats.clone(),
+            routing_units: self.routing_units.clone(),
+            battle_log: self.battle_log.clone(),
+            enemy_ai: None, // AI is not cloned - must be re-attached
+        }
+    }
 }
 
 impl BattleState {
@@ -153,6 +203,7 @@ impl BattleState {
             active_combats: Vec::new(),
             routing_units: Vec::new(),
             battle_log: Vec::new(),
+            enemy_ai: None,
         }
     }
 
@@ -165,6 +216,11 @@ impl BattleState {
     pub fn start_battle(&mut self) {
         self.phase = BattlePhase::Active;
         self.log_event(BattleEventType::BattleStarted, "Battle has begun!".into());
+    }
+
+    /// Set the enemy AI controller
+    pub fn set_enemy_ai(&mut self, ai: Option<Box<dyn BattleAI>>) {
+        self.enemy_ai = ai;
     }
 
     /// Advance the battle by one tick
@@ -225,6 +281,9 @@ impl BattleState {
             return events;
         }
 
+        // ===== PHASE 0: AI DECISIONS =====
+        self.phase_ai(&mut events);
+
         // ===== PHASE 1: PRE-TICK =====
         self.phase_pre_tick(&mut events);
 
@@ -244,6 +303,52 @@ impl BattleState {
         self.phase_post_tick(&mut events);
 
         events
+    }
+
+    fn phase_ai(&mut self, events: &mut BattleEventLog) {
+        // Skip if no AI controller
+        let ai = match &mut self.enemy_ai {
+            Some(ai) => ai,
+            None => return,
+        };
+
+        // Build decision context for enemy army
+        let context = DecisionContext::new(
+            &self.enemy_army,
+            &self.friendly_army,
+            &self.enemy_visibility,
+            self.tick,
+            ai.ignores_fog_of_war(),
+        );
+
+        // Get AI decisions
+        let orders = ai.process_tick(&context, self.tick, events);
+
+        // Dispatch orders via courier system
+        for order in orders {
+            // Get destination based on order target
+            let destination = match &order.target {
+                crate::battle::courier::OrderTarget::Unit(unit_id) => {
+                    self.enemy_army.get_unit(*unit_id).map(|u| u.position)
+                }
+                crate::battle::courier::OrderTarget::Formation(formation_id) => {
+                    self.enemy_army
+                        .formations
+                        .iter()
+                        .find(|f| f.id == *formation_id)
+                        .and_then(|f| f.commander_position())
+                }
+            };
+
+            if let Some(dest) = destination {
+                // Get courier from pool
+                if let Some(courier_entity) = self.enemy_army.courier_pool.pop() {
+                    let source = self.enemy_army.hq_position;
+                    self.courier_system
+                        .dispatch(courier_entity, order, source, dest);
+                }
+            }
+        }
     }
 
     fn phase_pre_tick(&mut self, events: &mut BattleEventLog) {
