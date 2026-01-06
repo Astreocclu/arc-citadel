@@ -1,0 +1,26 @@
+# data/ai_personalities/aggressive.toml
+# Aggressive commander - attacks early, takes risks
+
+[behavior]
+aggression = 0.8
+caution = 0.2
+initiative = 0.9
+cunning = 0.4
+
+[weights]
+attack_value = 1.5
+defense_value = 0.6
+flanking_value = 1.4
+reserve_value = 0.4
+retreat_threshold = 0.15
+casualty_threshold = 0.7
+
+[preferences]
+preferred_range = "close"
+reserve_usage = "early"
+re_evaluation_interval = 5
+
+[difficulty]
+ignores_fog_of_war = false
+reaction_delay = 1
+mistake_chance = 0.15

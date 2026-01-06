@@ -1,0 +1,26 @@
+# data/ai_personalities/default.toml
+# Balanced AI personality - neither aggressive nor defensive
+
+[behavior]
+aggression = 0.5
+caution = 0.5
+initiative = 0.5
+cunning = 0.3
+
+[weights]
+attack_value = 1.0
+defense_value = 1.0
+flanking_value = 1.2
+reserve_value = 0.8
+retreat_threshold = 0.3
+casualty_threshold = 0.5
+
+[preferences]
+preferred_range = "medium"
+reserve_usage = "conservative"
+re_evaluation_interval = 10
+
+[difficulty]
+ignores_fog_of_war = false
+reaction_delay = 2
+mistake_chance = 0.1

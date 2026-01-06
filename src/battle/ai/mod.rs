@@ -5,27 +5,25 @@
 //! - AiPersonality struct holds TOML-loaded weights/preferences
 //! - DecisionContext provides fog-of-war-filtered battle state
 
+// Submodules
+mod personality;
+
 // Submodules will be added in later tasks:
 // mod commander;
 // mod decision_context;
-// mod personality;
 // mod phase_plans;
+
+// Re-exports
+pub use personality::{AiPersonality, load_personality};
 
 // Re-exports will be added as modules are implemented:
 // pub use commander::AiCommander;
 // pub use decision_context::DecisionContext;
-// pub use personality::{AiPersonality, load_personality};
 // pub use phase_plans::{PhasePlan, PhaseTransition};
 
 use crate::battle::courier::Order;
 use crate::battle::execution::BattleEventLog;
 use crate::core::types::Tick;
-
-/// Placeholder for AiPersonality until personality module is created
-#[derive(Debug, Clone, Default)]
-pub struct AiPersonality {
-    pub name: String,
-}
 
 /// Placeholder for DecisionContext until decision_context module is created
 pub struct DecisionContext<'a> {
