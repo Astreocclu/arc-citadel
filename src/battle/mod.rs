@@ -8,6 +8,7 @@
 //! - Orders go through couriers (not instant)
 //! - Same simulation at all accessibility levels
 
+pub mod ai;
 pub mod battle_map;
 pub mod constants;
 pub mod courier;
