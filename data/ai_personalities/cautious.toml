@@ -1,0 +1,26 @@
+# data/ai_personalities/cautious.toml
+# Cautious commander - prioritizes defense, conserves forces
+
+[behavior]
+aggression = 0.2
+caution = 0.9
+initiative = 0.3
+cunning = 0.5
+
+[weights]
+attack_value = 0.6
+defense_value = 1.5
+flanking_value = 1.0
+reserve_value = 1.2
+retreat_threshold = 0.5
+casualty_threshold = 0.3
+
+[preferences]
+preferred_range = "ranged"
+reserve_usage = "conservative"
+re_evaluation_interval = 15
+
+[difficulty]
+ignores_fog_of_war = false
+reaction_delay = 3
+mistake_chance = 0.1

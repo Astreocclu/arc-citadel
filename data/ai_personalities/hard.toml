@@ -1,0 +1,26 @@
+# data/ai_personalities/hard.toml
+# Hard difficulty - fast reactions, rarely makes mistakes, sees through fog
+
+[behavior]
+aggression = 0.6
+caution = 0.4
+initiative = 0.8
+cunning = 0.7
+
+[weights]
+attack_value = 1.3
+defense_value = 1.1
+flanking_value = 1.5
+reserve_value = 0.7
+retreat_threshold = 0.25
+casualty_threshold = 0.6
+
+[preferences]
+preferred_range = "close"
+reserve_usage = "aggressive"
+re_evaluation_interval = 3
+
+[difficulty]
+ignores_fog_of_war = true
+reaction_delay = 0
+mistake_chance = 0.02

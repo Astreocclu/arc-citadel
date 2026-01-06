@@ -188,4 +188,13 @@ mod tests {
         assert!(personality.behavior.aggression > 0.5, "Aggressive should have high aggression");
         assert!(personality.behavior.caution < 0.5, "Aggressive should have low caution");
     }
+
+    #[test]
+    fn test_load_all_presets() {
+        let presets = ["default", "aggressive", "cautious", "cunning", "easy", "hard"];
+        for name in &presets {
+            let result = load_personality(name);
+            assert!(result.is_ok(), "Failed to load preset '{}'", name);
+        }
+    }
 }

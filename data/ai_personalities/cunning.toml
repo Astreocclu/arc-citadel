@@ -1,0 +1,26 @@
+# data/ai_personalities/cunning.toml
+# Cunning commander - uses deception, flanking, exploits weaknesses
+
+[behavior]
+aggression = 0.5
+caution = 0.5
+initiative = 0.7
+cunning = 0.9
+
+[weights]
+attack_value = 1.0
+defense_value = 0.8
+flanking_value = 2.0
+reserve_value = 0.9
+retreat_threshold = 0.35
+casualty_threshold = 0.45
+
+[preferences]
+preferred_range = "medium"
+reserve_usage = "opportunistic"
+re_evaluation_interval = 5
+
+[difficulty]
+ignores_fog_of_war = false
+reaction_delay = 1
+mistake_chance = 0.05

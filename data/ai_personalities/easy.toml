@@ -1,0 +1,26 @@
+# data/ai_personalities/easy.toml
+# Easy difficulty - slow reactions, makes mistakes
+
+[behavior]
+aggression = 0.4
+caution = 0.6
+initiative = 0.3
+cunning = 0.1
+
+[weights]
+attack_value = 0.8
+defense_value = 1.0
+flanking_value = 0.5
+reserve_value = 0.5
+retreat_threshold = 0.4
+casualty_threshold = 0.4
+
+[preferences]
+preferred_range = "medium"
+reserve_usage = "conservative"
+re_evaluation_interval = 20
+
+[difficulty]
+ignores_fog_of_war = false
+reaction_delay = 5
+mistake_chance = 0.3
