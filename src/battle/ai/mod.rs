@@ -8,18 +8,18 @@
 // Submodules
 mod decision_context;
 mod personality;
+mod phase_plans;
 
 // Submodules will be added in later tasks:
 // mod commander;
-// mod phase_plans;
 
 // Re-exports
 pub use decision_context::DecisionContext;
 pub use personality::{AiPersonality, load_personality};
+pub use phase_plans::{PhasePlan, PhaseTransition, PhasePlanManager};
 
 // Re-exports will be added as modules are implemented:
 // pub use commander::AiCommander;
-// pub use phase_plans::{PhasePlan, PhaseTransition};
 
 use crate::battle::courier::Order;
 use crate::battle::execution::BattleEventLog;
