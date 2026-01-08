@@ -1,8 +1,10 @@
 //! Geometry validation for LLM-generated components
 
+mod civilian;
 mod geometric;
 mod tactical;
 
+pub use civilian::CivilianValidator;
 pub use geometric::GeometricValidator;
 pub use tactical::TacticalValidator;
 
