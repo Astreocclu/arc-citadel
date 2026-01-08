@@ -1,0 +1,588 @@
+# Tactical Game Geometry Generation Prompt
+
+You are a geometry generator for a tactical strategy game. Generate building components and hex layouts that will be validated against strict geometric and game-rule constraints.
+
+## TASK
+
+Generate the following geometry components as a single JSON object:
+- 10 wall_segment variants
+- 10 archer_tower variants
+- 10 trench_segment variants
+- 10 gate variants
+- 10 street_segment variants
+- 5 hex layouts for each theme: dwarven_forge, human_tavern, elven_glade, defensive_outpost, forest_clearing
+
+## OUTPUT FORMAT
+
+Return a single JSON object with this structure:
+
+```json
+{
+  "test_run_id": "unique-id",
+  "model": "model-name",
+  "timestamp": "ISO-8601-timestamp",
+  "wall_segments": [...],
+  "archer_towers": [...],
+  "trenches": [...],
+  "gates": [...],
+  "street_segments": [...],
+  "hex_layouts": {
+    "dwarven_forge": [...],
+    "human_tavern": [...],
+    "elven_glade": [...],
+    "defensive_outpost": [...],
+    "forest_clearing": [...]
+  },
+  "validation_results": {
+    "total_components": 0,
+    "passed_geometric": 0,
+    "passed_tactical": 0,
+    "passed_connection": 0,
+    "passed_physical": 0,
+    "passed_civilian": 0,
+    "failed_components": []
+  }
+}
+```
+
+---
+
+## COMPONENT SCHEMAS
+
+### 1. WALL SEGMENT
+
+```json
+{
+  "component_type": "wall_segment",
+  "variant_id": "stone_wall_3m_001",
+  "display_name": "Stone Wall Section",
+  "dimensions": {
+    "length": 3.0,
+    "height": 2.0,
+    "thickness": 0.6
+  },
+  "footprint": {
+    "shape": "rectangle",
+    "vertices": [[0, 0], [3.0, 0], [3.0, 0.6], [0, 0.6]],
+    "origin": "center_base"
+  },
+  "properties": {
+    "blocks_movement": true,
+    "blocks_los": true,
+    "provides_cover": "full",
+    "cover_direction": "perpendicular_to_length",
+    "destructible": true,
+    "hp": 500,
+    "material": "stone"
+  },
+  "connection_points": [
+    {
+      "id": "west",
+      "position": [0, 0.3],
+      "direction": "west",
+      "compatible_with": ["wall_segment", "wall_corner", "gate"]
+    },
+    {
+      "id": "east",
+      "position": [3.0, 0.3],
+      "direction": "east",
+      "compatible_with": ["wall_segment", "wall_corner", "gate"]
+    }
+  ],
+  "tactical_notes": "Standard defensive wall section."
+}
+```
+
+**Wall Segment Constraints:**
+- height: 1.5-10.0 meters (walls > 10m are implausible)
+- length: 1.0-10.0 meters
+- thickness: 0.3-2.0 meters
+- provides_cover: "none", "partial", or "full"
+- direction: "north", "east", "south", or "west"
+
+---
+
+### 2. ARCHER TOWER
+
+```json
+{
+  "component_type": "archer_tower",
+  "variant_id": "wooden_tower_8m_001",
+  "display_name": "Wooden Archer Tower",
+  "dimensions": {
+    "base_width": 4.0,
+    "base_depth": 4.0,
+    "platform_height": 8.0,
+    "platform_width": 5.0,
+    "platform_depth": 5.0
+  },
+  "footprint": {
+    "shape": "rectangle",
+    "vertices": [[0, 0], [4.0, 0], [4.0, 4.0], [0, 4.0]],
+    "origin": "center_base"
+  },
+  "firing_positions": [
+    {
+      "id": "pos_north",
+      "position": [2.0, 4.5, 8.0],
+      "firing_arc": {"center_angle": 0, "arc_width": 90},
+      "elevation": 8.0,
+      "cover_value": "full",
+      "capacity": 1
+    },
+    {
+      "id": "pos_east",
+      "position": [4.5, 2.0, 8.0],
+      "firing_arc": {"center_angle": 90, "arc_width": 90},
+      "elevation": 8.0,
+      "cover_value": "full",
+      "capacity": 1
+    },
+    {
+      "id": "pos_south",
+      "position": [2.0, -0.5, 8.0],
+      "firing_arc": {"center_angle": 180, "arc_width": 90},
+      "elevation": 8.0,
+      "cover_value": "full",
+      "capacity": 1
+    },
+    {
+      "id": "pos_west",
+      "position": [-0.5, 2.0, 8.0],
+      "firing_arc": {"center_angle": 270, "arc_width": 90},
+      "elevation": 8.0,
+      "cover_value": "full",
+      "capacity": 1
+    }
+  ],
+  "access": {
+    "entry_point": [2.0, 0, 0],
+    "entry_width": 1.0,
+    "climb_time_seconds": 8
+  },
+  "properties": {
+    "blocks_movement": true,
+    "blocks_los_ground": true,
+    "blocks_los_elevated": false,
+    "total_capacity": 4,
+    "provides_vision_bonus": 1.5,
+    "destructible": true,
+    "hp": 800,
+    "material": "wood",
+    "fire_vulnerable": true
+  },
+  "wall_connections": [],
+  "tactical_notes": "Elevated firing platform with 360-degree coverage."
+}
+```
+
+**Archer Tower Constraints:**
+- CRITICAL: Firing arcs MUST sum to exactly 360 degrees
+- Each individual arc_width MUST be <= 180 degrees
+- center_angle: 0=north, 90=east, 180=south, 270=west
+- platform_height: minimum 2.0 meters for standing clearance
+- cover_value: "none", "partial", or "full"
+
+---
+
+### 3. TRENCH SEGMENT
+
+```json
+{
+  "component_type": "trench_segment",
+  "variant_id": "infantry_trench_4m_001",
+  "display_name": "Infantry Trench Section",
+  "dimensions": {
+    "length": 4.0,
+    "width": 2.0,
+    "depth": 1.5
+  },
+  "footprint": {
+    "shape": "rectangle",
+    "vertices": [[0, 0], [4.0, 0], [4.0, 2.0], [0, 2.0]],
+    "origin": "center_base"
+  },
+  "zones": [
+    {
+      "id": "fighting_position",
+      "polygon": [[0.3, 0.3], [3.7, 0.3], [3.7, 1.7], [0.3, 1.7]],
+      "elevation": -1.5,
+      "properties": ["cover_position", "firing_step"]
+    }
+  ],
+  "cover_positions": [
+    {
+      "id": "cover_north",
+      "position": [2.0, 1.8, -1.2],
+      "cover_value": "full",
+      "cover_direction": "north",
+      "capacity": 2,
+      "stance": "crouching"
+    }
+  ],
+  "properties": {
+    "blocks_movement_cavalry": true,
+    "blocks_movement_infantry": false,
+    "movement_cost_multiplier": 1.5,
+    "blocks_los": false,
+    "provides_cover_inside": "full",
+    "provides_concealment": true,
+    "indestructible": true
+  },
+  "connection_points": [
+    {
+      "id": "west",
+      "position": [0, 1.0],
+      "direction": "west",
+      "compatible_with": ["trench_segment", "trench_junction"]
+    },
+    {
+      "id": "east",
+      "position": [4.0, 1.0],
+      "direction": "east",
+      "compatible_with": ["trench_segment", "trench_junction"]
+    }
+  ],
+  "tactical_notes": "Provides excellent cover for defending infantry."
+}
+```
+
+**Trench Segment Constraints:**
+- depth: maximum 2.0 meters (deeper requires ladders)
+- Zone polygons must be counter-clockwise
+- Zone polygons must be inside footprint
+- provides_cover_inside: "none", "partial", or "full"
+
+---
+
+### 4. GATE
+
+```json
+{
+  "component_type": "gate",
+  "variant_id": "city_gate_6m_001",
+  "display_name": "City Gate",
+  "dimensions": {
+    "width": 6.0,
+    "height": 4.0,
+    "thickness": 1.5
+  },
+  "footprint": {
+    "shape": "rectangle",
+    "vertices": [[0, 0], [6.0, 0], [6.0, 1.5], [0, 1.5]],
+    "origin": "center_base"
+  },
+  "states": {
+    "open": {
+      "blocks_movement": false,
+      "blocks_los": false,
+      "provides_cover": "none"
+    },
+    "closed": {
+      "blocks_movement": true,
+      "blocks_los": true,
+      "provides_cover": "full"
+    }
+  },
+  "properties": {
+    "gate_type": "double_door",
+    "fortification_level": "reinforced",
+    "destructible": true,
+    "hp": 1500,
+    "open_time_seconds": 5
+  },
+  "connection_points": [
+    {
+      "id": "west",
+      "position": [0, 0.75],
+      "direction": "west",
+      "compatible_with": ["wall_segment", "tower_base"]
+    },
+    {
+      "id": "east",
+      "position": [6.0, 0.75],
+      "direction": "east",
+      "compatible_with": ["wall_segment", "tower_base"]
+    }
+  ],
+  "tactical_notes": "Primary entry point with reinforced doors."
+}
+```
+
+**Gate Constraints:**
+- provides_cover: "none", "partial", or "full"
+- Connection points should align with wall segments
+
+---
+
+### 5. STREET SEGMENT
+
+```json
+{
+  "component_type": "street_segment",
+  "variant_id": "market_street_8m_001",
+  "display_name": "Market Street Section",
+  "dimensions": {
+    "length": 15.0,
+    "width": 8.0
+  },
+  "footprint": {
+    "shape": "rectangle",
+    "vertices": [[0, 0], [15.0, 0], [15.0, 8.0], [0, 8.0]],
+    "origin": "center_base"
+  },
+  "military_properties": {
+    "provides_cover": "none",
+    "blocks_los": false,
+    "movement_cost": 1.0,
+    "cavalry_charge_viable": true,
+    "chokepoint": false,
+    "ambush_risk": "medium",
+    "defensibility": "poor"
+  },
+  "civilian_properties": {
+    "pedestrian_capacity": 200,
+    "cart_lanes": 2,
+    "market_stall_slots": 8,
+    "allows_gatherings": true,
+    "drainage": "good",
+    "fire_lane": true,
+    "prestige_modifier": 1.2
+  },
+  "connection_points": [
+    {
+      "id": "west",
+      "position": [0, 4.0],
+      "direction": "west",
+      "width": 8.0
+    },
+    {
+      "id": "east",
+      "position": [15.0, 4.0],
+      "direction": "east",
+      "width": 8.0
+    }
+  ],
+  "tactical_notes": "Wide street suitable for rapid troop movement.",
+  "economic_notes": "Prime location for merchant activity."
+}
+```
+
+**Street Segment Constraints:**
+- cavalry_charge_viable: ONLY true if width >= 6.0 meters
+- cart_lanes: Each lane requires 2.5m width (e.g., 2 lanes need width >= 5.0m)
+- market_stall_slots: Each stall requires 1.5m frontage along length
+- pedestrian_capacity: reasonable for area (not > area / 0.5)
+- provides_cover: "none", "partial", or "full"
+- ambush_risk: "low", "medium", or "high"
+- defensibility: "poor", "moderate", or "good"
+
+---
+
+### 6. HEX LAYOUT
+
+```json
+{
+  "layout_type": "building_interior",
+  "variant_id": "dwarven_forge_001",
+  "display_name": "Dwarven Forge",
+  "hex_size": 100,
+  "zones": [
+    {
+      "id": "forge_area",
+      "polygon": [[20, 20], [80, 20], [80, 60], [20, 60]],
+      "military_properties": {
+        "terrain_type": "interior",
+        "movement_cost": 1.0,
+        "provides_cover": "partial",
+        "hazards": ["heat", "fire"],
+        "defensibility": "moderate"
+      },
+      "civilian_properties": {
+        "function": "metalworking",
+        "worker_capacity": 8,
+        "storage_capacity": 500,
+        "throughput_capacity": 100
+      }
+    },
+    {
+      "id": "storage_alcove",
+      "polygon": [[5, 65], [40, 65], [40, 95], [5, 95]],
+      "military_properties": {
+        "terrain_type": "interior",
+        "movement_cost": 1.2,
+        "provides_cover": "full",
+        "hazards": [],
+        "defensibility": "good"
+      },
+      "civilian_properties": {
+        "function": "storage",
+        "worker_capacity": 2,
+        "storage_capacity": 2000,
+        "throughput_capacity": 50
+      }
+    }
+  ],
+  "features": [
+    {
+      "id": "anvil_1",
+      "type": "workstation",
+      "position": [50, 40],
+      "footprint": {"shape": "rectangle", "size": [2, 2]},
+      "properties": {
+        "blocks_movement": true,
+        "provides_cover": "partial",
+        "cover_height": 1.0,
+        "indestructible": true
+      }
+    },
+    {
+      "id": "forge_hearth",
+      "type": "hazard",
+      "position": [30, 35],
+      "footprint": {"shape": "circle", "radius": 3.0},
+      "properties": {
+        "blocks_movement": true,
+        "provides_cover": "none",
+        "destructible": false
+      }
+    }
+  ],
+  "cover_positions": [
+    {
+      "id": "anvil_cover",
+      "position": [52, 40],
+      "cover_value": "partial",
+      "cover_direction": "east",
+      "provided_by": "anvil_1",
+      "stance": "standing",
+      "capacity": 1
+    }
+  ],
+  "connections": {
+    "north": {"type": "wall", "reason": "solid stone wall"},
+    "south": {"type": "door", "width": 2.0, "position": [50, 0]},
+    "east": {"type": "wall", "reason": "solid stone wall"},
+    "west": {"type": "blocked", "obstacle": "forge chimney"}
+  },
+  "elevation_map": {
+    "default": 0.0,
+    "zones": {
+      "forge_area": 0.0,
+      "storage_alcove": 0.3
+    }
+  },
+  "los_blockers": [
+    {
+      "type": "pillar",
+      "vertices": [[45, 45], [48, 45], [48, 48], [45, 48]],
+      "height": 3.0
+    }
+  ],
+  "tactical_notes": "Confined space with multiple hazards. Use cover positions carefully.",
+  "ambush_points": [
+    {"position": [38, 90], "description": "Behind storage crates"}
+  ],
+  "patrol_routes": [
+    {"id": "guard_route", "waypoints": [[10, 10], [90, 10], [90, 90], [10, 90]]}
+  ]
+}
+```
+
+**Hex Layout Constraints:**
+- hex_size: typically 100 (all coordinates must be within [0, hex_size])
+- All zone polygons must be counter-clockwise
+- Zones must NOT overlap each other
+- All feature positions must be within hex bounds [0, hex_size]
+- Connection positions must be on the correct edge:
+  - north: y = hex_size
+  - south: y = 0
+  - east: x = hex_size
+  - west: x = 0
+- worker_capacity: reasonable for zone area (minimum 4 m^2 per worker)
+- provides_cover: "none", "partial", or "full"
+- cover_value: "none", "partial", or "full"
+- defensibility: "poor", "moderate", or "good"
+
+---
+
+## HEX LAYOUT THEMES
+
+Generate 5 unique variants for each theme:
+
+### 1. DWARVEN FORGE
+Industrial metalworking space with forges, anvils, and storage. Multiple heat hazards. Stone construction with good defensive positions.
+
+### 2. HUMAN TAVERN
+Social gathering space with bar, tables, and back rooms. Multiple entry points. Wood construction with limited cover. Potential for brawls.
+
+### 3. ELVEN GLADE
+Natural outdoor space with trees, streams, and sacred stones. Difficult terrain from vegetation. Excellent ambush positions.
+
+### 4. DEFENSIVE OUTPOST
+Military fortification with walls, towers, and barracks. Strong defensive positions. Clear fields of fire. Multiple chokepoints.
+
+### 5. FOREST CLEARING
+Open area surrounded by dense forest. Natural cover from boulders and fallen logs. Entry paths from multiple directions.
+
+---
+
+## CRITICAL VALIDATION RULES
+
+Your output will be validated against these rules. FAILING components will be REJECTED.
+
+### GEOMETRIC VALIDATION
+1. All polygon vertices must be in COUNTER-CLOCKWISE order
+2. Polygons must have at least 3 vertices
+3. Polygons must NOT self-intersect (no bowtie shapes)
+4. Hex positions must be within bounds [0, hex_size]
+5. Zones must NOT overlap each other
+
+### TACTICAL VALIDATION
+1. Archer tower firing arcs MUST sum to exactly 360 degrees
+2. Individual firing arcs MUST be <= 180 degrees each
+3. Chokepoint width must be < 8 meters if marked as chokepoint
+
+### PHYSICAL VALIDATION
+1. Wall height must be <= 10 meters
+2. Trench depth must be <= 2.0 meters (survivable without ladder)
+3. Platform height must be >= 2.0 meters (standing clearance)
+4. Features must be grounded (z=0 or on a platform)
+
+### CIVILIAN VALIDATION
+1. cavalry_charge_viable = true ONLY if street width >= 6.0 meters
+2. cart_lanes: total width required = cart_lanes * 2.5 meters
+3. market_stall_slots: total frontage required = stalls * 1.5 meters
+4. worker_capacity: must be reasonable for zone area (min 4 m^2/worker)
+
+### CONNECTION VALIDATION
+1. Connection points must be within 0.1m tolerance to connect
+2. Hex edge connections must be on the correct edge
+
+---
+
+## EXAMPLE: COUNTER-CLOCKWISE POLYGON
+
+CORRECT (counter-clockwise when viewed from above):
+```json
+"vertices": [[0, 0], [10, 0], [10, 5], [0, 5]]
+```
+This traces: bottom-left -> bottom-right -> top-right -> top-left
+
+INCORRECT (clockwise):
+```json
+"vertices": [[0, 0], [0, 5], [10, 5], [10, 0]]
+```
+
+---
+
+## OUTPUT REQUIREMENTS
+
+1. Output ONLY valid JSON (no markdown, no explanation text)
+2. Include all required fields for each component type
+3. Ensure all measurements are in METERS
+4. Use snake_case for all field names
+5. Use the exact enum values specified (e.g., "full", not "Full")
+6. Generate creative, thematically appropriate content within constraints
+
+BEGIN GENERATION:
