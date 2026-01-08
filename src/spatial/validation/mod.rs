@@ -1,10 +1,12 @@
 //! Geometry validation for LLM-generated components
 
 mod civilian;
+mod connection;
 mod geometric;
 mod tactical;
 
 pub use civilian::CivilianValidator;
+pub use connection::ConnectionValidator;
 pub use geometric::GeometricValidator;
 pub use tactical::TacticalValidator;
 

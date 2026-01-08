@@ -238,3 +238,45 @@ fn test_cavalry_on_narrow_street() {
     let errors = CivilianValidator::validate_street(&street);
     assert!(!errors.is_empty(), "Cavalry should not be viable on 4m street");
 }
+
+// ============================================================================
+// CONNECTION VALIDATOR TESTS
+// ============================================================================
+
+use arc_citadel::spatial::validation::ConnectionValidator;
+
+#[test]
+fn test_aligned_connections_pass() {
+    let p1 = ConnectionPoint {
+        id: "east".into(),
+        position: [3.0, 0.3],
+        direction: arc_citadel::spatial::geometry_schema::Direction::East,
+        compatible_with: vec!["wall_segment".into()],
+    };
+    let p2 = ConnectionPoint {
+        id: "west".into(),
+        position: [3.05, 0.3], // Within 0.1m tolerance
+        direction: arc_citadel::spatial::geometry_schema::Direction::West,
+        compatible_with: vec!["wall_segment".into()],
+    };
+    let errors = ConnectionValidator::validate_alignment(&p1, &p2, 0.1);
+    assert!(errors.is_empty());
+}
+
+#[test]
+fn test_misaligned_connections_fail() {
+    let p1 = ConnectionPoint {
+        id: "east".into(),
+        position: [3.0, 0.3],
+        direction: arc_citadel::spatial::geometry_schema::Direction::East,
+        compatible_with: vec!["wall_segment".into()],
+    };
+    let p2 = ConnectionPoint {
+        id: "west".into(),
+        position: [3.5, 0.3], // 0.5m off - exceeds tolerance
+        direction: arc_citadel::spatial::geometry_schema::Direction::West,
+        compatible_with: vec!["wall_segment".into()],
+    };
+    let errors = ConnectionValidator::validate_alignment(&p1, &p2, 0.1);
+    assert!(errors.iter().any(|e| matches!(e, arc_citadel::spatial::validation::ValidationError::ConnectionMisaligned { .. })));
+}
