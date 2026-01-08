@@ -1,7 +1,18 @@
 //! Tests for geometry schema deserialization
 
 use arc_citadel::spatial::geometry_schema::*;
-use arc_citadel::spatial::validation::{GeometricValidator, ValidationError};
+use arc_citadel::spatial::validation::{GeometricValidator, TacticalValidator, ValidationError};
+
+fn make_firing_position(id: &str, center_angle: f32, arc_width: f32) -> FiringPosition {
+    FiringPosition {
+        id: id.to_string(),
+        position: [0.0, 0.0, 8.0],
+        firing_arc: FiringArc { center_angle, arc_width },
+        elevation: 8.0,
+        cover_value: CoverLevel::Full,
+        capacity: 1,
+    }
+}
 
 #[test]
 fn test_valid_polygon_passes() {
@@ -125,4 +136,36 @@ fn test_archer_tower_deserialize() {
         }
         _ => panic!("Expected ArcherTower"),
     }
+}
+
+#[test]
+fn test_complete_360_coverage_passes() {
+    let positions = vec![
+        make_firing_position("north", 0.0, 90.0),
+        make_firing_position("east", 90.0, 90.0),
+        make_firing_position("south", 180.0, 90.0),
+        make_firing_position("west", 270.0, 90.0),
+    ];
+    let errors = TacticalValidator::validate_firing_arcs(&positions);
+    assert!(errors.is_empty(), "Complete 360° coverage should pass: {:?}", errors);
+}
+
+#[test]
+fn test_incomplete_coverage_fails() {
+    let positions = vec![
+        make_firing_position("north", 0.0, 90.0),
+        make_firing_position("east", 90.0, 90.0),
+        // Missing south and west
+    ];
+    let errors = TacticalValidator::validate_firing_arcs(&positions);
+    assert!(errors.iter().any(|e| matches!(e, ValidationError::FiringArcGap { .. })));
+}
+
+#[test]
+fn test_arc_over_180_fails() {
+    let positions = vec![
+        make_firing_position("wide", 0.0, 200.0),
+    ];
+    let errors = TacticalValidator::validate_firing_arcs(&positions);
+    assert!(errors.iter().any(|e| matches!(e, ValidationError::ArcTooWide { .. })));
 }

@@ -1,8 +1,10 @@
 //! Geometry validation for LLM-generated components
 
 mod geometric;
+mod tactical;
 
 pub use geometric::GeometricValidator;
+pub use tactical::TacticalValidator;
 
 /// Validation error types
 #[derive(Debug, Clone, PartialEq)]
