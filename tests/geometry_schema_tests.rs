@@ -1,6 +1,29 @@
 //! Tests for geometry schema deserialization
 
 use arc_citadel::spatial::geometry_schema::*;
+use arc_citadel::spatial::validation::{GeometricValidator, ValidationError};
+
+#[test]
+fn test_valid_polygon_passes() {
+    let vertices = vec![[0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]];
+    let errors = GeometricValidator::validate_polygon(&vertices);
+    assert!(errors.is_empty(), "Valid CCW rectangle should pass");
+}
+
+#[test]
+fn test_self_intersecting_polygon_fails() {
+    // Bowtie shape - self-intersecting
+    let vertices = vec![[0.0, 0.0], [2.0, 2.0], [2.0, 0.0], [0.0, 2.0]];
+    let errors = GeometricValidator::validate_polygon(&vertices);
+    assert!(!errors.is_empty(), "Self-intersecting polygon should fail");
+}
+
+#[test]
+fn test_insufficient_vertices_fails() {
+    let vertices = vec![[0.0, 0.0], [1.0, 1.0]];
+    let errors = GeometricValidator::validate_polygon(&vertices);
+    assert!(errors.iter().any(|e| matches!(e, ValidationError::InsufficientVertices { .. })));
+}
 
 #[test]
 fn test_wall_segment_deserialize() {
