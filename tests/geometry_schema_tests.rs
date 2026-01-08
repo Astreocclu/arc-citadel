@@ -309,3 +309,43 @@ fn test_trench_depth_too_deep() {
     let errors = PhysicalValidator::validate_trench_depth(2.5);
     assert!(!errors.is_empty(), "2.5m trench requires ladder");
 }
+
+// ============================================================================
+// COMPOSITE VALIDATOR TESTS
+// ============================================================================
+
+use arc_citadel::spatial::validation::CompositeValidator;
+
+#[test]
+fn test_composite_validator_wall_segment() {
+    let json = r#"{
+        "component_type": "wall_segment",
+        "variant_id": "stone_wall_3m_001",
+        "display_name": "Stone Wall Section",
+        "dimensions": { "length": 3.0, "height": 2.0, "thickness": 0.6 },
+        "footprint": {
+            "shape": "rectangle",
+            "vertices": [[0, 0], [3.0, 0], [3.0, 0.6], [0, 0.6]],
+            "origin": "center_base"
+        },
+        "properties": {
+            "blocks_movement": true,
+            "blocks_los": true,
+            "provides_cover": "full",
+            "cover_direction": "perpendicular_to_length",
+            "destructible": true,
+            "hp": 500,
+            "material": "stone"
+        },
+        "connection_points": [
+            {"id": "west", "position": [0, 0.3], "direction": "west", "compatible_with": ["wall_segment"]},
+            {"id": "east", "position": [3.0, 0.3], "direction": "east", "compatible_with": ["wall_segment"]}
+        ],
+        "tactical_notes": "Standard defensive wall."
+    }"#;
+
+    let component: arc_citadel::spatial::geometry_schema::Component = serde_json::from_str(json).unwrap();
+    let report = CompositeValidator::validate_component(&component);
+
+    assert!(report.is_valid, "Valid wall segment should pass: {:?}", report.errors);
+}
