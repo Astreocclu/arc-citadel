@@ -3,11 +3,13 @@
 mod civilian;
 mod connection;
 mod geometric;
+mod physical;
 mod tactical;
 
 pub use civilian::CivilianValidator;
 pub use connection::ConnectionValidator;
 pub use geometric::GeometricValidator;
+pub use physical::PhysicalValidator;
 pub use tactical::TacticalValidator;
 
 /// Validation error types

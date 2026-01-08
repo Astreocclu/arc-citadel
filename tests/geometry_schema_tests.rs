@@ -244,6 +244,7 @@ fn test_cavalry_on_narrow_street() {
 // ============================================================================
 
 use arc_citadel::spatial::validation::ConnectionValidator;
+use arc_citadel::spatial::validation::PhysicalValidator;
 
 #[test]
 fn test_aligned_connections_pass() {
@@ -279,4 +280,32 @@ fn test_misaligned_connections_fail() {
     };
     let errors = ConnectionValidator::validate_alignment(&p1, &p2, 0.1);
     assert!(errors.iter().any(|e| matches!(e, arc_citadel::spatial::validation::ValidationError::ConnectionMisaligned { .. })));
+}
+
+// ============================================================================
+// PHYSICAL VALIDATOR TESTS
+// ============================================================================
+
+#[test]
+fn test_platform_clearance_valid() {
+    let errors = PhysicalValidator::validate_platform_clearance(8.0, 2.0);
+    assert!(errors.is_empty(), "8m platform with 2m clearance should pass");
+}
+
+#[test]
+fn test_platform_clearance_insufficient() {
+    let errors = PhysicalValidator::validate_platform_clearance(1.5, 2.0);
+    assert!(!errors.is_empty(), "1.5m platform should fail 2m clearance check");
+}
+
+#[test]
+fn test_trench_depth_survivable() {
+    let errors = PhysicalValidator::validate_trench_depth(1.2);
+    assert!(errors.is_empty(), "1.2m trench should be survivable");
+}
+
+#[test]
+fn test_trench_depth_too_deep() {
+    let errors = PhysicalValidator::validate_trench_depth(2.5);
+    assert!(!errors.is_empty(), "2.5m trench requires ladder");
 }
