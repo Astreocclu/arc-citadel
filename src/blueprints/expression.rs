@@ -4,8 +4,16 @@
 //! Expressions can include literals, parameters, binary/unary operations,
 //! conditionals, and function calls.
 
-// HashMap will be used for evaluation context in future implementation
-#[allow(unused_imports)]
+use nom::{
+    IResult, Parser,
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::{alpha1, alphanumeric1, char, multispace0},
+    combinator::recognize,
+    multi::{fold_many0, many0, separated_list0},
+    number::complete::float,
+    sequence::{delimited, pair, preceded},
+};
 use std::collections::HashMap;
 
 /// Binary operators supported in expressions
@@ -117,6 +125,444 @@ impl std::fmt::Display for ParseError {
 }
 
 impl std::error::Error for ParseError {}
+
+impl ParseError {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
+// ============================================================================
+// Parser Implementation
+// ============================================================================
+
+/// Parse an identifier (parameter name or function name)
+fn parse_identifier(input: &str) -> IResult<&str, String> {
+    recognize(pair(
+        alt((alpha1, tag("_"))),
+        many0(alt((alphanumeric1, tag("_")))),
+    ))
+    .map(|s: &str| s.to_string())
+    .parse(input)
+}
+
+/// Parse a numeric literal (integer or float)
+fn parse_literal(input: &str) -> IResult<&str, Expr> {
+    float.map(Expr::Literal).parse(input)
+}
+
+/// Parse a parameter reference (identifier not followed by '(')
+fn parse_param(input: &str) -> IResult<&str, Expr> {
+    let (rest, name) = parse_identifier(input)?;
+    // Check that this isn't a function call
+    let (rest_after_ws, _) = multispace0(rest)?;
+    if rest_after_ws.starts_with('(') {
+        // This is a function call, not a parameter
+        return Err(nom::Err::Error(nom::error::Error::new(
+            input,
+            nom::error::ErrorKind::Tag,
+        )));
+    }
+    Ok((rest, Expr::Param(name)))
+}
+
+/// Parse a function call: name(arg1, arg2, ...)
+fn parse_function_call(input: &str) -> IResult<&str, Expr> {
+    let (rest, name) = parse_identifier(input)?;
+    let (rest, _) = multispace0(rest)?;
+    let (rest, _) = char('(').parse(rest)?;
+    let (rest, _) = multispace0(rest)?;
+    let (rest, args) = separated_list0(
+        delimited(multispace0, char(','), multispace0),
+        parse_expr,
+    ).parse(rest)?;
+    let (rest, _) = multispace0(rest)?;
+    let (rest, _) = char(')').parse(rest)?;
+    Ok((rest, Expr::Function { name, args }))
+}
+
+/// Parse an atom: literal, param, function call, or parenthesized expression
+fn parse_atom(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = multispace0(input)?;
+    alt((
+        // Parenthesized expression
+        delimited(
+            char('('),
+            delimited(multispace0, parse_expr, multispace0),
+            char(')'),
+        ),
+        // Function call (must come before param because they both start with identifier)
+        parse_function_call,
+        // Parameter reference
+        parse_param,
+        // Numeric literal
+        parse_literal,
+    )).parse(input)
+}
+
+/// Parse unary operators: -, !
+fn parse_unary(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = multispace0(input)?;
+    alt((
+        // Unary negation
+        preceded(char('-'), parse_unary).map(|expr| Expr::UnaryOp {
+            op: UnaryOp::Neg,
+            operand: Box::new(expr),
+        }),
+        // Logical not
+        preceded(char('!'), parse_unary).map(|expr| Expr::UnaryOp {
+            op: UnaryOp::Not,
+            operand: Box::new(expr),
+        }),
+        // Or just an atom
+        parse_atom,
+    )).parse(input)
+}
+
+/// Parse multiplicative operators: *, /, %
+fn parse_factor(input: &str) -> IResult<&str, Expr> {
+    let (input, init) = parse_unary(input)?;
+
+    fold_many0(
+        pair(
+            delimited(multispace0, alt((char('*'), char('/'), char('%'))), multispace0),
+            parse_unary,
+        ),
+        move || init.clone(),
+        |acc, (op_char, val)| {
+            let op = match op_char {
+                '*' => BinOp::Mul,
+                '/' => BinOp::Div,
+                '%' => BinOp::Mod,
+                _ => unreachable!(),
+            };
+            Expr::BinOp {
+                op,
+                left: Box::new(acc),
+                right: Box::new(val),
+            }
+        },
+    ).parse(input)
+}
+
+/// Parse additive operators: +, -
+fn parse_term(input: &str) -> IResult<&str, Expr> {
+    let (input, init) = parse_factor(input)?;
+
+    fold_many0(
+        pair(
+            delimited(multispace0, alt((char('+'), char('-'))), multispace0),
+            parse_factor,
+        ),
+        move || init.clone(),
+        |acc, (op_char, val)| {
+            let op = match op_char {
+                '+' => BinOp::Add,
+                '-' => BinOp::Sub,
+                _ => unreachable!(),
+            };
+            Expr::BinOp {
+                op,
+                left: Box::new(acc),
+                right: Box::new(val),
+            }
+        },
+    ).parse(input)
+}
+
+/// Parse comparison operators: >, <, >=, <=, ==, !=
+fn parse_comparison(input: &str) -> IResult<&str, Expr> {
+    let (input, init) = parse_term(input)?;
+
+    fold_many0(
+        pair(
+            delimited(
+                multispace0,
+                alt((
+                    tag(">=").map(|_| BinOp::Gte),
+                    tag("<=").map(|_| BinOp::Lte),
+                    tag("==").map(|_| BinOp::Eq),
+                    tag("!=").map(|_| BinOp::Neq),
+                    tag(">").map(|_| BinOp::Gt),
+                    tag("<").map(|_| BinOp::Lt),
+                )),
+                multispace0,
+            ),
+            parse_term,
+        ),
+        move || init.clone(),
+        |acc, (op, val)| Expr::BinOp {
+            op,
+            left: Box::new(acc),
+            right: Box::new(val),
+        },
+    ).parse(input)
+}
+
+/// Parse logical AND: &&
+fn parse_and(input: &str) -> IResult<&str, Expr> {
+    let (input, init) = parse_comparison(input)?;
+
+    fold_many0(
+        preceded(delimited(multispace0, tag("&&"), multispace0), parse_comparison),
+        move || init.clone(),
+        |acc, val| Expr::BinOp {
+            op: BinOp::And,
+            left: Box::new(acc),
+            right: Box::new(val),
+        },
+    ).parse(input)
+}
+
+/// Parse logical OR: ||
+fn parse_or(input: &str) -> IResult<&str, Expr> {
+    let (input, init) = parse_and(input)?;
+
+    fold_many0(
+        preceded(delimited(multispace0, tag("||"), multispace0), parse_and),
+        move || init.clone(),
+        |acc, val| Expr::BinOp {
+            op: BinOp::Or,
+            left: Box::new(acc),
+            right: Box::new(val),
+        },
+    ).parse(input)
+}
+
+/// Parse conditional: condition ? true_expr : false_expr
+/// Also supports: if condition then true_expr else false_expr
+fn parse_conditional(input: &str) -> IResult<&str, Expr> {
+    let (input, _) = multispace0(input)?;
+
+    // Try "if ... then ... else ..." syntax first
+    if let Ok((rest, expr)) = parse_if_then_else(input) {
+        return Ok((rest, expr));
+    }
+
+    // Otherwise, parse the condition part
+    let (input, condition) = parse_or(input)?;
+
+    // Check for ternary operator
+    let (input, _) = multispace0(input)?;
+    if let Ok((rest, _)) = char::<_, nom::error::Error<&str>>('?').parse(input) {
+        let (rest, _) = multispace0(rest)?;
+        let (rest, true_expr) = parse_conditional(rest)?;
+        let (rest, _) = multispace0(rest)?;
+        let (rest, _) = char(':').parse(rest)?;
+        let (rest, _) = multispace0(rest)?;
+        let (rest, false_expr) = parse_conditional(rest)?;
+        Ok((
+            rest,
+            Expr::Conditional {
+                condition: Box::new(condition),
+                true_expr: Box::new(true_expr),
+                false_expr: Box::new(false_expr),
+            },
+        ))
+    } else {
+        Ok((input, condition))
+    }
+}
+
+/// Parse "if condition then true_expr else false_expr" syntax
+fn parse_if_then_else(input: &str) -> IResult<&str, Expr> {
+    let (rest, _) = tag("if").parse(input)?;
+    let (rest, _) = multispace0(rest)?;
+
+    // We need to parse until we see "then", so we'll parse the condition
+    // by repeatedly consuming until we find "then"
+    let (rest, condition) = parse_condition_until_then(rest)?;
+
+    let (rest, _) = multispace0(rest)?;
+    let (rest, _) = tag("then").parse(rest)?;
+    let (rest, _) = multispace0(rest)?;
+
+    let (rest, true_expr) = parse_expr_until_else(rest)?;
+
+    let (rest, _) = multispace0(rest)?;
+    let (rest, _) = tag("else").parse(rest)?;
+    let (rest, _) = multispace0(rest)?;
+
+    let (rest, false_expr) = parse_conditional(rest)?;
+
+    Ok((
+        rest,
+        Expr::Conditional {
+            condition: Box::new(condition),
+            true_expr: Box::new(true_expr),
+            false_expr: Box::new(false_expr),
+        },
+    ))
+}
+
+/// Parse the condition part of "if ... then ..." (stops before "then")
+fn parse_condition_until_then(input: &str) -> IResult<&str, Expr> {
+    // Parse using parse_or but we need to be careful not to consume "then"
+    // The trick is that "then" won't be parsed as a valid operator
+    parse_or(input)
+}
+
+/// Parse the true expression part of "if ... then ... else ..." (stops before "else")
+fn parse_expr_until_else(input: &str) -> IResult<&str, Expr> {
+    // Similar to above, "else" won't be parsed as a valid expression part
+    parse_or(input)
+}
+
+/// Entry point for parsing expressions
+fn parse_expr(input: &str) -> IResult<&str, Expr> {
+    parse_conditional(input)
+}
+
+impl Expr {
+    /// Parse a string into an expression AST
+    pub fn parse(input: &str) -> Result<Expr, ParseError> {
+        let trimmed = input.trim();
+        match parse_expr(trimmed) {
+            Ok(("", expr)) => Ok(expr),
+            Ok((remaining, _)) => {
+                Err(ParseError::new(format!("Unparsed input: '{}'", remaining)))
+            }
+            Err(e) => Err(ParseError::new(format!("Parse error: {:?}", e))),
+        }
+    }
+
+    /// Evaluate the expression with the given parameter values
+    pub fn evaluate(&self, params: &HashMap<String, f32>) -> Result<f32, EvalError> {
+        match self {
+            Expr::Literal(val) => Ok(*val),
+
+            Expr::Param(name) => params
+                .get(name)
+                .copied()
+                .ok_or_else(|| EvalError::UnknownParam(name.clone())),
+
+            Expr::BinOp { op, left, right } => {
+                let l = left.evaluate(params)?;
+                let r = right.evaluate(params)?;
+                Ok(match op {
+                    BinOp::Add => l + r,
+                    BinOp::Sub => l - r,
+                    BinOp::Mul => l * r,
+                    BinOp::Div => {
+                        if r == 0.0 {
+                            return Err(EvalError::DivisionByZero);
+                        }
+                        l / r
+                    }
+                    BinOp::Mod => {
+                        if r == 0.0 {
+                            return Err(EvalError::DivisionByZero);
+                        }
+                        l % r
+                    }
+                    BinOp::Gt => if l > r { 1.0 } else { 0.0 },
+                    BinOp::Lt => if l < r { 1.0 } else { 0.0 },
+                    BinOp::Gte => if l >= r { 1.0 } else { 0.0 },
+                    BinOp::Lte => if l <= r { 1.0 } else { 0.0 },
+                    BinOp::Eq => if (l - r).abs() < f32::EPSILON { 1.0 } else { 0.0 },
+                    BinOp::Neq => if (l - r).abs() >= f32::EPSILON { 1.0 } else { 0.0 },
+                    BinOp::And => if l != 0.0 && r != 0.0 { 1.0 } else { 0.0 },
+                    BinOp::Or => if l != 0.0 || r != 0.0 { 1.0 } else { 0.0 },
+                })
+            }
+
+            Expr::UnaryOp { op, operand } => {
+                let val = operand.evaluate(params)?;
+                Ok(match op {
+                    UnaryOp::Neg => -val,
+                    UnaryOp::Not => if val == 0.0 { 1.0 } else { 0.0 },
+                })
+            }
+
+            Expr::Conditional {
+                condition,
+                true_expr,
+                false_expr,
+            } => {
+                let cond = condition.evaluate(params)?;
+                if cond != 0.0 {
+                    true_expr.evaluate(params)
+                } else {
+                    false_expr.evaluate(params)
+                }
+            }
+
+            Expr::Function { name, args } => {
+                let evaluated_args: Result<Vec<f32>, EvalError> =
+                    args.iter().map(|a| a.evaluate(params)).collect();
+                let evaluated_args = evaluated_args?;
+
+                match name.as_str() {
+                    // Single-argument functions
+                    "ceil" => {
+                        if evaluated_args.len() != 1 {
+                            return Err(EvalError::InvalidArgCount {
+                                func: name.clone(),
+                                expected: 1,
+                                got: evaluated_args.len(),
+                            });
+                        }
+                        Ok(evaluated_args[0].ceil())
+                    }
+                    "floor" => {
+                        if evaluated_args.len() != 1 {
+                            return Err(EvalError::InvalidArgCount {
+                                func: name.clone(),
+                                expected: 1,
+                                got: evaluated_args.len(),
+                            });
+                        }
+                        Ok(evaluated_args[0].floor())
+                    }
+                    "sqrt" => {
+                        if evaluated_args.len() != 1 {
+                            return Err(EvalError::InvalidArgCount {
+                                func: name.clone(),
+                                expected: 1,
+                                got: evaluated_args.len(),
+                            });
+                        }
+                        Ok(evaluated_args[0].sqrt())
+                    }
+                    "abs" => {
+                        if evaluated_args.len() != 1 {
+                            return Err(EvalError::InvalidArgCount {
+                                func: name.clone(),
+                                expected: 1,
+                                got: evaluated_args.len(),
+                            });
+                        }
+                        Ok(evaluated_args[0].abs())
+                    }
+                    // Two-argument functions
+                    "min" => {
+                        if evaluated_args.len() != 2 {
+                            return Err(EvalError::InvalidArgCount {
+                                func: name.clone(),
+                                expected: 2,
+                                got: evaluated_args.len(),
+                            });
+                        }
+                        Ok(evaluated_args[0].min(evaluated_args[1]))
+                    }
+                    "max" => {
+                        if evaluated_args.len() != 2 {
+                            return Err(EvalError::InvalidArgCount {
+                                func: name.clone(),
+                                expected: 2,
+                                got: evaluated_args.len(),
+                            });
+                        }
+                        Ok(evaluated_args[0].max(evaluated_args[1]))
+                    }
+                    _ => Err(EvalError::UnknownFunction(name.clone())),
+                }
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

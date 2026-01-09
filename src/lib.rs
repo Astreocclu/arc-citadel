@@ -17,4 +17,4 @@ pub mod data;
 pub mod aggregate;
 pub mod rules;
 pub mod city;
-pub mod render;
+pub mod renderer;
