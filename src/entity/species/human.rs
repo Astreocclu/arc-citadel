@@ -2,12 +2,12 @@
 
 use crate::city::BuildingId;
 use crate::combat::CombatState;
-use crate::core::types::{EntityId, Vec2, Tick};
+use crate::core::types::{EntityId, Tick, Vec2};
 use crate::entity::body::BodyState;
 use crate::entity::needs::Needs;
-use crate::entity::thoughts::ThoughtBuffer;
+use crate::entity::social::{EventBuffer, SocialMemory};
 use crate::entity::tasks::TaskQueue;
-use crate::entity::social::{SocialMemory, EventBuffer};
+use crate::entity::thoughts::ThoughtBuffer;
 
 /// Human-specific value vocabulary
 #[derive(Debug, Clone, Default)]
@@ -38,7 +38,8 @@ impl HumanValues {
             ("safety", self.safety),
             ("piety", self.piety),
         ];
-        values.into_iter()
+        values
+            .into_iter()
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
             .unwrap()
     }
@@ -65,6 +66,8 @@ pub struct HumanArchetype {
     pub combat_states: Vec<CombatState>,
     /// Assigned housing (None = homeless)
     pub assigned_houses: Vec<Option<BuildingId>>,
+    /// Skill chunk libraries for each entity
+    pub chunk_libraries: Vec<crate::skills::ChunkLibrary>,
 }
 
 impl HumanArchetype {
@@ -86,6 +89,7 @@ impl HumanArchetype {
             building_skills: Vec::new(),
             combat_states: Vec::new(),
             assigned_houses: Vec::new(),
+            chunk_libraries: Vec::new(),
         }
     }
 
@@ -110,6 +114,7 @@ impl HumanArchetype {
         self.building_skills.push(0.0);
         self.combat_states.push(CombatState::default());
         self.assigned_houses.push(None);
+        self.chunk_libraries.push(crate::skills::ChunkLibrary::with_basics());
     }
 
     pub fn index_of(&self, id: EntityId) -> Option<usize> {
@@ -117,14 +122,16 @@ impl HumanArchetype {
     }
 
     pub fn iter_living(&self) -> impl Iterator<Item = usize> + '_ {
-        self.alive.iter()
+        self.alive
+            .iter()
             .enumerate()
             .filter(|(_, &alive)| alive)
             .map(|(i, _)| i)
     }
 
     pub fn iter_homeless(&self) -> impl Iterator<Item = usize> + '_ {
-        self.alive.iter()
+        self.alive
+            .iter()
             .enumerate()
             .filter(|(idx, &alive)| alive && self.assigned_houses[*idx].is_none())
             .map(|(i, _)| i)
@@ -173,7 +180,6 @@ mod tests {
 
     #[test]
     fn test_human_has_assigned_house() {
-
         let mut archetype = HumanArchetype::new();
         let id = EntityId::new();
         archetype.spawn(id, "Homeless Harry".into(), 0);
@@ -184,7 +190,6 @@ mod tests {
 
     #[test]
     fn test_iter_homeless() {
-
         let mut archetype = HumanArchetype::new();
 
         // Spawn 3 humans
@@ -201,5 +206,16 @@ mod tests {
         assert!(homeless.contains(&1));
         assert!(homeless.contains(&2));
         assert!(!homeless.contains(&0));
+    }
+
+    #[test]
+    fn test_human_has_chunk_library() {
+        let mut archetype = HumanArchetype::new();
+        let id = EntityId::new();
+        archetype.spawn(id, "Conscript".into(), 0);
+
+        assert_eq!(archetype.chunk_libraries.len(), 1);
+        // Fresh spawn has no combat chunks
+        assert!(!archetype.chunk_libraries[0].has_chunk(crate::skills::ChunkId::BasicSwing));
     }
 }
