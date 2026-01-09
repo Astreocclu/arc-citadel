@@ -4,11 +4,13 @@
 //! with parameterized expressions. Blueprints can reference other blueprints,
 //! use expressions for computed values, and support inheritance.
 
+pub mod damage;
 pub mod expression;
 pub mod instance;
 pub mod registry;
 pub mod schema;
 
+pub use damage::{apply_damage, find_damage_state, DamageResult};
 pub use expression::{BinOp, EvalError, Expr, ParseError, UnaryOp};
 pub use instance::*;
 pub use registry::*;
