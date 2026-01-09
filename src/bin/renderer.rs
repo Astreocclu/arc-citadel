@@ -1,229 +1,207 @@
-//! Arc Citadel 2D Renderer
+//! wgpu renderer test binary.
 //!
-//! Visualizes simulation state in real-time.
+//! Renders 10,000 shapes with camera controls.
 //! Controls:
-//! - WASD / Arrow keys: Pan camera
-//! - Mouse wheel: Zoom in/out
-//! - Escape: Quit
+//!   WASD / Arrow keys: Pan camera
+//!   +/-: Zoom in/out
+//!   Mouse wheel: Zoom
+//!   Escape: Quit
 
-use macroquad::prelude::*;
+use std::sync::Arc;
+use std::time::Instant;
 
-use arc_citadel::core::types::Vec2 as SimVec2;
-use arc_citadel::ecs::world::{World, Abundance};
-use arc_citadel::render::{collect_render_entities, RenderEntity};
-use arc_citadel::render::camera::Camera;
-use arc_citadel::render::colors::{self, species_color, health_tint, fatigue_tint, Color as RenderColor};
-use arc_citadel::simulation::tick::run_simulation_tick;
+use glam::Vec2;
+use winit::{
+    event::{ElementState, Event, WindowEvent, MouseScrollDelta},
+    event_loop::EventLoop,
+    keyboard::{KeyCode, PhysicalKey},
+    window::WindowBuilder,
+};
 
-/// Pan speed in world units per second
-const PAN_SPEED: f32 = 100.0;
-/// Zoom speed multiplier per scroll tick
-const ZOOM_SPEED: f32 = 0.1;
-/// Base entity size in pixels at zoom 1.0
-const ENTITY_BASE_SIZE: f32 = 8.0;
+use arc_citadel::core::types::EntityId;
+use arc_citadel::renderer::{
+    CameraState, Color, RenderEntity, RenderState, Renderer, ShapeType,
+};
 
-fn window_conf() -> Conf {
-    Conf {
-        window_title: "Arc Citadel Renderer".to_owned(),
-        window_width: 1280,
-        window_height: 720,
-        window_resizable: true,
-        ..Default::default()
-    }
-}
+fn main() {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive(tracing::Level::INFO.into()),
+        )
+        .init();
 
-#[macroquad::main(window_conf)]
-async fn main() {
-    // Initialize world with test entities
-    let mut world = setup_test_world();
+    tracing::info!("Starting Arc Citadel wgpu renderer");
 
-    // Initialize camera
-    let mut camera = Camera::new(screen_width(), screen_height());
+    // Create event loop and window
+    let event_loop = EventLoop::new().expect("Failed to create event loop");
+    let window = Arc::new(
+        WindowBuilder::new()
+            .with_title("Arc Citadel - wgpu Renderer")
+            .with_inner_size(winit::dpi::LogicalSize::new(1280, 720))
+            .build(&event_loop)
+            .expect("Failed to create window"),
+    );
 
-    // Reusable buffer for render entities (zero allocation after first frame)
-    let mut render_buffer: Vec<RenderEntity> = Vec::with_capacity(1000);
+    // Create renderer
+    let mut renderer = pollster::block_on(Renderer::new(window.clone()));
 
-    // Initial camera centering
-    collect_render_entities(&world, &mut render_buffer);
-    let positions: Vec<SimVec2> = render_buffer.iter().map(|e| e.position).collect();
-    camera.center_on_entities(&positions);
-    camera.update_bounds_from_entities(&positions, 50.0);
+    // Create test entities - 10,000 shapes in a grid
+    let grid_size = 100;
+    let spacing = 10.0;
+    let mut entities = Vec::with_capacity(grid_size * grid_size);
 
-    let mut first_frame = true;
+    for i in 0..grid_size {
+        for j in 0..grid_size {
+            let shape = match (i + j) % 4 {
+                0 => ShapeType::Circle,
+                1 => ShapeType::Rectangle,
+                2 => ShapeType::Triangle,
+                _ => ShapeType::Hexagon,
+            };
 
-    loop {
-        // Handle input
-        if is_key_pressed(KeyCode::Escape) {
-            break;
+            // Color gradient based on position
+            let color = Color::rgba(
+                i as f32 / grid_size as f32,
+                j as f32 / grid_size as f32,
+                0.5,
+                1.0,
+            );
+
+            entities.push(RenderEntity {
+                id: EntityId::new(),
+                position: Vec2::new(i as f32 * spacing, j as f32 * spacing),
+                facing: 0.0,
+                shape,
+                color,
+                scale: 3.0,
+                z_order: 0,
+            });
         }
-        handle_camera_input(&mut camera);
+    }
 
-        // Update viewport size on resize
-        camera.viewport_size = (screen_width(), screen_height());
+    // Center camera on the grid
+    let center = Vec2::new(
+        (grid_size as f32 * spacing) / 2.0,
+        (grid_size as f32 * spacing) / 2.0,
+    );
 
-        // Run simulation tick
-        run_simulation_tick(&mut world);
+    let mut camera = CameraState {
+        center,
+        zoom: 1.0,
+        viewport_size: Vec2::new(1280.0, 720.0),
+    };
 
-        // Collect entities for rendering
-        collect_render_entities(&world, &mut render_buffer);
+    // FPS tracking
+    let mut frame_count: u64 = 0;
+    let mut last_fps_time = Instant::now();
 
-        // Update camera bounds periodically (not every frame for performance)
-        if world.current_tick % 60 == 0 || first_frame {
-            let positions: Vec<SimVec2> = render_buffer.iter().map(|e| e.position).collect();
-            camera.update_bounds_from_entities(&positions, 50.0);
-            first_frame = false;
+    // Run event loop
+    event_loop.run(move |event, elwt| {
+        match event {
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested => {
+                    elwt.exit();
+                }
+
+                WindowEvent::Resized(size) => {
+                    renderer.resize(size.width, size.height);
+                    camera.set_viewport_size(size.width as f32, size.height as f32);
+                }
+
+                WindowEvent::KeyboardInput { event, .. } => {
+                    if event.state == ElementState::Pressed {
+                        let pan_speed = 20.0 * camera.zoom;
+                        match event.physical_key {
+                            PhysicalKey::Code(KeyCode::KeyW) | PhysicalKey::Code(KeyCode::ArrowUp) => {
+                                camera.pan(Vec2::new(0.0, pan_speed));
+                            }
+                            PhysicalKey::Code(KeyCode::KeyS) | PhysicalKey::Code(KeyCode::ArrowDown) => {
+                                camera.pan(Vec2::new(0.0, -pan_speed));
+                            }
+                            PhysicalKey::Code(KeyCode::KeyA) | PhysicalKey::Code(KeyCode::ArrowLeft) => {
+                                camera.pan(Vec2::new(-pan_speed, 0.0));
+                            }
+                            PhysicalKey::Code(KeyCode::KeyD) | PhysicalKey::Code(KeyCode::ArrowRight) => {
+                                camera.pan(Vec2::new(pan_speed, 0.0));
+                            }
+                            PhysicalKey::Code(KeyCode::Equal) | PhysicalKey::Code(KeyCode::NumpadAdd) => {
+                                camera.zoom_by(0.9); // Zoom in
+                            }
+                            PhysicalKey::Code(KeyCode::Minus) | PhysicalKey::Code(KeyCode::NumpadSubtract) => {
+                                camera.zoom_by(1.1); // Zoom out
+                            }
+                            PhysicalKey::Code(KeyCode::Escape) => {
+                                elwt.exit();
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                WindowEvent::MouseWheel { delta, .. } => {
+                    let zoom_factor = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => {
+                            if y > 0.0 { 0.9 } else { 1.1 }
+                        }
+                        MouseScrollDelta::PixelDelta(pos) => {
+                            if pos.y > 0.0 { 0.95 } else { 1.05 }
+                        }
+                    };
+                    camera.zoom_by(zoom_factor);
+                }
+
+                WindowEvent::RedrawRequested => {
+                    let state = RenderState {
+                        tick: frame_count,
+                        entities: entities.clone(),
+                        sprites: vec![],
+                        camera,
+                    };
+
+                    match renderer.render(&state) {
+                        Ok(_) => {}
+                        Err(wgpu::SurfaceError::Lost) => {
+                            let (w, h) = renderer.size();
+                            renderer.resize(w, h);
+                        }
+                        Err(wgpu::SurfaceError::OutOfMemory) => {
+                            tracing::error!("Out of GPU memory!");
+                            elwt.exit();
+                        }
+                        Err(e) => {
+                            tracing::warn!("Render error: {:?}", e);
+                        }
+                    }
+
+                    // Update title with metrics
+                    frame_count += 1;
+                    let elapsed = last_fps_time.elapsed().as_secs_f32();
+                    if elapsed >= 1.0 {
+                        frame_count = 0;
+                        last_fps_time = Instant::now();
+
+                        let metrics = renderer.metrics();
+                        window.set_title(&format!(
+                            "Arc Citadel - {} entities | {:.1} FPS ({:.2}ms) | {} draws | {} uploads",
+                            entities.len(),
+                            metrics.fps(),
+                            metrics.avg_frame_time_ms(),
+                            metrics.draw_calls,
+                            metrics.buffer_uploads
+                        ));
+                    }
+                }
+
+                _ => {}
+            },
+
+            Event::AboutToWait => {
+                window.request_redraw();
+            }
+
+            _ => {}
         }
-
-        // Render
-        clear_background(to_macroquad_color(colors::BACKGROUND));
-
-        // Draw entities
-        for entity in &render_buffer {
-            draw_entity(entity, &camera);
-        }
-
-        // Draw UI overlay
-        draw_ui(&world, render_buffer.len());
-
-        next_frame().await;
-    }
-}
-
-fn handle_camera_input(camera: &mut Camera) {
-    let dt = get_frame_time();
-    let pan_amount = PAN_SPEED * dt / camera.zoom;
-
-    // Pan with WASD or arrow keys
-    if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
-        camera.pan(0.0, -pan_amount);
-    }
-    if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
-        camera.pan(0.0, pan_amount);
-    }
-    if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
-        camera.pan(-pan_amount, 0.0);
-    }
-    if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
-        camera.pan(pan_amount, 0.0);
-    }
-
-    // Zoom with mouse wheel
-    let (_, scroll_y) = mouse_wheel();
-    if scroll_y != 0.0 {
-        camera.adjust_zoom(scroll_y * ZOOM_SPEED);
-    }
-}
-
-fn draw_entity(entity: &RenderEntity, camera: &Camera) {
-    let (screen_x, screen_y) = camera.world_to_screen(entity.position);
-
-    // Calculate size based on health (smaller when wounded)
-    let health_size_mod = 0.5 + entity.health * 0.5;
-    let size = ENTITY_BASE_SIZE * camera.zoom * health_size_mod;
-
-    // Calculate color with health and fatigue modulation
-    let base_color = species_color(entity.species);
-    let health_color = health_tint(base_color, entity.health);
-    let final_color = fatigue_tint(health_color, entity.fatigue);
-
-    draw_rectangle(
-        screen_x - size / 2.0,
-        screen_y - size / 2.0,
-        size,
-        size,
-        to_macroquad_color(final_color),
-    );
-}
-
-fn draw_ui(world: &World, entity_count: usize) {
-    // FPS counter
-    draw_text(
-        &format!("FPS: {}", get_fps()),
-        10.0,
-        20.0,
-        20.0,
-        WHITE,
-    );
-
-    // Entity count
-    draw_text(
-        &format!("Entities: {}", entity_count),
-        10.0,
-        40.0,
-        20.0,
-        WHITE,
-    );
-
-    // Simulation tick
-    draw_text(
-        &format!("Tick: {}", world.current_tick),
-        10.0,
-        60.0,
-        20.0,
-        WHITE,
-    );
-
-    // Controls hint
-    draw_text(
-        "WASD/Arrows: Pan | Scroll: Zoom | ESC: Quit",
-        10.0,
-        screen_height() - 10.0,
-        16.0,
-        GRAY,
-    );
-}
-
-/// Convert our Color to macroquad's Color
-fn to_macroquad_color(c: RenderColor) -> macroquad::color::Color {
-    macroquad::color::Color::new(c.r, c.g, c.b, c.a)
-}
-
-/// Create a test world with entities for visualization
-fn setup_test_world() -> World {
-    let mut world = World::new();
-    let mut rng_seed = 42u64;
-
-    // Spawn 500 humans spread across a 200x200 world
-    for i in 0..500 {
-        world.spawn_human(format!("Human_{}", i));
-
-        // Grid layout with some randomness
-        let base_x = (i % 25) as f32 * 8.0;
-        let base_y = (i / 25) as f32 * 8.0;
-        let jitter_x = pseudo_random(&mut rng_seed) * 4.0 - 2.0;
-        let jitter_y = pseudo_random(&mut rng_seed) * 4.0 - 2.0;
-        world.humans.positions[i] = SimVec2::new(base_x + jitter_x, base_y + jitter_y);
-
-        // Varied health and fatigue for visual testing
-        world.humans.body_states[i].overall_health = 0.3 + pseudo_random(&mut rng_seed) * 0.7;
-        world.humans.body_states[i].fatigue = pseudo_random(&mut rng_seed) * 0.5;
-    }
-
-    // Spawn 100 orcs in a separate cluster
-    for i in 0..100 {
-        world.spawn_orc(format!("Orc_{}", i));
-
-        // Cluster in bottom-right area
-        let base_x = 150.0 + (i % 10) as f32 * 6.0;
-        let base_y = 150.0 + (i / 10) as f32 * 6.0;
-        let jitter_x = pseudo_random(&mut rng_seed) * 3.0 - 1.5;
-        let jitter_y = pseudo_random(&mut rng_seed) * 3.0 - 1.5;
-        world.orcs.positions[i] = SimVec2::new(base_x + jitter_x, base_y + jitter_y);
-
-        // Orcs are generally healthier but more tired
-        world.orcs.body_states[i].overall_health = 0.7 + pseudo_random(&mut rng_seed) * 0.3;
-        world.orcs.body_states[i].fatigue = pseudo_random(&mut rng_seed) * 0.8;
-    }
-
-    // Add some food zones
-    world.add_food_zone(SimVec2::new(50.0, 50.0), 20.0, Abundance::Unlimited);
-    world.add_food_zone(SimVec2::new(150.0, 100.0), 15.0, Abundance::Unlimited);
-
-    world
-}
-
-/// Simple pseudo-random number generator (0.0 to 1.0)
-fn pseudo_random(seed: &mut u64) -> f32 {
-    *seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
-    ((*seed >> 16) & 0x7fff) as f32 / 32767.0
+    }).expect("Event loop error");
 }
