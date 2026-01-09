@@ -30,6 +30,7 @@ bytemuck = { version = "1.14", features = ["derive"] }
 pollster = "0.3"
 glam = "0.25"
 image = "0.24"
+nom = "8"
 geo = "0.28"
 geo-types = "0.7"
 
