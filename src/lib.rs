@@ -1,5 +1,6 @@
 //! Arc Citadel - Deep Simulation Strategy Game
 
+pub mod blueprints;
 pub mod core;
 pub mod ecs;
 pub mod spatial;
