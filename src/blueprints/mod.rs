@@ -5,5 +5,9 @@
 //! use expressions for computed values, and support inheritance.
 
 pub mod expression;
+pub mod instance;
+pub mod schema;
 
 pub use expression::{BinOp, EvalError, Expr, ParseError, UnaryOp};
+pub use instance::*;
+pub use schema::*;
