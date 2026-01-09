@@ -38,16 +38,12 @@ pub fn process_learning(library: &mut ChunkLibrary, tick: u64) {
     // 1. Consolidate experiences
     for exp in library.pending_experiences().to_vec() {
         if let Some(state) = library.get_chunk_mut(exp.chunk_id) {
-            // Increment repetitions
+            // Only successful executions increase repetition count and encoding depth
             if exp.success {
                 state.repetition_count += 1;
-            } else {
-                // Failures teach less
-                state.repetition_count = state.repetition_count.saturating_add(1).saturating_sub(1);
+                state.encoding_depth = calculate_encoding_depth(state.repetition_count);
             }
-
-            // Recalculate encoding depth
-            state.encoding_depth = calculate_encoding_depth(state.repetition_count);
+            // Failures still update last_used_tick (prevents rust) but don't teach
             state.last_used_tick = exp.tick;
         } else {
             // Experience with un-owned chunk - check if we can form it
