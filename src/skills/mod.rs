@@ -9,7 +9,9 @@
 pub mod chunk_id;
 pub mod context;
 pub mod definitions;
+pub mod library;
 
 pub use chunk_id::ChunkId;
 pub use context::{CombatContext, ContextTag};
 pub use definitions::{get_chunk_definition, ChunkComponents, ChunkDefinition, CHUNK_LIBRARY};
+pub use library::{ChunkLibrary, Experience, PersonalChunkState};
