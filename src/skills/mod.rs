@@ -7,5 +7,7 @@
 //! A master thinks: "Handle this flank." - thousands of micro-actions automatic.
 
 pub mod chunk_id;
+pub mod context;
 
 pub use chunk_id::ChunkId;
+pub use context::{CombatContext, ContextTag};
