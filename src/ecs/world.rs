@@ -1,14 +1,15 @@
 //! ECS World - manages all entities and their components
 
-use ahash::AHashMap;
 use crate::city::building::{BuildingArchetype, BuildingId, BuildingType};
 use crate::city::stockpile::Stockpile;
-use crate::core::types::{EntityId, Species, Vec2};
 use crate::core::astronomy::AstronomicalState;
+use crate::core::types::{EntityId, Species, Vec2};
 use crate::entity::species::human::HumanArchetype;
 use crate::entity::species::orc::OrcArchetype;
-use crate::simulation::resource_zone::ResourceZone;
 use crate::rules::SpeciesRules;
+use crate::simulation::resource_zone::ResourceZone;
+use crate::world::{BlockedCells, WorldObjects};
+use ahash::AHashMap;
 
 /// Abundance level of a food zone
 #[derive(Debug, Clone)]
@@ -48,7 +49,12 @@ impl FoodZone {
 
     /// Regenerate food for scarce zones
     pub fn regenerate(&mut self) {
-        if let Abundance::Scarce { current, max, regen } = &mut self.abundance {
+        if let Abundance::Scarce {
+            current,
+            max,
+            regen,
+        } = &mut self.abundance
+        {
             *current = (*current + *regen).min(*max);
         }
     }
@@ -71,6 +77,10 @@ pub struct World {
     pub buildings: BuildingArchetype,
     /// Global stockpile for resources (MVP - later per-settlement)
     pub stockpile: Stockpile,
+    /// World objects (walls, trees, etc.)
+    pub world_objects: WorldObjects,
+    /// Blocked cells for pathfinding
+    pub blocked_cells: BlockedCells,
 }
 
 impl World {
@@ -83,11 +93,10 @@ impl World {
 
         // Load species rules from TOML files
         let species_dir = std::path::Path::new("species");
-        let species_rules = crate::rules::load_species_rules(species_dir)
-            .unwrap_or_else(|e| {
-                eprintln!("Warning: Failed to load species rules: {}", e);
-                SpeciesRules::new()
-            });
+        let species_rules = crate::rules::load_species_rules(species_dir).unwrap_or_else(|e| {
+            eprintln!("Warning: Failed to load species rules: {}", e);
+            SpeciesRules::new()
+        });
 
         Self {
             current_tick: 0,
@@ -102,13 +111,20 @@ impl World {
             species_rules,
             buildings: BuildingArchetype::new(),
             stockpile: Stockpile::new(),
+            world_objects: WorldObjects::new(),
+            blocked_cells: BlockedCells::new(),
         }
     }
 
     pub fn add_food_zone(&mut self, position: Vec2, radius: f32, abundance: Abundance) -> u32 {
         let id = self.next_food_zone_id;
         self.next_food_zone_id += 1;
-        self.food_zones.push(FoodZone { id, position, radius, abundance });
+        self.food_zones.push(FoodZone {
+            id,
+            position,
+            radius,
+            abundance,
+        });
         id
     }
 
@@ -118,7 +134,8 @@ impl World {
 
         self.humans.spawn(entity_id, name, self.current_tick);
 
-        self.entity_registry.insert(entity_id, (Species::Human, index));
+        self.entity_registry
+            .insert(entity_id, (Species::Human, index));
         *self.next_indices.get_mut(&Species::Human).unwrap() += 1;
 
         entity_id
@@ -130,7 +147,8 @@ impl World {
 
         self.orcs.spawn(entity_id, name, self.current_tick);
 
-        self.entity_registry.insert(entity_id, (Species::Orc, index));
+        self.entity_registry
+            .insert(entity_id, (Species::Orc, index));
         *self.next_indices.get_mut(&Species::Orc).unwrap() += 1;
 
         entity_id
@@ -139,7 +157,8 @@ impl World {
     /// Spawn a new building at the given position
     pub fn spawn_building(&mut self, building_type: BuildingType, position: Vec2) -> BuildingId {
         let id = BuildingId::new();
-        self.buildings.spawn(id, building_type, position, self.current_tick);
+        self.buildings
+            .spawn(id, building_type, position, self.current_tick);
         id
     }
 
@@ -172,8 +191,8 @@ impl Default for World {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::Vec2;
     use crate::core::astronomy::Season;
+    use crate::core::types::Vec2;
 
     #[test]
     fn test_world_has_astronomy() {
@@ -192,7 +211,15 @@ mod tests {
         world.add_food_zone(Vec2::new(100.0, 100.0), 20.0, Abundance::Unlimited);
         assert_eq!(world.food_zones.len(), 1);
 
-        world.add_food_zone(Vec2::new(500.0, 500.0), 15.0, Abundance::Scarce { current: 100.0, max: 100.0, regen: 0.1 });
+        world.add_food_zone(
+            Vec2::new(500.0, 500.0),
+            15.0,
+            Abundance::Scarce {
+                current: 100.0,
+                max: 100.0,
+                regen: 0.1,
+            },
+        );
         assert_eq!(world.food_zones.len(), 2);
     }
 
@@ -233,5 +260,17 @@ mod tests {
         // Should be able to add resources
         world.stockpile.add(ResourceType::Food, 100);
         assert_eq!(world.stockpile.get(ResourceType::Food), 100);
+    }
+
+    #[test]
+    fn test_world_has_objects() {
+        let world = World::new();
+        assert!(world.world_objects.is_empty());
+    }
+
+    #[test]
+    fn test_world_has_blocked_cells() {
+        let world = World::new();
+        assert!(world.blocked_cells.is_empty());
     }
 }
