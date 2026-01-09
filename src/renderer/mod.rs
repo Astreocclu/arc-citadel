@@ -6,6 +6,7 @@
 
 pub mod camera;
 pub mod gpu;
+pub mod hex;
 pub mod metrics;
 pub mod shapes;
 pub mod sprites;
@@ -283,5 +284,6 @@ impl Renderer {
 }
 
 // Re-export commonly used types
+pub use hex::{world_to_hex, HexCoord, HEX_SIZE};
 pub use metrics::RenderMetrics;
 pub use state::{CameraState, Color, RenderEntity, RenderState, ShapeType, SpriteEntity};
