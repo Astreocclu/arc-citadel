@@ -18,3 +18,4 @@ pub mod aggregate;
 pub mod rules;
 pub mod city;
 pub mod renderer;
+pub mod world;
