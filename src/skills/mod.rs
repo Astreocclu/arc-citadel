@@ -8,6 +8,8 @@
 
 pub mod chunk_id;
 pub mod context;
+pub mod definitions;
 
 pub use chunk_id::ChunkId;
 pub use context::{CombatContext, ContextTag};
+pub use definitions::{get_chunk_definition, ChunkComponents, ChunkDefinition, CHUNK_LIBRARY};
