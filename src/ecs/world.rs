@@ -1,5 +1,6 @@
 //! ECS World - manages all entities and their components
 
+use crate::blueprints::BlueprintRegistry;
 use crate::city::building::{BuildingArchetype, BuildingId, BuildingType};
 use crate::city::stockpile::Stockpile;
 use crate::core::astronomy::AstronomicalState;
@@ -8,8 +9,9 @@ use crate::entity::species::human::HumanArchetype;
 use crate::entity::species::orc::OrcArchetype;
 use crate::rules::SpeciesRules;
 use crate::simulation::resource_zone::ResourceZone;
-use crate::world::{BlockedCells, WorldObjects};
+use crate::world::{BlockedCells, LoadError, PlacementLoader, WorldObjects};
 use ahash::AHashMap;
+use std::path::Path;
 
 /// Abundance level of a food zone
 #[derive(Debug, Clone)]
@@ -180,6 +182,54 @@ impl World {
             .filter(|(_, (species, _))| *species == Species::Human)
             .map(|(id, _)| *id)
     }
+
+    /// Load world objects from JSON placement data
+    pub fn load_world_objects_json(&mut self, json: &str) -> Result<usize, LoadError> {
+        // Create a temporary registry for loading
+        let mut registry = BlueprintRegistry::new();
+        let data_path = Path::new("data/blueprints");
+        if data_path.exists() {
+            if let Err(e) = registry.load_directory(data_path) {
+                eprintln!("Warning: Failed to load blueprints: {}", e);
+            }
+        }
+
+        let loader = PlacementLoader::new(&registry);
+        let objects = loader.load_from_json(json)?;
+
+        let count = objects.len();
+
+        // Update blocked cells for objects that block movement
+        for obj in objects.iter() {
+            if obj.military.blocks_movement && !obj.geometry.footprint.is_empty() {
+                // Transform footprint to world space
+                let world_footprint: Vec<glam::Vec2> = obj
+                    .geometry
+                    .footprint
+                    .iter()
+                    .map(|v| {
+                        // Rotate and translate
+                        let rotated = glam::Vec2::new(
+                            v.x * obj.rotation.cos() - v.y * obj.rotation.sin(),
+                            v.x * obj.rotation.sin() + v.y * obj.rotation.cos(),
+                        );
+                        rotated + obj.position
+                    })
+                    .collect();
+
+                self.blocked_cells.block_footprint(&world_footprint, 1.0);
+            }
+        }
+
+        self.world_objects = objects;
+        Ok(count)
+    }
+
+    /// Load world objects from a file path
+    pub fn load_world_objects_file(&mut self, path: &Path) -> Result<usize, LoadError> {
+        let content = std::fs::read_to_string(path).map_err(LoadError::IoError)?;
+        self.load_world_objects_json(&content)
+    }
 }
 
 impl Default for World {
@@ -272,5 +322,20 @@ mod tests {
     fn test_world_has_blocked_cells() {
         let world = World::new();
         assert!(world.blocked_cells.is_empty());
+    }
+
+    #[test]
+    fn test_load_world_objects() {
+        let mut world = World::new();
+
+        // Empty placements should work
+        let json = r#"{
+            "version": 1,
+            "placements": []
+        }"#;
+
+        let result = world.load_world_objects_json(json);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
     }
 }
