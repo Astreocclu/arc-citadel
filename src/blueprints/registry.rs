@@ -972,4 +972,26 @@ mod tests {
             _ => panic!("Expected ValidationError"),
         }
     }
+
+    #[test]
+    fn test_load_example_blueprints() {
+        use std::path::Path;
+
+        let mut registry = BlueprintRegistry::new();
+
+        // This test only runs if data directory exists
+        let data_path = Path::new("data/blueprints");
+        if data_path.exists() {
+            let loaded = registry.load_directory(data_path).unwrap();
+            assert!(!loaded.is_empty(), "Should load at least one blueprint");
+
+            // Check specific blueprints
+            if let Some(wall) = registry.get_by_name("stone_wall") {
+                assert_eq!(wall.meta.origin, OriginType::Constructed);
+            }
+            if let Some(tree) = registry.get_by_name("oak_tree") {
+                assert_eq!(tree.meta.origin, OriginType::Natural);
+            }
+        }
+    }
 }

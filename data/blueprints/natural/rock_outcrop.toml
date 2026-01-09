@@ -1,0 +1,45 @@
+# Rock Outcrop Blueprint
+# A natural rock formation providing cover
+
+[meta]
+id = "rock_outcrop"
+name = "Rock Outcrop"
+category = "rock"
+origin = "natural"
+description = "A natural stone outcrop providing cover and blocking movement"
+
+[parameters]
+width = { type = "float", min = 1.0, max = 15.0, default = 4.0 }
+depth = { type = "float", min = 1.0, max = 10.0, default = 3.0 }
+height = { type = "float", min = 0.5, max = 6.0, default = 2.0 }
+
+[geometry]
+width = "width"
+depth = "depth"
+height = "height"
+shape = "rectangle"
+
+[stats.military]
+max_hp = "999999"
+hardness = "10"
+cover_value = "height >= 1.5 ? 1.0 : 0.5"
+blocks_movement = "1"
+blocks_los = "height >= 2.0 ? 1 : 0"
+movement_cost = "999"
+flammable = "0"
+elevation = "height"
+
+[stats.civilian]
+pedestrian_capacity = "0"
+cart_accessible = "0"
+worker_capacity = "0"
+storage_capacity = "0"
+prestige_modifier = "0"
+
+[[damage_states]]
+name = "intact"
+threshold = 0.0
+visual_overlay = ""
+tags = ["indestructible", "natural"]
+creates_breach = false
+produces_rubble = false
