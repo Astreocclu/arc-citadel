@@ -6,8 +6,10 @@
 
 pub mod expression;
 pub mod instance;
+pub mod registry;
 pub mod schema;
 
 pub use expression::{BinOp, EvalError, Expr, ParseError, UnaryOp};
 pub use instance::*;
+pub use registry::*;
 pub use schema::*;
