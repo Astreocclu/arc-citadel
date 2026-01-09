@@ -9,6 +9,7 @@ pub mod genetics;
 pub mod simulation;
 pub mod actions;
 pub mod combat;
+pub mod skills;
 pub mod llm;
 pub mod campaign;
 pub mod battle;
