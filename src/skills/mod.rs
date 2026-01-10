@@ -10,6 +10,7 @@ pub mod attention;
 pub mod chunk_id;
 pub mod context;
 pub mod definitions;
+pub mod display;
 pub mod domain;
 pub mod learning;
 pub mod library;
@@ -21,6 +22,10 @@ pub use attention::{
 pub use chunk_id::ChunkId;
 pub use context::{CombatContext, ContextTag};
 pub use definitions::{get_chunk_definition, ChunkComponents, ChunkDefinition, CHUNK_LIBRARY};
+pub use display::{
+    compute_athleticism, compute_charisma, compute_combat, compute_craftsmanship,
+    compute_leadership, compute_medicine, compute_scholarship, DisplayStat, SkillLevel,
+};
 pub use domain::ChunkDomain;
 pub use learning::{calculate_encoding_depth, process_learning};
 pub use library::{ChunkLibrary, DomainSummary, Experience, PersonalChunkState};
