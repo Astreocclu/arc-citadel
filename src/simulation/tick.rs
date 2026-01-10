@@ -27,7 +27,9 @@ use crate::simulation::perception::{
 };
 use crate::simulation::population::try_population_growth;
 use crate::simulation::violation_detection::process_violations;
-use crate::skills::refresh_attention;
+use crate::skills::{
+    record_action_experience, refresh_attention, skill_check, spend_attention, SkillFailure,
+};
 use crate::spatial::sparse_hash::SparseHashGrid;
 use rayon::prelude::*;
 
@@ -1016,8 +1018,130 @@ fn execute_tasks(world: &mut World) {
                     _ => false,
                 },
 
-                // =========== COMBAT ACTIONS (stubs) ===========
-                ActionCategory::Combat => false,
+                // =========== COMBAT ACTIONS ===========
+                ActionCategory::Combat => {
+                    match action {
+                        ActionId::Attack => {
+                            // Skill check before execution
+                            let skill_result =
+                                skill_check(&world.humans.chunk_libraries[i], ActionId::Attack);
+
+                            if !skill_result.can_execute {
+                                // Handle failure - task fails
+                                match skill_result.failure_reason {
+                                    Some(SkillFailure::AttentionOverload) => {
+                                        // Too exhausted to attack - abort
+                                        true // Mark complete (failed)
+                                    }
+                                    Some(SkillFailure::FumbleRisk) => {
+                                        // Fumble - potentially hurt self or ally
+                                        // For now, just abort
+                                        true
+                                    }
+                                    None => true,
+                                }
+                            } else {
+                                // Spend attention
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+
+                                // Execute attack (existing logic or stub)
+                                // skill_result.skill_modifier affects damage/accuracy
+                                let success = true; // TODO: actual combat resolution
+
+                                // Record experience
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    success,
+                                    world.current_tick,
+                                );
+
+                                true // Mark complete
+                            }
+                        }
+                        ActionId::Defend => {
+                            let skill_result =
+                                skill_check(&world.humans.chunk_libraries[i], ActionId::Defend);
+
+                            if !skill_result.can_execute {
+                                true // Failed to defend
+                            } else {
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+
+                                // Execute defend - skill_modifier affects block chance
+                                let success = true; // TODO: actual combat resolution
+
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    success,
+                                    world.current_tick,
+                                );
+
+                                true
+                            }
+                        }
+                        ActionId::Charge => {
+                            let skill_result =
+                                skill_check(&world.humans.chunk_libraries[i], ActionId::Charge);
+
+                            if !skill_result.can_execute {
+                                true // Failed to charge
+                            } else {
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+
+                                // Execute charge - skill_modifier affects momentum/damage
+                                let success = true; // TODO: actual combat resolution
+
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    success,
+                                    world.current_tick,
+                                );
+
+                                true
+                            }
+                        }
+                        ActionId::HoldPosition => {
+                            let skill_result = skill_check(
+                                &world.humans.chunk_libraries[i],
+                                ActionId::HoldPosition,
+                            );
+
+                            if !skill_result.can_execute {
+                                true // Failed to hold
+                            } else {
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+
+                                // Execute hold position - skill_modifier affects stability
+                                let success = true; // TODO: actual combat resolution
+
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    success,
+                                    world.current_tick,
+                                );
+
+                                true
+                            }
+                        }
+                        _ => false,
+                    }
+                }
             };
 
             (action, target_entity, is_complete)
