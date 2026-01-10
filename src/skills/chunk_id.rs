@@ -163,6 +163,38 @@ pub enum ChunkId {
     LeadInspireArmy,        // Motivate entire force through presence
     LeadStrategicIntuition, // Instant recognition of strategic opportunity
 
+    // === PHYSICAL DOMAIN ===
+    // Level 1 - Micro-chunks
+    PhysEfficientGait,  // Energy-efficient walking form
+    PhysQuietMovement,  // Move without making noise
+    PhysPowerStance,    // Leverage body weight for lifting
+    PhysClimbGrip,      // Grip technique for climbing
+
+    // Level 2 - Technique chunks
+    PhysDistanceRunning, // Sustained running pace
+    PhysHeavyLifting,    // Lift and carry heavy loads
+    PhysSilentApproach,  // Approach targets undetected
+    PhysRockClimbing,    // Scale rock faces and walls
+    PhysHorseControl,    // Basic mounted movement
+
+    // Level 3 - Application chunks
+    PhysSustainedLabor,      // Work for extended periods
+    PhysInfiltration,        // Move through guarded areas
+    PhysRoughTerrainTravel,  // Navigate difficult terrain
+    PhysCavalryRiding,       // Combat-ready mounted movement
+    PhysSwimming,            // Swim in various conditions
+
+    // Level 4 - Expert chunks
+    PhysLaborLeadership, // Organize and lead work crews
+    PhysScoutMission,    // Extended reconnaissance operations
+    PhysMountedCombat,   // Fight effectively while mounted
+    PhysSurvivalTravel,  // Travel through hostile environments
+
+    // Level 5 - Mastery chunks
+    PhysTirelessEndurance, // Extreme sustained physical output
+    PhysShadowMovement,    // Near-invisible movement
+    PhysCentaurUnity,      // Rider-mount perfect fusion
+
     // === KNOWLEDGE DOMAIN ===
     // Level 1 - Micro-chunks
     KnowFluentReading,  // Read text smoothly with comprehension
@@ -324,6 +356,29 @@ impl ChunkId {
             | Self::KnowCurriculumDesign
             | Self::KnowParadigmIntegration
             | Self::KnowIntellectualLegacy => ChunkDomain::Knowledge,
+
+            // Physical domain - athletics, stealth, climbing, mounted
+            Self::PhysEfficientGait
+            | Self::PhysQuietMovement
+            | Self::PhysPowerStance
+            | Self::PhysClimbGrip
+            | Self::PhysDistanceRunning
+            | Self::PhysHeavyLifting
+            | Self::PhysSilentApproach
+            | Self::PhysRockClimbing
+            | Self::PhysHorseControl
+            | Self::PhysSustainedLabor
+            | Self::PhysInfiltration
+            | Self::PhysRoughTerrainTravel
+            | Self::PhysCavalryRiding
+            | Self::PhysSwimming
+            | Self::PhysLaborLeadership
+            | Self::PhysScoutMission
+            | Self::PhysMountedCombat
+            | Self::PhysSurvivalTravel
+            | Self::PhysTirelessEndurance
+            | Self::PhysShadowMovement
+            | Self::PhysCentaurUnity => ChunkDomain::Physical,
         }
     }
 
@@ -487,6 +542,37 @@ impl ChunkId {
 
             // Knowledge Level 5
             Self::KnowParadigmIntegration | Self::KnowIntellectualLegacy => 5,
+
+            // Physical Level 1
+            Self::PhysEfficientGait
+            | Self::PhysQuietMovement
+            | Self::PhysPowerStance
+            | Self::PhysClimbGrip => 1,
+
+            // Physical Level 2
+            Self::PhysDistanceRunning
+            | Self::PhysHeavyLifting
+            | Self::PhysSilentApproach
+            | Self::PhysRockClimbing
+            | Self::PhysHorseControl => 2,
+
+            // Physical Level 3
+            Self::PhysSustainedLabor
+            | Self::PhysInfiltration
+            | Self::PhysRoughTerrainTravel
+            | Self::PhysCavalryRiding
+            | Self::PhysSwimming => 3,
+
+            // Physical Level 4
+            Self::PhysLaborLeadership
+            | Self::PhysScoutMission
+            | Self::PhysMountedCombat
+            | Self::PhysSurvivalTravel => 4,
+
+            // Physical Level 5
+            Self::PhysTirelessEndurance
+            | Self::PhysShadowMovement
+            | Self::PhysCentaurUnity => 5,
         }
     }
 
@@ -636,6 +722,32 @@ impl ChunkId {
             // Knowledge Level 5
             Self::KnowParadigmIntegration => "Paradigm Integration",
             Self::KnowIntellectualLegacy => "Intellectual Legacy",
+            // Physical Level 1
+            Self::PhysEfficientGait => "Efficient Gait",
+            Self::PhysQuietMovement => "Quiet Movement",
+            Self::PhysPowerStance => "Power Stance",
+            Self::PhysClimbGrip => "Climb Grip",
+            // Physical Level 2
+            Self::PhysDistanceRunning => "Distance Running",
+            Self::PhysHeavyLifting => "Heavy Lifting",
+            Self::PhysSilentApproach => "Silent Approach",
+            Self::PhysRockClimbing => "Rock Climbing",
+            Self::PhysHorseControl => "Horse Control",
+            // Physical Level 3
+            Self::PhysSustainedLabor => "Sustained Labor",
+            Self::PhysInfiltration => "Infiltration",
+            Self::PhysRoughTerrainTravel => "Rough Terrain Travel",
+            Self::PhysCavalryRiding => "Cavalry Riding",
+            Self::PhysSwimming => "Swimming",
+            // Physical Level 4
+            Self::PhysLaborLeadership => "Labor Leadership",
+            Self::PhysScoutMission => "Scout Mission",
+            Self::PhysMountedCombat => "Mounted Combat",
+            Self::PhysSurvivalTravel => "Survival Travel",
+            // Physical Level 5
+            Self::PhysTirelessEndurance => "Tireless Endurance",
+            Self::PhysShadowMovement => "Shadow Movement",
+            Self::PhysCentaurUnity => "Centaur Unity",
         }
     }
 }
@@ -769,5 +881,16 @@ mod tests {
         assert_eq!(ChunkId::KnowAnalyzeText.domain(), ChunkDomain::Knowledge);
         assert_eq!(ChunkId::KnowOriginalResearch.domain(), ChunkDomain::Knowledge);
         assert_eq!(ChunkId::KnowIntellectualLegacy.domain(), ChunkDomain::Knowledge);
+    }
+
+    #[test]
+    fn test_physical_chunks_exist() {
+        use crate::skills::ChunkDomain;
+
+        assert_eq!(ChunkId::PhysEfficientGait.domain(), ChunkDomain::Physical);
+        assert_eq!(ChunkId::PhysDistanceRunning.domain(), ChunkDomain::Physical);
+        assert_eq!(ChunkId::PhysSustainedLabor.domain(), ChunkDomain::Physical);
+        assert_eq!(ChunkId::PhysScoutMission.domain(), ChunkDomain::Physical);
+        assert_eq!(ChunkId::PhysTirelessEndurance.domain(), ChunkDomain::Physical);
     }
 }
