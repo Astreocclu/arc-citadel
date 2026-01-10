@@ -888,98 +888,220 @@ fn execute_tasks(world: &mut World) {
                 ActionCategory::Work => {
                     match action {
                         ActionId::Gather => {
-                            if let Some(zone_pos) = target_pos {
-                                let current = world.humans.positions[i];
-                                let zone_idx = world
-                                    .resource_zones
-                                    .iter()
-                                    .position(|z| z.contains(zone_pos));
+                            // Skill check before gathering
+                            let skill_result =
+                                skill_check(&world.humans.chunk_libraries[i], ActionId::Gather);
 
-                                if let Some(zone_idx) = zone_idx {
-                                    let distance = current.distance(&zone_pos);
+                            if !skill_result.can_execute {
+                                // Too tired to gather effectively - wait and retry next tick
+                                false
+                            } else {
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
 
-                                    if distance > 2.0 {
-                                        let direction = (zone_pos - current).normalize();
-                                        let speed = 2.0;
-                                        if direction.length() > 0.0 {
-                                            world.humans.positions[i] = current + direction * speed;
+                                let is_complete = if let Some(zone_pos) = target_pos {
+                                    let current = world.humans.positions[i];
+                                    let zone_idx = world
+                                        .resource_zones
+                                        .iter()
+                                        .position(|z| z.contains(zone_pos));
+
+                                    if let Some(zone_idx) = zone_idx {
+                                        let distance = current.distance(&zone_pos);
+
+                                        if distance > 2.0 {
+                                            let direction = (zone_pos - current).normalize();
+                                            let speed = 2.0;
+                                            if direction.length() > 0.0 {
+                                                world.humans.positions[i] =
+                                                    current + direction * speed;
+                                            }
+                                            false
+                                        } else {
+                                            // Apply skill modifier to gather rate
+                                            let base_gather = 0.02;
+                                            let modified_gather =
+                                                base_gather * skill_result.skill_modifier;
+                                            let gathered =
+                                                world.resource_zones[zone_idx].gather(modified_gather);
+                                            if gathered > 0.0 {
+                                                world.humans.needs[i]
+                                                    .satisfy(NeedType::Purpose, gathered * 0.5);
+                                            }
+                                            let duration = action.base_duration() as f32;
+                                            let progress_rate =
+                                                if duration > 0.0 { 1.0 / duration } else { 0.1 };
+                                            task.progress += progress_rate;
+                                            task.progress >= 1.0
+                                                || world.resource_zones[zone_idx].current <= 0.0
                                         }
-                                        false
                                     } else {
-                                        let gathered = world.resource_zones[zone_idx].gather(0.02);
-                                        if gathered > 0.0 {
-                                            world.humans.needs[i]
-                                                .satisfy(NeedType::Purpose, gathered * 0.5);
-                                        }
-                                        let duration = action.base_duration() as f32;
-                                        let progress_rate =
-                                            if duration > 0.0 { 1.0 / duration } else { 0.1 };
-                                        task.progress += progress_rate;
-                                        task.progress >= 1.0
-                                            || world.resource_zones[zone_idx].current <= 0.0
+                                        true // Zone not found, complete task
                                     }
                                 } else {
-                                    true
-                                }
-                            } else {
-                                true
+                                    true // No target, complete task
+                                };
+
+                                // Record experience (gathering always teaches)
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    true,
+                                    world.current_tick,
+                                );
+
+                                is_complete
                             }
                         }
                         ActionId::Build => {
-                            // Check for building target - use construction system if present
-                            if let Some(building_id) = task.target_building {
-                                if let Some(building_idx) = world.buildings.index_of(building_id) {
-                                    // Get worker skill and fatigue
-                                    let building_skill = world.humans.building_skills[i];
-                                    let fatigue = world.humans.body_states[i].fatigue;
+                            // Skill check before building
+                            let skill_result =
+                                skill_check(&world.humans.chunk_libraries[i], ActionId::Build);
 
-                                    // Calculate contribution
-                                    let contribution =
-                                        calculate_worker_contribution(building_skill, fatigue);
+                            if !skill_result.can_execute {
+                                // Too tired to build effectively - wait and retry next tick
+                                false
+                            } else {
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
 
-                                    // Apply to building
-                                    let result = apply_construction_work(
-                                        &mut world.buildings,
-                                        building_idx,
-                                        contribution,
-                                        world.current_tick,
-                                    );
+                                // Check for building target - use construction system if present
+                                let is_complete = if let Some(building_id) = task.target_building {
+                                    if let Some(building_idx) = world.buildings.index_of(building_id)
+                                    {
+                                        // Get worker skill and fatigue
+                                        let building_skill = world.humans.building_skills[i];
+                                        let fatigue = world.humans.body_states[i].fatigue;
 
-                                    match result {
-                                        ContributionResult::Completed { .. } => {
-                                            // Improve skill on completion (small increment, capped at 1.0)
-                                            world.humans.building_skills[i] =
-                                                (world.humans.building_skills[i] + 0.01).min(1.0);
-                                            true // Task complete
+                                        // Calculate contribution with skill modifier
+                                        let base_contribution =
+                                            calculate_worker_contribution(building_skill, fatigue);
+                                        let contribution =
+                                            base_contribution * skill_result.skill_modifier;
+
+                                        // Apply to building
+                                        let result = apply_construction_work(
+                                            &mut world.buildings,
+                                            building_idx,
+                                            contribution,
+                                            world.current_tick,
+                                        );
+
+                                        match result {
+                                            ContributionResult::Completed { .. } => {
+                                                // Improve skill on completion (small increment, capped at 1.0)
+                                                world.humans.building_skills[i] =
+                                                    (world.humans.building_skills[i] + 0.01).min(1.0);
+                                                true // Task complete
+                                            }
+                                            ContributionResult::InProgress { .. } => false,
+                                            ContributionResult::AlreadyComplete => true,
+                                            ContributionResult::NotFound => true, // Building gone, complete task
                                         }
-                                        ContributionResult::InProgress { .. } => false,
-                                        ContributionResult::AlreadyComplete => true,
-                                        ContributionResult::NotFound => true, // Building gone, complete task
+                                    } else {
+                                        true // Building not found, complete task
                                     }
                                 } else {
-                                    true // Building not found, complete task
-                                }
+                                    // Legacy progress-based logic (no building target)
+                                    let duration = task.action.base_duration();
+                                    let base_progress_rate = match duration {
+                                        0 => 0.1,
+                                        1..=60 => 0.05,
+                                        _ => 0.02,
+                                    };
+                                    // Apply skill modifier to progress rate
+                                    let progress_rate =
+                                        base_progress_rate * skill_result.skill_modifier;
+                                    task.progress += progress_rate;
+                                    duration > 0 && task.progress >= 1.0
+                                };
+
+                                // Record experience (building always teaches)
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    true,
+                                    world.current_tick,
+                                );
+
+                                is_complete
+                            }
+                        }
+                        ActionId::Craft => {
+                            // Skill check before crafting
+                            let skill_result =
+                                skill_check(&world.humans.chunk_libraries[i], ActionId::Craft);
+
+                            if !skill_result.can_execute {
+                                // Too tired to craft effectively - wait and retry next tick
+                                false
                             } else {
-                                // Legacy progress-based logic (no building target)
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+
                                 let duration = task.action.base_duration();
-                                let progress_rate = match duration {
+                                let base_progress_rate = match duration {
                                     0 => 0.1,
                                     1..=60 => 0.05,
                                     _ => 0.02,
                                 };
+                                // Apply skill modifier to progress rate
+                                let progress_rate = base_progress_rate * skill_result.skill_modifier;
                                 task.progress += progress_rate;
-                                duration > 0 && task.progress >= 1.0
+                                let is_complete = duration > 0 && task.progress >= 1.0;
+
+                                // Record experience (crafting always teaches)
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    true,
+                                    world.current_tick,
+                                );
+
+                                is_complete
                             }
                         }
-                        ActionId::Craft | ActionId::Repair => {
-                            let duration = task.action.base_duration();
-                            let progress_rate = match duration {
-                                0 => 0.1,
-                                1..=60 => 0.05,
-                                _ => 0.02,
-                            };
-                            task.progress += progress_rate;
-                            duration > 0 && task.progress >= 1.0
+                        ActionId::Repair => {
+                            // Skill check before repairing
+                            let skill_result =
+                                skill_check(&world.humans.chunk_libraries[i], ActionId::Repair);
+
+                            if !skill_result.can_execute {
+                                // Too tired to repair effectively - wait and retry next tick
+                                false
+                            } else {
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+
+                                let duration = task.action.base_duration();
+                                let base_progress_rate = match duration {
+                                    0 => 0.1,
+                                    1..=60 => 0.05,
+                                    _ => 0.02,
+                                };
+                                // Apply skill modifier to progress rate
+                                let progress_rate = base_progress_rate * skill_result.skill_modifier;
+                                task.progress += progress_rate;
+                                let is_complete = duration > 0 && task.progress >= 1.0;
+
+                                // Record experience (repairing always teaches)
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    true,
+                                    world.current_tick,
+                                );
+
+                                is_complete
+                            }
                         }
                         _ => false,
                     }
@@ -2339,6 +2461,7 @@ mod tests {
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
         use crate::simulation::resource_zone::{ResourceType, ResourceZone};
+        use crate::skills::ChunkLibrary;
 
         let mut world = World::new();
 
@@ -2352,12 +2475,15 @@ mod tests {
         let idx = world.humans.index_of(id).unwrap();
         world.humans.positions[idx] = Vec2::new(10.0, 0.0);
 
+        // Initialize chunk library with work skills for skill checks
+        world.humans.chunk_libraries[idx] = ChunkLibrary::trained_worker(world.current_tick);
+
         // Give Gather task
         let task = Task::new(ActionId::Gather, TaskPriority::Normal, 0)
             .with_position(Vec2::new(10.0, 0.0));
         world.humans.task_queues[idx].push(task);
 
-        // Run enough ticks to deplete the zone (0.02 per tick, 3 ticks to deplete 0.05)
+        // Run enough ticks to deplete the zone (0.02 per tick with skill modifier ~0.9, 3-4 ticks to deplete 0.05)
         for _ in 0..5 {
             run_simulation_tick(&mut world);
         }
@@ -2701,6 +2827,7 @@ mod tests {
         use crate::city::building::{BuildingState, BuildingType};
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
+        use crate::skills::ChunkLibrary;
 
         let mut world = World::new();
         let entity = world.spawn_human("Builder".into());
@@ -2716,6 +2843,9 @@ mod tests {
 
         // Set high building skill for faster progress
         world.humans.building_skills[idx] = 1.0;
+
+        // Initialize chunk library with work skills for skill checks
+        world.humans.chunk_libraries[idx] = ChunkLibrary::trained_worker(world.current_tick);
 
         // Create build task
         let task = Task::new(ActionId::Build, TaskPriority::Normal, 0).with_building(building_id);
@@ -2741,6 +2871,7 @@ mod tests {
         use crate::city::building::{BuildingState, BuildingType};
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
+        use crate::skills::ChunkLibrary;
 
         let mut world = World::new();
         let entity = world.spawn_human("Builder".into());
@@ -2751,6 +2882,9 @@ mod tests {
         let idx = world.humans.index_of(entity).unwrap();
         world.humans.positions[idx] = Vec2::new(50.0, 50.0);
         world.humans.building_skills[idx] = 0.5;
+
+        // Initialize chunk library with work skills for skill checks
+        world.humans.chunk_libraries[idx] = ChunkLibrary::trained_worker(world.current_tick);
 
         // Track initial skill
         let initial_skill = world.humans.building_skills[idx];
@@ -2784,6 +2918,7 @@ mod tests {
         use crate::city::building::{BuildingState, BuildingType};
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
+        use crate::skills::ChunkLibrary;
 
         let mut world = World::new();
         let entity = world.spawn_human("Builder".into());
@@ -2794,6 +2929,9 @@ mod tests {
         let idx = world.humans.index_of(entity).unwrap();
         world.humans.positions[idx] = Vec2::new(50.0, 50.0);
         world.humans.building_skills[idx] = 1.0; // Max skill = 1.0 contribution per tick
+
+        // Initialize chunk library with work skills for skill checks
+        world.humans.chunk_libraries[idx] = ChunkLibrary::trained_worker(world.current_tick);
 
         // Create build task
         let task = Task::new(ActionId::Build, TaskPriority::Normal, 0).with_building(building_id);

@@ -163,6 +163,44 @@ impl ChunkLibrary {
         lib
     }
 
+    /// Create a library for a trained worker (builders, crafters, gatherers)
+    pub fn trained_worker(tick: u64) -> Self {
+        let mut lib = Self::new();
+
+        // Physical labor chunks - well practiced
+        lib.chunks.insert(
+            ChunkId::PhysSustainedLabor,
+            PersonalChunkState {
+                encoding_depth: 0.8,
+                repetition_count: 200,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(2000),
+            },
+        );
+
+        // Crafting chunks - practiced
+        lib.chunks.insert(
+            ChunkId::CraftBasicMeasure,
+            PersonalChunkState {
+                encoding_depth: 0.8,
+                repetition_count: 150,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1500),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::CraftBasicCut,
+            PersonalChunkState {
+                encoding_depth: 0.7,
+                repetition_count: 100,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1000),
+            },
+        );
+
+        lib
+    }
+
     /// Check if entity has a chunk
     pub fn has_chunk(&self, id: ChunkId) -> bool {
         self.chunks.contains_key(&id)
