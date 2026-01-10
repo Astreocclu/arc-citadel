@@ -900,6 +900,18 @@ fn execute_tasks(world: &mut World) {
 
                 // =========== SOCIAL ACTIONS (TalkTo, Help, Trade) ===========
                 ActionCategory::Social => {
+                    // Skill check for social actions
+                    let skill_result = skill_check(&world.humans.chunk_libraries[i], action);
+
+                    // Social actions can proceed even when attention is low, just with reduced effectiveness
+                    // Spend attention if we have it
+                    if skill_result.can_execute && skill_result.attention_cost > 0.0 {
+                        spend_attention(
+                            &mut world.humans.chunk_libraries[i],
+                            skill_result.attention_cost,
+                        );
+                    }
+
                     if let Some((
                         target_pos,
                         target_idx,
@@ -920,22 +932,41 @@ fn execute_tasks(world: &mut World) {
                             }
                             false
                         } else {
-                            let (social_amount, purpose_amount) = match action {
+                            // Base social/purpose amounts modified by skill
+                            // Higher skill = more positive interaction
+                            let (base_social, base_purpose) = match action {
                                 ActionId::TalkTo => (0.02, 0.0),
                                 ActionId::Help => (0.03, 0.01),
                                 ActionId::Trade => (0.02, 0.02),
                                 _ => (0.0, 0.0),
                             };
 
+                            // Apply skill modifier to social effectiveness
+                            // skill_modifier ranges from ~0.3 (unskilled) to ~1.0+ (expert)
+                            let social_amount = base_social * skill_result.skill_modifier;
+                            let purpose_amount = base_purpose * skill_result.skill_modifier;
+
+                            // For Trade: skill affects deal quality
+                            // 0.3 = bad deals, 0.7 = fair, 0.9+ = advantageous
+                            // This affects how much purpose satisfaction the actor gets
+                            let trade_bonus = if action == ActionId::Trade {
+                                // Better skilled traders get more purpose from successful deals
+                                base_purpose * (skill_result.skill_modifier - 0.5).max(0.0)
+                            } else {
+                                0.0
+                            };
+
                             world.humans.needs[i].satisfy(NeedType::Social, social_amount);
                             world.humans.needs[target_idx].satisfy(NeedType::Social, social_amount);
 
-                            if purpose_amount > 0.0 {
-                                world.humans.needs[i].satisfy(NeedType::Purpose, purpose_amount);
+                            if purpose_amount > 0.0 || trade_bonus > 0.0 {
+                                world.humans.needs[i]
+                                    .satisfy(NeedType::Purpose, purpose_amount + trade_bonus);
                                 world.humans.needs[target_idx]
                                     .satisfy(NeedType::Purpose, purpose_amount);
                             }
 
+                            // Record social memory on first tick of interaction
                             if task.progress < 0.01 {
                                 let event_type = match action {
                                     ActionId::Help => EventType::AidGiven,
@@ -943,10 +974,17 @@ fn execute_tasks(world: &mut World) {
                                     _ => EventType::Observation,
                                 };
                                 let actor_id = world.humans.ids[i];
+
+                                // Relationship intensity affected by skill
+                                // Higher skill = more memorable/positive interaction
+                                let base_intensity = 0.5;
+                                let relationship_bonus = skill_result.skill_modifier * 0.1;
+                                let intensity = base_intensity + relationship_bonus;
+
                                 world.humans.social_memories[i].record_encounter(
                                     target_entity.unwrap(),
                                     event_type,
-                                    0.5,
+                                    intensity,
                                     world.current_tick,
                                 );
                                 let target_event = match action {
@@ -956,7 +994,7 @@ fn execute_tasks(world: &mut World) {
                                 world.humans.social_memories[target_idx].record_encounter(
                                     actor_id,
                                     target_event,
-                                    0.5,
+                                    intensity,
                                     world.current_tick,
                                 );
                             }
@@ -964,7 +1002,19 @@ fn execute_tasks(world: &mut World) {
                             let duration = action.base_duration() as f32;
                             let progress_rate = if duration > 0.0 { 1.0 / duration } else { 0.1 };
                             task.progress += progress_rate;
-                            task.progress >= 1.0
+                            let is_complete = task.progress >= 1.0;
+
+                            // Record experience on completion
+                            if is_complete && !skill_result.chunks_used.is_empty() {
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    true, // Social actions always "succeed" for learning purposes
+                                    world.current_tick,
+                                );
+                            }
+
+                            is_complete
                         }
                     } else {
                         true
