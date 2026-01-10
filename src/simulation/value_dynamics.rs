@@ -5,10 +5,7 @@ use crate::entity::species::value_access::ValueAccessor;
 use crate::rules::value_dynamics::{TickDelta, ValueDynamicsRules};
 
 /// Apply per-tick value changes to an entity
-pub fn apply_tick_dynamics<V: ValueAccessor>(
-    values: &mut V,
-    deltas: &[TickDelta],
-) {
+pub fn apply_tick_dynamics<V: ValueAccessor>(values: &mut V, deltas: &[TickDelta]) {
     for delta in deltas {
         if let Some(current) = values.get_value(&delta.value_name) {
             let new_value = (current + delta.delta).clamp(delta.min, delta.max);
@@ -95,14 +92,17 @@ mod tests {
         values.bloodlust = 0.5;
 
         let mut dynamics = ValueDynamicsRules::new();
-        dynamics.insert(Species::Gnoll, SpeciesDynamics {
-            tick_deltas: vec![],
-            events: vec![ValueEvent {
-                event_type: "combat_victory".to_string(),
-                value_name: "bloodlust".to_string(),
-                delta: 0.15,
-            }],
-        });
+        dynamics.insert(
+            Species::Gnoll,
+            SpeciesDynamics {
+                tick_deltas: vec![],
+                events: vec![ValueEvent {
+                    event_type: "combat_victory".to_string(),
+                    value_name: "bloodlust".to_string(),
+                    delta: 0.15,
+                }],
+            },
+        );
 
         apply_event(&mut values, "combat_victory", &dynamics, Species::Gnoll);
 
@@ -115,14 +115,17 @@ mod tests {
         values.hunger = 0.8;
 
         let mut dynamics = ValueDynamicsRules::new();
-        dynamics.insert(Species::Gnoll, SpeciesDynamics {
-            tick_deltas: vec![],
-            events: vec![ValueEvent {
-                event_type: "feeding".to_string(),
-                value_name: "hunger".to_string(),
-                delta: -0.4,
-            }],
-        });
+        dynamics.insert(
+            Species::Gnoll,
+            SpeciesDynamics {
+                tick_deltas: vec![],
+                events: vec![ValueEvent {
+                    event_type: "feeding".to_string(),
+                    value_name: "hunger".to_string(),
+                    delta: -0.4,
+                }],
+            },
+        );
 
         apply_event(&mut values, "feeding", &dynamics, Species::Gnoll);
 
@@ -135,14 +138,17 @@ mod tests {
         values.bloodlust = 0.95;
 
         let mut dynamics = ValueDynamicsRules::new();
-        dynamics.insert(Species::Gnoll, SpeciesDynamics {
-            tick_deltas: vec![],
-            events: vec![ValueEvent {
-                event_type: "combat_victory".to_string(),
-                value_name: "bloodlust".to_string(),
-                delta: 0.15,
-            }],
-        });
+        dynamics.insert(
+            Species::Gnoll,
+            SpeciesDynamics {
+                tick_deltas: vec![],
+                events: vec![ValueEvent {
+                    event_type: "combat_victory".to_string(),
+                    value_name: "bloodlust".to_string(),
+                    delta: 0.15,
+                }],
+            },
+        );
 
         apply_event(&mut values, "combat_victory", &dynamics, Species::Gnoll);
 
@@ -156,14 +162,17 @@ mod tests {
         let original_bloodlust = values.bloodlust;
 
         let mut dynamics = ValueDynamicsRules::new();
-        dynamics.insert(Species::Gnoll, SpeciesDynamics {
-            tick_deltas: vec![],
-            events: vec![ValueEvent {
-                event_type: "combat_victory".to_string(),
-                value_name: "bloodlust".to_string(),
-                delta: 0.15,
-            }],
-        });
+        dynamics.insert(
+            Species::Gnoll,
+            SpeciesDynamics {
+                tick_deltas: vec![],
+                events: vec![ValueEvent {
+                    event_type: "combat_victory".to_string(),
+                    value_name: "bloodlust".to_string(),
+                    delta: 0.15,
+                }],
+            },
+        );
 
         // Apply an event type that doesn't exist
         apply_event(&mut values, "unknown_event", &dynamics, Species::Gnoll);

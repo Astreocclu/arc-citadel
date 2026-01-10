@@ -4,11 +4,10 @@
 //! about future behavior. These expectations are stored in relationship slots and
 //! used for violation detection.
 
+use crate::actions::catalog::{ActionCategory, ActionId};
 use crate::ecs::world::World;
-use crate::actions::catalog::{ActionId, ActionCategory};
 use crate::entity::social::{
-    BehaviorPattern, PatternType, ServiceType, TraitIndicator,
-    EventType, RecentEvent,
+    BehaviorPattern, EventType, PatternType, RecentEvent, ServiceType, TraitIndicator,
 };
 use crate::simulation::perception::Perception;
 
@@ -69,7 +68,9 @@ pub fn infer_patterns_from_action(action: ActionId, tick: u64) -> Vec<BehaviorPa
     // Service patterns
     if let Some(service) = ServiceType::from_action(action) {
         patterns.push(BehaviorPattern::new(
-            PatternType::ProvidesWhenAsked { service_type: service },
+            PatternType::ProvidesWhenAsked {
+                service_type: service,
+            },
             tick,
         ));
     }
@@ -77,7 +78,9 @@ pub fn infer_patterns_from_action(action: ActionId, tick: u64) -> Vec<BehaviorPa
     // Trait patterns
     if let Some(trait_ind) = TraitIndicator::from_action(action) {
         patterns.push(BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: trait_ind },
+            PatternType::BehavesWithTrait {
+                trait_indicator: trait_ind,
+            },
             tick,
         ));
     }
@@ -115,12 +118,27 @@ pub fn infer_patterns_from_action(action: ActionId, tick: u64) -> Vec<BehaviorPa
 pub fn process_observations(world: &mut World, perceptions: &[Perception]) {
     let current_tick = world.current_tick;
 
+    // Build O(1) lookup map once instead of O(N) index_of per perceived entity
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world
+        .humans
+        .ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
     for (observer_idx, perception) in perceptions.iter().enumerate() {
         for perceived in &perception.perceived_entities {
-            // Get observed entity's current action
-            if let Some(observed_idx) = world.humans.index_of(perceived.entity) {
+            // Get observed entity's current action (O(1) lookup)
+            if let Some(&observed_idx) = id_to_idx.get(&perceived.entity) {
                 if let Some(task) = world.humans.task_queues[observed_idx].current() {
-                    record_observation(world, observer_idx, observed_idx, task.action, current_tick);
+                    record_observation(
+                        world,
+                        observer_idx,
+                        observed_idx,
+                        task.action,
+                        current_tick,
+                    );
                 }
             }
         }
@@ -161,9 +179,12 @@ mod tests {
 
         let slot = slot.unwrap();
         let expectation = slot.find_expectation(&PatternType::BehavesWithTrait {
-            trait_indicator: TraitIndicator::Generous
+            trait_indicator: TraitIndicator::Generous,
         });
-        assert!(expectation.is_some(), "Observer should expect actor to be generous");
+        assert!(
+            expectation.is_some(),
+            "Observer should expect actor to be generous"
+        );
     }
 
     #[test]
@@ -173,11 +194,15 @@ mod tests {
         // Help should produce both Helping service and Generous trait
         assert!(patterns.iter().any(|p| matches!(
             &p.pattern_type,
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Helping }
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Helping
+            }
         )));
         assert!(patterns.iter().any(|p| matches!(
             &p.pattern_type,
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous }
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Generous
+            }
         )));
     }
 
@@ -188,7 +213,9 @@ mod tests {
         // Attack should produce Aggressive trait and RespondsToEvent
         assert!(patterns.iter().any(|p| matches!(
             &p.pattern_type,
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Aggressive }
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Aggressive
+            }
         )));
         assert!(patterns.iter().any(|p| matches!(
             &p.pattern_type,
@@ -206,7 +233,9 @@ mod tests {
         // Flee should produce Peaceful trait and RespondsToEvent with Movement
         assert!(patterns.iter().any(|p| matches!(
             &p.pattern_type,
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Peaceful }
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Peaceful
+            }
         )));
         assert!(patterns.iter().any(|p| matches!(
             &p.pattern_type,
@@ -224,7 +253,9 @@ mod tests {
         // Craft should produce Crafting service
         assert!(patterns.iter().any(|p| matches!(
             &p.pattern_type,
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting }
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting
+            }
         )));
     }
 
@@ -270,10 +301,14 @@ mod tests {
         record_observation(&mut world, observer_idx, actor_idx, ActionId::Craft, 100);
 
         let initial_obs_count = {
-            let slot = world.humans.social_memories[observer_idx].find_slot(actor_id).unwrap();
-            let exp = slot.find_expectation(&PatternType::ProvidesWhenAsked {
-                service_type: ServiceType::Crafting
-            }).unwrap();
+            let slot = world.humans.social_memories[observer_idx]
+                .find_slot(actor_id)
+                .unwrap();
+            let exp = slot
+                .find_expectation(&PatternType::ProvidesWhenAsked {
+                    service_type: ServiceType::Crafting,
+                })
+                .unwrap();
             exp.observation_count
         };
 
@@ -281,10 +316,14 @@ mod tests {
         record_observation(&mut world, observer_idx, actor_idx, ActionId::Craft, 200);
 
         let final_obs_count = {
-            let slot = world.humans.social_memories[observer_idx].find_slot(actor_id).unwrap();
-            let exp = slot.find_expectation(&PatternType::ProvidesWhenAsked {
-                service_type: ServiceType::Crafting
-            }).unwrap();
+            let slot = world.humans.social_memories[observer_idx]
+                .find_slot(actor_id)
+                .unwrap();
+            let exp = slot
+                .find_expectation(&PatternType::ProvidesWhenAsked {
+                    service_type: ServiceType::Crafting,
+                })
+                .unwrap();
             exp.observation_count
         };
 
@@ -296,8 +335,8 @@ mod tests {
 
     #[test]
     fn test_process_observations() {
-        use crate::simulation::perception::{PerceivedEntity, RelationshipType};
         use crate::entity::social::Disposition;
+        use crate::simulation::perception::{PerceivedEntity, RelationshipType};
 
         let mut world = World::new();
 
@@ -353,12 +392,18 @@ mod tests {
 
         // Observer should now have expectations about actor (Trading service)
         let slot = world.humans.social_memories[observer_idx].find_slot(actor_id);
-        assert!(slot.is_some(), "Observer should have slot for actor after process_observations");
+        assert!(
+            slot.is_some(),
+            "Observer should have slot for actor after process_observations"
+        );
 
         let slot = slot.unwrap();
         let has_trading = slot.find_expectation(&PatternType::ProvidesWhenAsked {
-            service_type: ServiceType::Trading
+            service_type: ServiceType::Trading,
         });
-        assert!(has_trading.is_some(), "Observer should expect actor to trade");
+        assert!(
+            has_trading.is_some(),
+            "Observer should expect actor to trade"
+        );
     }
 }

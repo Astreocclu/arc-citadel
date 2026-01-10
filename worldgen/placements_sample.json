@@ -1,0 +1,3873 @@
+{
+  "version": 1,
+  "metadata": {
+    "name": "The Tagged Realm",
+    "description": "Auto-generated placements for 50 hexes",
+    "created_by": "placement_generator.py"
+  },
+  "placements": [
+    {
+      "id": "oak_tree_00001",
+      "template": "oak_tree",
+      "position": [
+        12.4,
+        1008.0
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 25.0,
+        "canopy_radius": 4.4,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 16.826767352868927,
+      "tags": [
+        "hex_0_6"
+      ]
+    },
+    {
+      "id": "oak_tree_00002",
+      "template": "oak_tree",
+      "position": [
+        -27.7,
+        1072.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.3,
+        "canopy_radius": 3.7,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 285.54030524713926,
+      "tags": [
+        "hex_0_6"
+      ]
+    },
+    {
+      "id": "oak_tree_00003",
+      "template": "oak_tree",
+      "position": [
+        -37.3,
+        1010.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.0,
+        "canopy_radius": 7.2,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 204.35092712754764,
+      "tags": [
+        "hex_0_6"
+      ]
+    },
+    {
+      "id": "oak_tree_00004",
+      "template": "oak_tree",
+      "position": [
+        -37.7,
+        1077.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 9.4,
+        "canopy_radius": 3.0,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 22.414259087005565,
+      "tags": [
+        "hex_0_6"
+      ]
+    },
+    {
+      "id": "oak_tree_00005",
+      "template": "oak_tree",
+      "position": [
+        4.2,
+        1007.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 25.0,
+        "canopy_radius": 3.0,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 47.759210069348484,
+      "tags": [
+        "hex_0_6"
+      ]
+    },
+    {
+      "id": "pine_tree_00006",
+      "template": "pine_tree",
+      "position": [
+        110.4,
+        1140.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.7,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 351.56665124487085,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "pine_tree_00007",
+      "template": "pine_tree",
+      "position": [
+        126.5,
+        1110.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 11.7,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 319.12041025783014,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "pine_tree_00008",
+      "template": "pine_tree",
+      "position": [
+        168.4,
+        1101.3
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.0,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 151.4648501014106,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "pine_tree_00009",
+      "template": "pine_tree",
+      "position": [
+        136.9,
+        1127.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 24.6,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 78.61262641121576,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "pine_tree_00010",
+      "template": "pine_tree",
+      "position": [
+        189.3,
+        1143.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 10.0,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 319.34441608838256,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "pine_tree_00011",
+      "template": "pine_tree",
+      "position": [
+        175.0,
+        1135.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.5,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 355.1246651672037,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "pine_tree_00012",
+      "template": "pine_tree",
+      "position": [
+        141.6,
+        1094.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.7,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 274.79162635946005,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "stone_wall_00013",
+      "template": "stone_wall",
+      "position": [
+        174.8,
+        1096.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 95,
+          "year": -148
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 1.2,
+        "thickness": 0.7
+      },
+      "rotation_deg": 139.1438189607787,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "stone_wall_00014",
+      "template": "stone_wall",
+      "position": [
+        155.1,
+        1157.7
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 38,
+          "year": -97
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 2.8,
+        "thickness": 0.4
+      },
+      "rotation_deg": 313.4526519535694,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_1_6"
+      ]
+    },
+    {
+      "id": "pine_tree_00015",
+      "template": "pine_tree",
+      "position": [
+        290.9,
+        1066.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.8,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 26.00252213630787,
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00016",
+      "template": "pine_tree",
+      "position": [
+        327.5,
+        1057.3
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.4,
+        "trunk_radius": 0.8
+      },
+      "rotation_deg": 296.2618252549976,
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00017",
+      "template": "pine_tree",
+      "position": [
+        308.1,
+        1029.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.4,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 0.08169218093054376,
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00018",
+      "template": "pine_tree",
+      "position": [
+        282.0,
+        1052.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.8,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 279.1264131560226,
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00019",
+      "template": "pine_tree",
+      "position": [
+        333.2,
+        1068.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 24.1,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 212.17317663124476,
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00020",
+      "template": "pine_tree",
+      "position": [
+        298.1,
+        1054.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 27.4,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 136.0422974229558,
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00021",
+      "template": "pine_tree",
+      "position": [
+        265.7,
+        1006.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 19.7,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 81.21219420280278,
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "watchtower_00022",
+      "template": "watchtower",
+      "position": [
+        298.0,
+        1034.1
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 13,
+          "year": -334
+        }
+      },
+      "parameters": {
+        "base_width": 5.1,
+        "height": 13.6
+      },
+      "rotation_deg": 356.0021398606203,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "stone_wall_00023",
+      "template": "stone_wall",
+      "position": [
+        312.1,
+        1058.5
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 97,
+          "year": -83
+        }
+      },
+      "parameters": {
+        "length": 3.3,
+        "height": 2.9,
+        "thickness": 0.6
+      },
+      "rotation_deg": 128.66009954479583,
+      "state": "complete",
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "stone_wall_00024",
+      "template": "stone_wall",
+      "position": [
+        260.1,
+        1018.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 24,
+          "year": -181
+        }
+      },
+      "parameters": {
+        "length": 3.5,
+        "height": 2.6,
+        "thickness": 0.5
+      },
+      "rotation_deg": 269.6531969505172,
+      "state": "complete",
+      "tags": [
+        "hex_2_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00025",
+      "template": "pine_tree",
+      "position": [
+        124.5,
+        1312.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 26.1,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 342.61700196247176,
+      "tags": [
+        "hex_1_7"
+      ]
+    },
+    {
+      "id": "pine_tree_00026",
+      "template": "pine_tree",
+      "position": [
+        115.7,
+        1266.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 18.4,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 73.89462433603072,
+      "tags": [
+        "hex_1_7"
+      ]
+    },
+    {
+      "id": "pine_tree_00027",
+      "template": "pine_tree",
+      "position": [
+        156.5,
+        1277.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 16.8,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 221.97251469619817,
+      "tags": [
+        "hex_1_7"
+      ]
+    },
+    {
+      "id": "pine_tree_00028",
+      "template": "pine_tree",
+      "position": [
+        163.8,
+        1289.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 21.9,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 330.6480428396397,
+      "tags": [
+        "hex_1_7"
+      ]
+    },
+    {
+      "id": "pine_tree_00029",
+      "template": "pine_tree",
+      "position": [
+        143.8,
+        1275.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.8,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 132.85335030932762,
+      "tags": [
+        "hex_1_7"
+      ]
+    },
+    {
+      "id": "stone_wall_00030",
+      "template": "stone_wall",
+      "position": [
+        163.6,
+        1301.0
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 92,
+          "year": -194
+        }
+      },
+      "parameters": {
+        "length": 5.6,
+        "height": 2.1,
+        "thickness": 0.4
+      },
+      "rotation_deg": 329.47750333849683,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_1_7"
+      ]
+    },
+    {
+      "id": "stone_wall_00031",
+      "template": "stone_wall",
+      "position": [
+        164.8,
+        1314.0
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 69,
+          "year": -251
+        }
+      },
+      "parameters": {
+        "length": 14.4,
+        "height": 1.6,
+        "thickness": 1.0
+      },
+      "rotation_deg": 274.97555636288433,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_1_7"
+      ]
+    },
+    {
+      "id": "oak_tree_00032",
+      "template": "oak_tree",
+      "position": [
+        176.5,
+        965.0
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 13.1,
+        "canopy_radius": 7.3,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 257.792083267195,
+      "tags": [
+        "hex_1_5"
+      ]
+    },
+    {
+      "id": "oak_tree_00033",
+      "template": "oak_tree",
+      "position": [
+        158.5,
+        959.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 10.6,
+        "canopy_radius": 5.7,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 62.53061604689403,
+      "tags": [
+        "hex_1_5"
+      ]
+    },
+    {
+      "id": "oak_tree_00034",
+      "template": "oak_tree",
+      "position": [
+        155.7,
+        967.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 11.2,
+        "canopy_radius": 6.7,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 34.44338831826828,
+      "tags": [
+        "hex_1_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00035",
+      "template": "pine_tree",
+      "position": [
+        410.7,
+        1131.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 25.7,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 9.692051726658262,
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00036",
+      "template": "pine_tree",
+      "position": [
+        456.7,
+        1130.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.3,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 8.887121779472732,
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "boulder_00037",
+      "template": "boulder",
+      "position": [
+        418.0,
+        1111.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 1.0
+      },
+      "rotation_deg": 341.3220088320897,
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "rock_outcrop_00038",
+      "template": "rock_outcrop",
+      "position": [
+        431.9,
+        1162.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "width": 3.7,
+        "depth": 1.0,
+        "height": 3.4
+      },
+      "rotation_deg": 294.5929227165637,
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "rock_outcrop_00039",
+      "template": "rock_outcrop",
+      "position": [
+        481.0,
+        1165.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "width": 1.4,
+        "depth": 1.4,
+        "height": 2.4
+      },
+      "rotation_deg": 233.64458455091628,
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "watchtower_00040",
+      "template": "watchtower",
+      "position": [
+        438.3,
+        1096.7
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 64,
+          "year": -54
+        }
+      },
+      "parameters": {
+        "base_width": 3.2,
+        "height": 11.3
+      },
+      "rotation_deg": 216.6009307662122,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "stone_wall_00041",
+      "template": "stone_wall",
+      "position": [
+        443.2,
+        1152.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 91,
+          "year": -435
+        }
+      },
+      "parameters": {
+        "length": 5.3,
+        "height": 3.5,
+        "thickness": 0.6
+      },
+      "rotation_deg": 232.89725654222357,
+      "state": "complete",
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "stone_wall_00042",
+      "template": "stone_wall",
+      "position": [
+        428.0,
+        1104.4
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 65,
+          "year": -142
+        }
+      },
+      "parameters": {
+        "length": 6.9,
+        "height": 1.1,
+        "thickness": 0.4
+      },
+      "rotation_deg": 8.434803076338886,
+      "state": "complete",
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "stone_wall_00043",
+      "template": "stone_wall",
+      "position": [
+        465.0,
+        1140.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 85,
+          "year": -87
+        }
+      },
+      "parameters": {
+        "length": 13.4,
+        "height": 1.2,
+        "thickness": 0.4
+      },
+      "rotation_deg": 272.5283137637088,
+      "state": "complete",
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "stone_wall_00044",
+      "template": "stone_wall",
+      "position": [
+        430.0,
+        1164.1
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 92,
+          "year": -264
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 1.3,
+        "thickness": 0.4
+      },
+      "rotation_deg": 131.98917223072374,
+      "state": "complete",
+      "tags": [
+        "hex_3_5"
+      ]
+    },
+    {
+      "id": "oak_tree_00045",
+      "template": "oak_tree",
+      "position": [
+        -10.2,
+        1423.0
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 25.0,
+        "canopy_radius": 5.3,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 67.17474818172664,
+      "tags": [
+        "hex_0_8"
+      ]
+    },
+    {
+      "id": "shrine_00046",
+      "template": "shrine",
+      "position": [
+        17.0,
+        1361.1
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 20,
+          "year": -243
+        }
+      },
+      "parameters": {
+        "size": 2.0,
+        "height": 3.1
+      },
+      "rotation_deg": 272.1397871915143,
+      "state": "complete",
+      "tags": [
+        "hex_0_8"
+      ]
+    },
+    {
+      "id": "oak_tree_00047",
+      "template": "oak_tree",
+      "position": [
+        16.9,
+        866.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.0,
+        "canopy_radius": 3.8,
+        "trunk_radius": 0.9
+      },
+      "rotation_deg": 10.63062698994042,
+      "tags": [
+        "hex_0_5"
+      ]
+    },
+    {
+      "id": "oak_tree_00048",
+      "template": "oak_tree",
+      "position": [
+        -33.1,
+        836.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 10.8,
+        "canopy_radius": 6.0,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 336.6098003332249,
+      "tags": [
+        "hex_0_5"
+      ]
+    },
+    {
+      "id": "oak_tree_00049",
+      "template": "oak_tree",
+      "position": [
+        14.9,
+        852.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.6,
+        "canopy_radius": 3.7,
+        "trunk_radius": 1.0
+      },
+      "rotation_deg": 288.52842929862726,
+      "tags": [
+        "hex_0_5"
+      ]
+    },
+    {
+      "id": "shrine_00050",
+      "template": "shrine",
+      "position": [
+        -26.0,
+        830.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 57,
+          "year": -346
+        }
+      },
+      "parameters": {
+        "size": 2.2,
+        "height": 3.4
+      },
+      "rotation_deg": 83.23125790089921,
+      "state": "complete",
+      "tags": [
+        "hex_0_5"
+      ]
+    },
+    {
+      "id": "oak_tree_00051",
+      "template": "oak_tree",
+      "position": [
+        489.9,
+        947.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.5,
+        "canopy_radius": 4.1,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 83.56366437587383,
+      "tags": [
+        "hex_3_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00052",
+      "template": "oak_tree",
+      "position": [
+        434.5,
+        953.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 19.5,
+        "canopy_radius": 8.1,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 131.5218677474023,
+      "tags": [
+        "hex_3_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00053",
+      "template": "oak_tree",
+      "position": [
+        467.5,
+        980.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.7,
+        "canopy_radius": 3.7,
+        "trunk_radius": 1.1
+      },
+      "rotation_deg": 298.591650239428,
+      "tags": [
+        "hex_3_4"
+      ]
+    },
+    {
+      "id": "boulder_00054",
+      "template": "boulder",
+      "position": [
+        432.6,
+        951.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 3.3
+      },
+      "rotation_deg": 113.46700831174527,
+      "tags": [
+        "hex_3_4"
+      ]
+    },
+    {
+      "id": "pine_tree_00055",
+      "template": "pine_tree",
+      "position": [
+        626.4,
+        1029.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 23.8,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 348.4913162682303,
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "pine_tree_00056",
+      "template": "pine_tree",
+      "position": [
+        575.6,
+        1015.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 27.2,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 127.2603855808519,
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "pine_tree_00057",
+      "template": "pine_tree",
+      "position": [
+        614.9,
+        1073.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 22.8,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 210.15930293756028,
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "rock_outcrop_00058",
+      "template": "rock_outcrop",
+      "position": [
+        639.2,
+        1057.3
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "width": 11.2,
+        "depth": 1.0,
+        "height": 3.7
+      },
+      "rotation_deg": 288.2486729707265,
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "boulder_00059",
+      "template": "boulder",
+      "position": [
+        579.9,
+        1028.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 1.4
+      },
+      "rotation_deg": 1.9982313769918658,
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "boulder_00060",
+      "template": "boulder",
+      "position": [
+        598.3,
+        1031.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 1.3
+      },
+      "rotation_deg": 267.80680748426863,
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "watchtower_00061",
+      "template": "watchtower",
+      "position": [
+        636.4,
+        1002.7
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 40,
+          "year": -257
+        }
+      },
+      "parameters": {
+        "base_width": 3.5,
+        "height": 8.0
+      },
+      "rotation_deg": 331.69069603131385,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "stone_wall_00062",
+      "template": "stone_wall",
+      "position": [
+        607.5,
+        1048.9
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 6,
+          "year": -498
+        }
+      },
+      "parameters": {
+        "length": 9.2,
+        "height": 2.1,
+        "thickness": 1.2
+      },
+      "rotation_deg": 170.77180789331442,
+      "state": "complete",
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "stone_wall_00063",
+      "template": "stone_wall",
+      "position": [
+        629.4,
+        1009.5
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 76,
+          "year": -249
+        }
+      },
+      "parameters": {
+        "length": 6.2,
+        "height": 2.0,
+        "thickness": 0.4
+      },
+      "rotation_deg": 11.033349403085442,
+      "state": "complete",
+      "tags": [
+        "hex_4_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00064",
+      "template": "oak_tree",
+      "position": [
+        -166.6,
+        1445.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 25.0,
+        "canopy_radius": 6.2,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 234.65849802112334,
+      "tags": [
+        "hex_-1_9"
+      ]
+    },
+    {
+      "id": "oak_tree_00065",
+      "template": "oak_tree",
+      "position": [
+        -172.8,
+        1481.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 9.9,
+        "canopy_radius": 6.1,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 321.59372635325053,
+      "tags": [
+        "hex_-1_9"
+      ]
+    },
+    {
+      "id": "oak_tree_00066",
+      "template": "oak_tree",
+      "position": [
+        -166.0,
+        1482.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 16.5,
+        "canopy_radius": 9.3,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 173.2664909266395,
+      "tags": [
+        "hex_-1_9"
+      ]
+    },
+    {
+      "id": "shrine_00067",
+      "template": "shrine",
+      "position": [
+        -140.5,
+        1449.9
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 88,
+          "year": -153
+        }
+      },
+      "parameters": {
+        "size": 3.5,
+        "height": 3.3
+      },
+      "rotation_deg": 133.95350697431334,
+      "state": "complete",
+      "tags": [
+        "hex_-1_9"
+      ]
+    },
+    {
+      "id": "oak_tree_00068",
+      "template": "oak_tree",
+      "position": [
+        -153.8,
+        809.3
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 8.0,
+        "canopy_radius": 3.0,
+        "trunk_radius": 1.1
+      },
+      "rotation_deg": 2.250566904165723,
+      "tags": [
+        "hex_-1_5"
+      ]
+    },
+    {
+      "id": "oak_tree_00069",
+      "template": "oak_tree",
+      "position": [
+        -126.0,
+        770.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.4,
+        "canopy_radius": 3.0,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 277.04479373917707,
+      "tags": [
+        "hex_-1_5"
+      ]
+    },
+    {
+      "id": "pine_tree_00070",
+      "template": "pine_tree",
+      "position": [
+        614.4,
+        836.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 21.3,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 63.68067091557685,
+      "tags": [
+        "hex_4_3"
+      ]
+    },
+    {
+      "id": "stone_wall_00071",
+      "template": "stone_wall",
+      "position": [
+        585.2,
+        885.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 43,
+          "year": -455
+        }
+      },
+      "parameters": {
+        "length": 4.2,
+        "height": 1.0,
+        "thickness": 0.5
+      },
+      "rotation_deg": 4.442637714646134,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_4_3"
+      ]
+    },
+    {
+      "id": "watchtower_00072",
+      "template": "watchtower",
+      "position": [
+        283.9,
+        868.8
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 62,
+          "year": -331
+        }
+      },
+      "parameters": {
+        "base_width": 4.5,
+        "height": 16.4
+      },
+      "rotation_deg": 346.583744144091,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_2_4"
+      ]
+    },
+    {
+      "id": "stone_wall_00073",
+      "template": "stone_wall",
+      "position": [
+        303.7,
+        872.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 59,
+          "year": -197
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 1.9,
+        "thickness": 0.5
+      },
+      "rotation_deg": 125.98174851934138,
+      "state": "complete",
+      "tags": [
+        "hex_2_4"
+      ]
+    },
+    {
+      "id": "stone_wall_00074",
+      "template": "stone_wall",
+      "position": [
+        325.8,
+        876.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 100,
+          "year": -151
+        }
+      },
+      "parameters": {
+        "length": 5.2,
+        "height": 2.1,
+        "thickness": 0.5
+      },
+      "rotation_deg": 217.54463241063,
+      "state": "complete",
+      "tags": [
+        "hex_2_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00075",
+      "template": "oak_tree",
+      "position": [
+        717.9,
+        1129.0
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.0,
+        "canopy_radius": 3.7,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 233.96481077317765,
+      "tags": [
+        "hex_5_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00076",
+      "template": "oak_tree",
+      "position": [
+        773.9,
+        1126.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 18.3,
+        "canopy_radius": 7.0,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 5.833592952410975,
+      "tags": [
+        "hex_5_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00077",
+      "template": "oak_tree",
+      "position": [
+        741.9,
+        1117.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 13.1,
+        "canopy_radius": 6.3,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 36.573172145973984,
+      "tags": [
+        "hex_5_4"
+      ]
+    },
+    {
+      "id": "shrine_00078",
+      "template": "shrine",
+      "position": [
+        739.5,
+        1100.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 50,
+          "year": -457
+        }
+      },
+      "parameters": {
+        "size": 2.3,
+        "height": 2.9
+      },
+      "rotation_deg": 215.91216635038475,
+      "state": "complete",
+      "tags": [
+        "hex_5_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00079",
+      "template": "oak_tree",
+      "position": [
+        761.2,
+        934.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.6,
+        "canopy_radius": 6.4,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 55.044876727208006,
+      "tags": [
+        "hex_5_3"
+      ]
+    },
+    {
+      "id": "oak_tree_00080",
+      "template": "oak_tree",
+      "position": [
+        717.4,
+        975.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 8.5,
+        "canopy_radius": 3.6,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 173.91956091206413,
+      "tags": [
+        "hex_5_3"
+      ]
+    },
+    {
+      "id": "oak_tree_00081",
+      "template": "oak_tree",
+      "position": [
+        -263.2,
+        1374.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.4,
+        "canopy_radius": 3.6,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 324.76415717064083,
+      "tags": [
+        "hex_-2_9"
+      ]
+    },
+    {
+      "id": "oak_tree_00082",
+      "template": "oak_tree",
+      "position": [
+        -272.5,
+        1355.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.6,
+        "canopy_radius": 8.9,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 152.00880181800304,
+      "tags": [
+        "hex_-2_9"
+      ]
+    },
+    {
+      "id": "oak_tree_00083",
+      "template": "oak_tree",
+      "position": [
+        -326.4,
+        1412.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.8,
+        "canopy_radius": 4.8,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 299.8597107745362,
+      "tags": [
+        "hex_-2_9"
+      ]
+    },
+    {
+      "id": "stone_wall_00084",
+      "template": "stone_wall",
+      "position": [
+        -270.1,
+        1375.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 83,
+          "year": -243
+        }
+      },
+      "parameters": {
+        "length": 11.7,
+        "height": 1.0,
+        "thickness": 1.2
+      },
+      "rotation_deg": 316.556884627259,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_-2_9"
+      ]
+    },
+    {
+      "id": "oak_tree_00085",
+      "template": "oak_tree",
+      "position": [
+        -18.0,
+        659.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.2,
+        "canopy_radius": 8.0,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 341.57293587043307,
+      "tags": [
+        "hex_0_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00086",
+      "template": "oak_tree",
+      "position": [
+        39.5,
+        717.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 11.4,
+        "canopy_radius": 4.8,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 168.5595784807044,
+      "tags": [
+        "hex_0_4"
+      ]
+    },
+    {
+      "id": "oak_tree_00087",
+      "template": "oak_tree",
+      "position": [
+        -28.9,
+        687.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 8.0,
+        "canopy_radius": 6.8,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 173.28089651732682,
+      "tags": [
+        "hex_0_4"
+      ]
+    },
+    {
+      "id": "shrine_00088",
+      "template": "shrine",
+      "position": [
+        -4.9,
+        716.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 61,
+          "year": -408
+        }
+      },
+      "parameters": {
+        "size": 3.9,
+        "height": 3.2
+      },
+      "rotation_deg": 50.42986800891186,
+      "state": "complete",
+      "tags": [
+        "hex_0_4"
+      ]
+    },
+    {
+      "id": "pine_tree_00089",
+      "template": "pine_tree",
+      "position": [
+        636.3,
+        656.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 24.2,
+        "trunk_radius": 0.8
+      },
+      "rotation_deg": 83.59973015969526,
+      "tags": [
+        "hex_4_2"
+      ]
+    },
+    {
+      "id": "pine_tree_00090",
+      "template": "pine_tree",
+      "position": [
+        611.0,
+        726.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.2,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 209.48153871800505,
+      "tags": [
+        "hex_4_2"
+      ]
+    },
+    {
+      "id": "rock_outcrop_00091",
+      "template": "rock_outcrop",
+      "position": [
+        569.2,
+        661.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "width": 1.0,
+        "depth": 5.6,
+        "height": 3.0
+      },
+      "rotation_deg": 293.7893153591387,
+      "tags": [
+        "hex_4_2"
+      ]
+    },
+    {
+      "id": "pine_tree_00092",
+      "template": "pine_tree",
+      "position": [
+        448.7,
+        788.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.4,
+        "trunk_radius": 0.8
+      },
+      "rotation_deg": 105.00178745049553,
+      "tags": [
+        "hex_3_3"
+      ]
+    },
+    {
+      "id": "pine_tree_00093",
+      "template": "pine_tree",
+      "position": [
+        444.0,
+        785.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.9,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 167.71234453994842,
+      "tags": [
+        "hex_3_3"
+      ]
+    },
+    {
+      "id": "pine_tree_00094",
+      "template": "pine_tree",
+      "position": [
+        432.5,
+        778.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.5,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 262.34053565072253,
+      "tags": [
+        "hex_3_3"
+      ]
+    },
+    {
+      "id": "watchtower_00095",
+      "template": "watchtower",
+      "position": [
+        476.1,
+        799.6
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 21,
+          "year": -224
+        }
+      },
+      "parameters": {
+        "base_width": 4.7,
+        "height": 10.5
+      },
+      "rotation_deg": 84.35709318041471,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_3_3"
+      ]
+    },
+    {
+      "id": "stone_wall_00096",
+      "template": "stone_wall",
+      "position": [
+        413.2,
+        741.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 56,
+          "year": -264
+        }
+      },
+      "parameters": {
+        "length": 2.4,
+        "height": 2.7,
+        "thickness": 1.1
+      },
+      "rotation_deg": 157.51905941443434,
+      "state": "complete",
+      "tags": [
+        "hex_3_3"
+      ]
+    },
+    {
+      "id": "stone_wall_00097",
+      "template": "stone_wall",
+      "position": [
+        488.9,
+        790.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 60,
+          "year": -296
+        }
+      },
+      "parameters": {
+        "length": 7.9,
+        "height": 2.0,
+        "thickness": 0.5
+      },
+      "rotation_deg": 299.10046722334306,
+      "state": "complete",
+      "tags": [
+        "hex_3_3"
+      ]
+    },
+    {
+      "id": "stone_wall_00098",
+      "template": "stone_wall",
+      "position": [
+        425.1,
+        747.9
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 98,
+          "year": -304
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 3.7,
+        "thickness": 0.8
+      },
+      "rotation_deg": 55.32032736368522,
+      "state": "complete",
+      "tags": [
+        "hex_3_3"
+      ]
+    },
+    {
+      "id": "stone_wall_00099",
+      "template": "stone_wall",
+      "position": [
+        413.9,
+        749.4
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 60,
+          "year": -280
+        }
+      },
+      "parameters": {
+        "length": 5.5,
+        "height": 2.6,
+        "thickness": 0.5
+      },
+      "rotation_deg": 284.59453563718887,
+      "state": "complete",
+      "tags": [
+        "hex_3_3"
+      ]
+    },
+    {
+      "id": "oak_tree_00100",
+      "template": "oak_tree",
+      "position": [
+        27.3,
+        -23.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.2,
+        "canopy_radius": 9.1,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 89.02972948432921,
+      "tags": [
+        "hex_0_0"
+      ]
+    },
+    {
+      "id": "oak_tree_00101",
+      "template": "oak_tree",
+      "position": [
+        -26.8,
+        34.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.8,
+        "canopy_radius": 5.4,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 21.214168527189653,
+      "tags": [
+        "hex_0_0"
+      ]
+    },
+    {
+      "id": "oak_tree_00102",
+      "template": "oak_tree",
+      "position": [
+        -7.4,
+        5.0
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.9,
+        "canopy_radius": 3.0,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 182.72352799959597,
+      "tags": [
+        "hex_0_0"
+      ]
+    },
+    {
+      "id": "oak_tree_00103",
+      "template": "oak_tree",
+      "position": [
+        -21.5,
+        30.3
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 19.5,
+        "canopy_radius": 7.8,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 121.58227804241963,
+      "tags": [
+        "hex_0_0"
+      ]
+    },
+    {
+      "id": "pine_tree_00104",
+      "template": "pine_tree",
+      "position": [
+        -146.3,
+        -96.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 23.0,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 238.43491337288697,
+      "tags": [
+        "hex_-1_0"
+      ]
+    },
+    {
+      "id": "pine_tree_00105",
+      "template": "pine_tree",
+      "position": [
+        -117.6,
+        -57.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 18.0,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 311.54239900844783,
+      "tags": [
+        "hex_-1_0"
+      ]
+    },
+    {
+      "id": "pine_tree_00106",
+      "template": "pine_tree",
+      "position": [
+        -183.2,
+        -84.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 22.4,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 165.40530791470783,
+      "tags": [
+        "hex_-1_0"
+      ]
+    },
+    {
+      "id": "pine_tree_00107",
+      "template": "pine_tree",
+      "position": [
+        -152.3,
+        -114.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 24.6,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 296.2799186560491,
+      "tags": [
+        "hex_-1_0"
+      ]
+    },
+    {
+      "id": "shrine_00108",
+      "template": "shrine",
+      "position": [
+        -131.7,
+        -69.6
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 62,
+          "year": -493
+        }
+      },
+      "parameters": {
+        "size": 2.0,
+        "height": 3.9
+      },
+      "rotation_deg": 250.90136989462675,
+      "state": "complete",
+      "tags": [
+        "hex_-1_0"
+      ]
+    },
+    {
+      "id": "shrine_00109",
+      "template": "shrine",
+      "position": [
+        22.9,
+        -212.4
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 73,
+          "year": -458
+        }
+      },
+      "parameters": {
+        "size": 2.4,
+        "height": 2.1
+      },
+      "rotation_deg": 326.0478691017117,
+      "state": "complete",
+      "tags": [
+        "hex_0_-1"
+      ]
+    },
+    {
+      "id": "pine_tree_00110",
+      "template": "pine_tree",
+      "position": [
+        -315.6,
+        -164.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 19.1,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 123.2076947711951,
+      "tags": [
+        "hex_-2_0"
+      ]
+    },
+    {
+      "id": "shrine_00111",
+      "template": "shrine",
+      "position": [
+        -327.3,
+        -195.4
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 8,
+          "year": -425
+        }
+      },
+      "parameters": {
+        "size": 4.8,
+        "height": 2.0
+      },
+      "rotation_deg": 279.5277436131868,
+      "state": "complete",
+      "tags": [
+        "hex_-2_0"
+      ]
+    },
+    {
+      "id": "oak_tree_00112",
+      "template": "oak_tree",
+      "position": [
+        187.6,
+        -95.3
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.0,
+        "canopy_radius": 3.8,
+        "trunk_radius": 1.4
+      },
+      "rotation_deg": 249.4458649489723,
+      "tags": [
+        "hex_1_-1"
+      ]
+    },
+    {
+      "id": "oak_tree_00113",
+      "template": "oak_tree",
+      "position": [
+        157.5,
+        -117.0
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.0,
+        "canopy_radius": 3.2,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 15.191081170970545,
+      "tags": [
+        "hex_1_-1"
+      ]
+    },
+    {
+      "id": "oak_tree_00114",
+      "template": "oak_tree",
+      "position": [
+        138.6,
+        -99.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.6,
+        "canopy_radius": 3.1,
+        "trunk_radius": 0.8
+      },
+      "rotation_deg": 57.269187901033376,
+      "tags": [
+        "hex_1_-1"
+      ]
+    },
+    {
+      "id": "pine_tree_00115",
+      "template": "pine_tree",
+      "position": [
+        -286.8,
+        8.0
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 18.4,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 359.61219934757776,
+      "tags": [
+        "hex_-2_1"
+      ]
+    },
+    {
+      "id": "pine_tree_00116",
+      "template": "pine_tree",
+      "position": [
+        -280.5,
+        -22.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 18.3,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 150.5436522598565,
+      "tags": [
+        "hex_-2_1"
+      ]
+    },
+    {
+      "id": "watchtower_00117",
+      "template": "watchtower",
+      "position": [
+        -336.6,
+        11.1
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 64,
+          "year": -92
+        }
+      },
+      "parameters": {
+        "base_width": 3.0,
+        "height": 10.7
+      },
+      "rotation_deg": 255.6393131602892,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_-2_1"
+      ]
+    },
+    {
+      "id": "stone_wall_00118",
+      "template": "stone_wall",
+      "position": [
+        -333.0,
+        -5.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 82,
+          "year": -481
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 3.6,
+        "thickness": 0.7
+      },
+      "rotation_deg": 122.02320768625691,
+      "state": "complete",
+      "tags": [
+        "hex_-2_1"
+      ]
+    },
+    {
+      "id": "stone_wall_00119",
+      "template": "stone_wall",
+      "position": [
+        -320.7,
+        -11.8
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 76,
+          "year": -410
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 2.2,
+        "thickness": 0.4
+      },
+      "rotation_deg": 247.83064011427626,
+      "state": "complete",
+      "tags": [
+        "hex_-2_1"
+      ]
+    },
+    {
+      "id": "stone_wall_00120",
+      "template": "stone_wall",
+      "position": [
+        -281.2,
+        -4.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 2,
+          "year": -180
+        }
+      },
+      "parameters": {
+        "length": 9.4,
+        "height": 4.3,
+        "thickness": 0.7
+      },
+      "rotation_deg": 136.12160785474586,
+      "state": "complete",
+      "tags": [
+        "hex_-2_1"
+      ]
+    },
+    {
+      "id": "watchtower_00121",
+      "template": "watchtower",
+      "position": [
+        278.7,
+        -161.6
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 20,
+          "year": -361
+        }
+      },
+      "parameters": {
+        "base_width": 4.6,
+        "height": 8.0
+      },
+      "rotation_deg": 60.80463197880323,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_2_-2"
+      ]
+    },
+    {
+      "id": "stone_wall_00122",
+      "template": "stone_wall",
+      "position": [
+        333.5,
+        -157.7
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 25,
+          "year": -52
+        }
+      },
+      "parameters": {
+        "length": 5.3,
+        "height": 1.3,
+        "thickness": 0.9
+      },
+      "rotation_deg": 155.07148894551273,
+      "state": "complete",
+      "tags": [
+        "hex_2_-2"
+      ]
+    },
+    {
+      "id": "stone_wall_00123",
+      "template": "stone_wall",
+      "position": [
+        278.7,
+        -147.8
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 85,
+          "year": -209
+        }
+      },
+      "parameters": {
+        "length": 2.8,
+        "height": 3.7,
+        "thickness": 0.8
+      },
+      "rotation_deg": 308.9910864851524,
+      "state": "complete",
+      "tags": [
+        "hex_2_-2"
+      ]
+    },
+    {
+      "id": "stone_wall_00124",
+      "template": "stone_wall",
+      "position": [
+        318.7,
+        -197.6
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 7,
+          "year": -194
+        }
+      },
+      "parameters": {
+        "length": 2.6,
+        "height": 3.4,
+        "thickness": 1.4
+      },
+      "rotation_deg": 308.96535425193554,
+      "state": "complete",
+      "tags": [
+        "hex_2_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00125",
+      "template": "oak_tree",
+      "position": [
+        283.5,
+        -24.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 23.5,
+        "canopy_radius": 5.5,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 94.3251444175526,
+      "tags": [
+        "hex_2_-1"
+      ]
+    },
+    {
+      "id": "oak_tree_00126",
+      "template": "oak_tree",
+      "position": [
+        263.8,
+        35.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 18.9,
+        "canopy_radius": 5.8,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 162.36683913423576,
+      "tags": [
+        "hex_2_-1"
+      ]
+    },
+    {
+      "id": "stone_wall_00127",
+      "template": "stone_wall",
+      "position": [
+        280.5,
+        -19.6
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 30,
+          "year": -398
+        }
+      },
+      "parameters": {
+        "length": 5.9,
+        "height": 2.2,
+        "thickness": 0.8
+      },
+      "rotation_deg": 237.70625945122217,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_2_-1"
+      ]
+    },
+    {
+      "id": "watchtower_00128",
+      "template": "watchtower",
+      "position": [
+        -266.6,
+        -334.7
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 15,
+          "year": -446
+        }
+      },
+      "parameters": {
+        "base_width": 4.1,
+        "height": 15.5
+      },
+      "rotation_deg": 290.2973078442974,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_-2_-1"
+      ]
+    },
+    {
+      "id": "stone_wall_00129",
+      "template": "stone_wall",
+      "position": [
+        -272.4,
+        -374.7
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 98,
+          "year": -425
+        }
+      },
+      "parameters": {
+        "length": 9.9,
+        "height": 1.8,
+        "thickness": 0.8
+      },
+      "rotation_deg": 29.340403642004425,
+      "state": "complete",
+      "tags": [
+        "hex_-2_-1"
+      ]
+    },
+    {
+      "id": "stone_wall_00130",
+      "template": "stone_wall",
+      "position": [
+        -328.8,
+        -331.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 53,
+          "year": -80
+        }
+      },
+      "parameters": {
+        "length": 8.1,
+        "height": 1.7,
+        "thickness": 0.4
+      },
+      "rotation_deg": 242.65895538833186,
+      "state": "complete",
+      "tags": [
+        "hex_-2_-1"
+      ]
+    },
+    {
+      "id": "oak_tree_00131",
+      "template": "oak_tree",
+      "position": [
+        -6.6,
+        -316.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 13.6,
+        "canopy_radius": 8.5,
+        "trunk_radius": 1.0
+      },
+      "rotation_deg": 254.62621178351588,
+      "tags": [
+        "hex_0_-2"
+      ]
+    },
+    {
+      "id": "wooden_house_00132",
+      "template": "wooden_house",
+      "position": [
+        1.5,
+        -383.8
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 44,
+          "year": -240
+        }
+      },
+      "parameters": {
+        "width": 9.0,
+        "depth": 6.6,
+        "stories": 1
+      },
+      "rotation_deg": 58.91940515181572,
+      "state": "complete",
+      "tags": [
+        "hex_0_-2"
+      ]
+    },
+    {
+      "id": "wooden_house_00133",
+      "template": "wooden_house",
+      "position": [
+        -6.1,
+        -378.3
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 69,
+          "year": -75
+        }
+      },
+      "parameters": {
+        "width": 7.7,
+        "depth": 4.0,
+        "stories": 1
+      },
+      "rotation_deg": 269.620855117798,
+      "state": "complete",
+      "tags": [
+        "hex_0_-2"
+      ]
+    },
+    {
+      "id": "wooden_house_00134",
+      "template": "wooden_house",
+      "position": [
+        17.4,
+        -328.4
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 46,
+          "year": -414
+        }
+      },
+      "parameters": {
+        "width": 4.0,
+        "depth": 4.2,
+        "stories": 1
+      },
+      "rotation_deg": 170.42259886996953,
+      "state": "complete",
+      "tags": [
+        "hex_0_-2"
+      ]
+    },
+    {
+      "id": "well_00135",
+      "template": "well",
+      "position": [
+        10.3,
+        -322.9
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 69,
+          "year": -135
+        }
+      },
+      "parameters": {
+        "diameter": 1.5,
+        "depth": 9.7
+      },
+      "rotation_deg": 0,
+      "state": "complete",
+      "tags": [
+        "hex_0_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00136",
+      "template": "oak_tree",
+      "position": [
+        -483.1,
+        -60.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 11.5,
+        "canopy_radius": 6.6,
+        "trunk_radius": 0.8
+      },
+      "rotation_deg": 53.820381599000946,
+      "tags": [
+        "hex_-3_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00137",
+      "template": "oak_tree",
+      "position": [
+        -476.4,
+        -49.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 25.0,
+        "canopy_radius": 7.6,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 218.60962473554312,
+      "tags": [
+        "hex_-3_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00138",
+      "template": "oak_tree",
+      "position": [
+        -440.6,
+        -53.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 10.5,
+        "canopy_radius": 8.5,
+        "trunk_radius": 1.0
+      },
+      "rotation_deg": 172.59906407574897,
+      "tags": [
+        "hex_-3_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00139",
+      "template": "oak_tree",
+      "position": [
+        -483.1,
+        -71.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.4,
+        "canopy_radius": 5.0,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 346.11113791837363,
+      "tags": [
+        "hex_-3_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00140",
+      "template": "oak_tree",
+      "position": [
+        -448.2,
+        -70.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.6,
+        "canopy_radius": 4.4,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 42.204793787666425,
+      "tags": [
+        "hex_-3_1"
+      ]
+    },
+    {
+      "id": "boulder_00141",
+      "template": "boulder",
+      "position": [
+        -439.0,
+        -90.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 3.1
+      },
+      "rotation_deg": 141.35244392503813,
+      "tags": [
+        "hex_-3_1"
+      ]
+    },
+    {
+      "id": "boulder_00142",
+      "template": "boulder",
+      "position": [
+        -476.2,
+        -57.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 3.4
+      },
+      "rotation_deg": 348.00140222352053,
+      "tags": [
+        "hex_-3_1"
+      ]
+    },
+    {
+      "id": "rock_outcrop_00143",
+      "template": "rock_outcrop",
+      "position": [
+        -414.3,
+        -59.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "width": 3.3,
+        "depth": 3.8,
+        "height": 1.1
+      },
+      "rotation_deg": 156.5426387151648,
+      "tags": [
+        "hex_-3_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00144",
+      "template": "oak_tree",
+      "position": [
+        439.4,
+        -247.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.3,
+        "canopy_radius": 6.9,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 147.52663944848126,
+      "tags": [
+        "hex_3_-3"
+      ]
+    },
+    {
+      "id": "oak_tree_00145",
+      "template": "oak_tree",
+      "position": [
+        478.8,
+        -237.3
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.9,
+        "canopy_radius": 3.4,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 67.35788355139803,
+      "tags": [
+        "hex_3_-3"
+      ]
+    },
+    {
+      "id": "stone_wall_00146",
+      "template": "stone_wall",
+      "position": [
+        451.0,
+        -269.8
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 27,
+          "year": -244
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 2.9,
+        "thickness": 0.7
+      },
+      "rotation_deg": 92.06769302278136,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_3_-3"
+      ]
+    },
+    {
+      "id": "stone_wall_00147",
+      "template": "stone_wall",
+      "position": [
+        476.9,
+        -296.6
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 8,
+          "year": -351
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 1.5,
+        "thickness": 0.6
+      },
+      "rotation_deg": 332.6877313392459,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_3_-3"
+      ]
+    },
+    {
+      "id": "oak_tree_00148",
+      "template": "oak_tree",
+      "position": [
+        433.0,
+        -109.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.1,
+        "canopy_radius": 5.1,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 308.3975471754224,
+      "tags": [
+        "hex_3_-2"
+      ]
+    },
+    {
+      "id": "stone_wall_00149",
+      "template": "stone_wall",
+      "position": [
+        472.5,
+        -50.6
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 94,
+          "year": -50
+        }
+      },
+      "parameters": {
+        "length": 5.0,
+        "height": 3.4,
+        "thickness": 0.4
+      },
+      "rotation_deg": 253.6015605079921,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_3_-2"
+      ]
+    },
+    {
+      "id": "stone_wall_00150",
+      "template": "stone_wall",
+      "position": [
+        426.6,
+        -94.9
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 7,
+          "year": -287
+        }
+      },
+      "parameters": {
+        "length": 11.9,
+        "height": 2.1,
+        "thickness": 1.0
+      },
+      "rotation_deg": 264.60990277756866,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_3_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00151",
+      "template": "oak_tree",
+      "position": [
+        333.5,
+        169.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.7,
+        "canopy_radius": 6.4,
+        "trunk_radius": 1.0
+      },
+      "rotation_deg": 285.98478681334717,
+      "tags": [
+        "hex_2_0"
+      ]
+    },
+    {
+      "id": "oak_tree_00152",
+      "template": "oak_tree",
+      "position": [
+        310.8,
+        199.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 18.3,
+        "canopy_radius": 7.1,
+        "trunk_radius": 0.8
+      },
+      "rotation_deg": 101.09511890283144,
+      "tags": [
+        "hex_2_0"
+      ]
+    },
+    {
+      "id": "stone_wall_00153",
+      "template": "stone_wall",
+      "position": [
+        326.3,
+        145.4
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 70,
+          "year": -86
+        }
+      },
+      "parameters": {
+        "length": 12.3,
+        "height": 2.9,
+        "thickness": 0.4
+      },
+      "rotation_deg": 110.34141079472823,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.4,
+      "tags": [
+        "hex_2_0"
+      ]
+    },
+    {
+      "id": "pine_tree_00154",
+      "template": "pine_tree",
+      "position": [
+        -294.4,
+        -495.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 10.0,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 29.234306680468972,
+      "tags": [
+        "hex_-2_-2"
+      ]
+    },
+    {
+      "id": "watchtower_00155",
+      "template": "watchtower",
+      "position": [
+        -336.2,
+        -532.1
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 28,
+          "year": -470
+        }
+      },
+      "parameters": {
+        "base_width": 3.6,
+        "height": 10.7
+      },
+      "rotation_deg": 111.6914606901811,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_-2_-2"
+      ]
+    },
+    {
+      "id": "stone_wall_00156",
+      "template": "stone_wall",
+      "position": [
+        -298.5,
+        -545.2
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 43,
+          "year": -201
+        }
+      },
+      "parameters": {
+        "length": 2.0,
+        "height": 3.2,
+        "thickness": 0.4
+      },
+      "rotation_deg": 119.79446279059887,
+      "state": "complete",
+      "tags": [
+        "hex_-2_-2"
+      ]
+    },
+    {
+      "id": "stone_wall_00157",
+      "template": "stone_wall",
+      "position": [
+        -322.8,
+        -527.8
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 9,
+          "year": -206
+        }
+      },
+      "parameters": {
+        "length": 7.1,
+        "height": 3.2,
+        "thickness": 0.8
+      },
+      "rotation_deg": 30.901774288280095,
+      "state": "complete",
+      "tags": [
+        "hex_-2_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00158",
+      "template": "oak_tree",
+      "position": [
+        152.7,
+        -291.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 19.0,
+        "canopy_radius": 3.0,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 245.37151335096442,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00159",
+      "template": "oak_tree",
+      "position": [
+        140.8,
+        -225.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.6,
+        "canopy_radius": 5.6,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 40.858064519566774,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00160",
+      "template": "oak_tree",
+      "position": [
+        143.3,
+        -297.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.0,
+        "canopy_radius": 5.4,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 350.92571769611146,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00161",
+      "template": "oak_tree",
+      "position": [
+        136.4,
+        -232.5
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 21.0,
+        "canopy_radius": 8.0,
+        "trunk_radius": 0.8
+      },
+      "rotation_deg": 2.461613778843965,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00162",
+      "template": "oak_tree",
+      "position": [
+        120.9,
+        -293.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 11.4,
+        "canopy_radius": 4.7,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 274.40145460448,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00163",
+      "template": "oak_tree",
+      "position": [
+        141.4,
+        -295.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 12.7,
+        "canopy_radius": 6.3,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 348.4431973034931,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "oak_tree_00164",
+      "template": "oak_tree",
+      "position": [
+        111.4,
+        -279.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 24.0,
+        "canopy_radius": 7.2,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 105.18673288330808,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "boulder_00165",
+      "template": "boulder",
+      "position": [
+        144.9,
+        -282.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 2.9
+      },
+      "rotation_deg": 303.3048347147645,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "boulder_00166",
+      "template": "boulder",
+      "position": [
+        175.2,
+        -242.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 1.5
+      },
+      "rotation_deg": 332.0220178320609,
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "shrine_00167",
+      "template": "shrine",
+      "position": [
+        178.1,
+        -259.1
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 35,
+          "year": -405
+        }
+      },
+      "parameters": {
+        "size": 2.0,
+        "height": 4.3
+      },
+      "rotation_deg": 64.00273045928057,
+      "state": "complete",
+      "tags": [
+        "hex_1_-2"
+      ]
+    },
+    {
+      "id": "pine_tree_00168",
+      "template": "pine_tree",
+      "position": [
+        -571.1,
+        9.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 20.5,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 236.9399345939091,
+      "tags": [
+        "hex_-4_2"
+      ]
+    },
+    {
+      "id": "shrine_00169",
+      "template": "shrine",
+      "position": [
+        -632.7,
+        35.9
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 2,
+          "year": -421
+        }
+      },
+      "parameters": {
+        "size": 4.4,
+        "height": 3.1
+      },
+      "rotation_deg": 20.21463699019728,
+      "state": "complete",
+      "tags": [
+        "hex_-4_2"
+      ]
+    },
+    {
+      "id": "pine_tree_00170",
+      "template": "pine_tree",
+      "position": [
+        -576.6,
+        -200.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 26.4,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 167.28257081495659,
+      "tags": [
+        "hex_-4_1"
+      ]
+    },
+    {
+      "id": "wooden_house_00171",
+      "template": "wooden_house",
+      "position": [
+        -603.8,
+        -145.8
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 6,
+          "year": -58
+        }
+      },
+      "parameters": {
+        "width": 8.2,
+        "depth": 4.0,
+        "stories": 1
+      },
+      "rotation_deg": 357.5169135231004,
+      "state": "complete",
+      "tags": [
+        "hex_-4_1"
+      ]
+    },
+    {
+      "id": "wooden_house_00172",
+      "template": "wooden_house",
+      "position": [
+        -604.9,
+        -190.9
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 54,
+          "year": -97
+        }
+      },
+      "parameters": {
+        "width": 4.0,
+        "depth": 6.3,
+        "stories": 1
+      },
+      "rotation_deg": 315.64884773333284,
+      "state": "complete",
+      "tags": [
+        "hex_-4_1"
+      ]
+    },
+    {
+      "id": "well_00173",
+      "template": "well",
+      "position": [
+        -618.7,
+        -199.4
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 47,
+          "year": -116
+        }
+      },
+      "parameters": {
+        "diameter": 1.6,
+        "depth": 12.7
+      },
+      "rotation_deg": 0,
+      "state": "complete",
+      "tags": [
+        "hex_-4_1"
+      ]
+    },
+    {
+      "id": "pine_tree_00174",
+      "template": "pine_tree",
+      "position": [
+        488.5,
+        -406.0
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 27.2,
+        "trunk_radius": 0.2
+      },
+      "rotation_deg": 149.69028959719182,
+      "tags": [
+        "hex_3_-4"
+      ]
+    },
+    {
+      "id": "watchtower_00175",
+      "template": "watchtower",
+      "position": [
+        424.1,
+        -462.8
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 8,
+          "year": -314
+        }
+      },
+      "parameters": {
+        "base_width": 3.0,
+        "height": 16.1
+      },
+      "rotation_deg": 9.778487391710978,
+      "state": "complete",
+      "damage_state": "damaged",
+      "current_hp_ratio": 0.6,
+      "tags": [
+        "hex_3_-4"
+      ]
+    },
+    {
+      "id": "stone_wall_00176",
+      "template": "stone_wall",
+      "position": [
+        415.7,
+        -465.5
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 65,
+          "year": -384
+        }
+      },
+      "parameters": {
+        "length": 6.4,
+        "height": 4.8,
+        "thickness": 0.6
+      },
+      "rotation_deg": 222.1062295076591,
+      "state": "complete",
+      "tags": [
+        "hex_3_-4"
+      ]
+    },
+    {
+      "id": "stone_wall_00177",
+      "template": "stone_wall",
+      "position": [
+        438.4,
+        -407.0
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 28,
+          "year": -347
+        }
+      },
+      "parameters": {
+        "length": 10.7,
+        "height": 5.0,
+        "thickness": 0.4
+      },
+      "rotation_deg": 29.816955481325465,
+      "state": "complete",
+      "tags": [
+        "hex_3_-4"
+      ]
+    },
+    {
+      "id": "stone_wall_00178",
+      "template": "stone_wall",
+      "position": [
+        448.9,
+        -425.6
+      ],
+      "placed_by": {
+        "HistorySim": {
+          "polity_id": 95,
+          "year": -139
+        }
+      },
+      "parameters": {
+        "length": 7.5,
+        "height": 1.7,
+        "thickness": 0.7
+      },
+      "rotation_deg": 322.3042737820324,
+      "state": "complete",
+      "tags": [
+        "hex_3_-4"
+      ]
+    },
+    {
+      "id": "oak_tree_00179",
+      "template": "oak_tree",
+      "position": [
+        -1.4,
+        343.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 19.3,
+        "canopy_radius": 6.1,
+        "trunk_radius": 0.7
+      },
+      "rotation_deg": 286.0638879474612,
+      "tags": [
+        "hex_0_2"
+      ]
+    },
+    {
+      "id": "oak_tree_00180",
+      "template": "oak_tree",
+      "position": [
+        -1.2,
+        373.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 9.8,
+        "canopy_radius": 6.3,
+        "trunk_radius": 0.4
+      },
+      "rotation_deg": 155.62962770749127,
+      "tags": [
+        "hex_0_2"
+      ]
+    },
+    {
+      "id": "oak_tree_00181",
+      "template": "oak_tree",
+      "position": [
+        15.9,
+        345.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 8.0,
+        "canopy_radius": 6.5,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 137.07616946729428,
+      "tags": [
+        "hex_0_2"
+      ]
+    },
+    {
+      "id": "oak_tree_00182",
+      "template": "oak_tree",
+      "position": [
+        9.3,
+        172.4
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 19.9,
+        "canopy_radius": 3.6,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 233.5662669059053,
+      "tags": [
+        "hex_0_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00183",
+      "template": "oak_tree",
+      "position": [
+        -4.5,
+        201.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 15.7,
+        "canopy_radius": 7.0,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 44.92262883856079,
+      "tags": [
+        "hex_0_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00184",
+      "template": "oak_tree",
+      "position": [
+        474.2,
+        1328.3
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 11.1,
+        "canopy_radius": 7.4,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 50.96911917217894,
+      "tags": [
+        "hex_3_6"
+      ]
+    },
+    {
+      "id": "oak_tree_00185",
+      "template": "oak_tree",
+      "position": [
+        450.0,
+        1330.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.3,
+        "canopy_radius": 9.9,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 35.64801673351442,
+      "tags": [
+        "hex_3_6"
+      ]
+    },
+    {
+      "id": "oak_tree_00186",
+      "template": "oak_tree",
+      "position": [
+        424.4,
+        1314.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.1,
+        "canopy_radius": 3.2,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 140.8534025644555,
+      "tags": [
+        "hex_3_6"
+      ]
+    },
+    {
+      "id": "boulder_00187",
+      "template": "boulder",
+      "position": [
+        925.2,
+        683.1
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 1.0
+      },
+      "rotation_deg": 157.0510468328555,
+      "tags": [
+        "hex_6_1"
+      ]
+    },
+    {
+      "id": "boulder_00188",
+      "template": "boulder",
+      "position": [
+        906.9,
+        697.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 2.6
+      },
+      "rotation_deg": 41.04865362226424,
+      "tags": [
+        "hex_6_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00189",
+      "template": "oak_tree",
+      "position": [
+        1193.1,
+        890.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 17.2,
+        "canopy_radius": 3.1,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 95.94112241990572,
+      "tags": [
+        "hex_8_1"
+      ]
+    },
+    {
+      "id": "boulder_00190",
+      "template": "boulder",
+      "position": [
+        1181.2,
+        844.7
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 2.3
+      },
+      "rotation_deg": 145.2520847822695,
+      "tags": [
+        "hex_8_1"
+      ]
+    },
+    {
+      "id": "boulder_00191",
+      "template": "boulder",
+      "position": [
+        1233.5,
+        881.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "size": 1.8
+      },
+      "rotation_deg": 328.7088520476216,
+      "tags": [
+        "hex_8_1"
+      ]
+    },
+    {
+      "id": "rock_outcrop_00192",
+      "template": "rock_outcrop",
+      "position": [
+        1195.8,
+        889.9
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "width": 3.7,
+        "depth": 4.7,
+        "height": 1.2
+      },
+      "rotation_deg": 219.25928487190612,
+      "tags": [
+        "hex_8_1"
+      ]
+    },
+    {
+      "id": "oak_tree_00193",
+      "template": "oak_tree",
+      "position": [
+        1063.4,
+        970.6
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 8.0,
+        "canopy_radius": 4.3,
+        "trunk_radius": 0.6
+      },
+      "rotation_deg": 358.72854790780644,
+      "tags": [
+        "hex_7_2"
+      ]
+    },
+    {
+      "id": "oak_tree_00194",
+      "template": "oak_tree",
+      "position": [
+        1022.6,
+        938.2
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 14.6,
+        "canopy_radius": 3.1,
+        "trunk_radius": 0.3
+      },
+      "rotation_deg": 86.66492884404265,
+      "tags": [
+        "hex_7_2"
+      ]
+    },
+    {
+      "id": "oak_tree_00195",
+      "template": "oak_tree",
+      "position": [
+        1027.4,
+        982.8
+      ],
+      "placed_by": "TerrainGen",
+      "parameters": {
+        "height": 8.9,
+        "canopy_radius": 8.3,
+        "trunk_radius": 0.5
+      },
+      "rotation_deg": 110.29091527154378,
+      "tags": [
+        "hex_7_2"
+      ]
+    }
+  ]
+}

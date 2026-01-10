@@ -1,9 +1,9 @@
 //! Kobold-specific polity behavior - Trapper archetype
 
+use crate::aggregate::behavior::PolityBehavior;
+use crate::aggregate::events::EventType;
 use crate::aggregate::polity::Polity;
 use crate::aggregate::world::AggregateWorld;
-use crate::aggregate::events::EventType;
-use crate::aggregate::behavior::PolityBehavior;
 use crate::core::types::PolityId;
 
 pub struct KoboldBehavior;
@@ -32,9 +32,7 @@ impl PolityBehavior for KoboldBehavior {
 
             // Dragon worship increases when dragon is nearby (placeholder)
             if state.dragon_worship > 0.8 {
-                events.push(EventType::DragonTributeOffered {
-                    polity: polity.id,
-                });
+                events.push(EventType::DragonTributeOffered { polity: polity.id });
             }
         }
 
@@ -52,7 +50,8 @@ impl PolityBehavior for KoboldBehavior {
                     }
                 }
                 EventType::TrapConstruction { trap_count, .. } => {
-                    state.trap_density = (state.trap_density + (*trap_count as f32 * 0.05)).min(1.0);
+                    state.trap_density =
+                        (state.trap_density + (*trap_count as f32 * 0.05)).min(1.0);
                 }
                 EventType::SpiteRaid { target, .. } => {
                     // Remove target from grudge list after raiding
@@ -73,7 +72,7 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
 mod tests {
     use super::*;
     use crate::aggregate::polity::*;
-    use crate::core::types::{PolityId, Species, PolityTier, GovernmentType};
+    use crate::core::types::{GovernmentType, PolityId, PolityTier, Species};
     use std::collections::HashMap;
 
     fn create_test_polity() -> Polity {
@@ -91,6 +90,7 @@ mod tests {
             capital: 0,
             military_strength: 100.0,
             economic_strength: 100.0,
+            founding_conditions: FoundingConditions::default(),
             cultural_drift: CulturalDrift::default(),
             relations: HashMap::new(),
             species_state: SpeciesState::Kobold(KoboldState::default()),
@@ -116,8 +116,8 @@ mod tests {
     }
 
     fn create_test_world() -> AggregateWorld {
-        use rand_chacha::ChaCha8Rng;
         use rand_chacha::rand_core::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
 
         AggregateWorld::new(vec![], vec![], ChaCha8Rng::seed_from_u64(42))
     }
@@ -136,7 +136,9 @@ mod tests {
 
         let events = KoboldBehavior.tick(&polity, &world, 1);
 
-        assert!(events.iter().any(|e| matches!(e, EventType::TrapConstruction { .. })));
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, EventType::TrapConstruction { .. })));
     }
 
     #[test]
@@ -146,7 +148,9 @@ mod tests {
 
         let events = KoboldBehavior.tick(&polity, &world, 1);
 
-        assert!(!events.iter().any(|e| matches!(e, EventType::TrapConstruction { .. })));
+        assert!(!events
+            .iter()
+            .any(|e| matches!(e, EventType::TrapConstruction { .. })));
     }
 
     #[test]
@@ -156,7 +160,9 @@ mod tests {
 
         let events = KoboldBehavior.tick(&polity, &world, 1);
 
-        assert!(events.iter().any(|e| matches!(e, EventType::SpiteRaid { .. })));
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, EventType::SpiteRaid { .. })));
     }
 
     #[test]
@@ -171,7 +177,7 @@ mod tests {
                 polity: PolityId(1),
                 casualties: 5,
             },
-            &world
+            &world,
         );
 
         let final_density = polity.kobold_state().unwrap().trap_density;
@@ -190,7 +196,7 @@ mod tests {
                 polity: PolityId(1),
                 trap_count: 10,
             },
-            &world
+            &world,
         );
 
         let final_density = polity.kobold_state().unwrap().trap_density;
@@ -209,7 +215,7 @@ mod tests {
                 attacker: PolityId(1),
                 target: PolityId(2),
             },
-            &world
+            &world,
         );
 
         assert!(!polity.kobold_state().unwrap().grudge_targets.contains(&2));

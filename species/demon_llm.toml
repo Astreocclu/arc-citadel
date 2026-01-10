@@ -1,0 +1,85 @@
+[metadata]
+name = "AbyssalDemons"
+module_name = "abyssal_demons"
+
+[entity_values]
+soul_hunger = { type = "f32", default = 0.3, description = "Craving for mortal souls to consume or bind." }
+corruptive_urge = { type = "f32", default = 0.5, description = "Drive to twist and defile the natural world." }
+malicious_cunning = { type = "f32", default = 0.4, description = "Patient, deceptive intelligence for long-term schemes." }
+abyssal_rage = { type = "f32", default = 0.2, description = "Sudden, destructive fury born of the void." }
+
+[polity_state]
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+soul_hoard = { type = "u32", default = "0" }
+corruption_seeds_planted = { type = "Vec<String>", default = "Vec::new()" }
+
+[terrain_fitness]
+mountain = 0.8
+hills = 0.7
+forest = 0.3
+plains = 0.4
+marsh = 0.9
+coast = 0.6
+desert = 0.8
+river = 0.2
+
+[growth]
+rate = 1.04
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Ash", "Blight", "Cinder", "Dread", "Gloom", "Harrow", "Mire", "Scorch", "Vile", "Wrath"]
+suffixes = ["bane", "claw", "fang", "fiend", "maw", "rend", "shade", "spawn", "thorn", "wraith"]
+
+[polity_types]
+small = "Clan"
+medium = "Court"
+large = "Horde"
+
+[[action_rules]]
+trigger_value = "soul_hunger"
+threshold = 0.75
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Overwhelming hunger drives the demon to assault a target to claim its soul."
+
+[[action_rules]]
+trigger_value = "corruptive_urge"
+threshold = 0.8
+action = "Build"
+priority = "Normal"
+requires_target = false
+description = "The demon manifests a structure or altar to spread its corrupting influence in the area."
+
+[[action_rules]]
+trigger_value = "malicious_cunning"
+threshold = 0.7
+action = "TalkTo"
+priority = "Low"
+requires_target = true
+description = "The demon attempts to parley, offering a deceptive bargain or contract."
+
+[[action_rules]]
+trigger_value = "abyssal_rage"
+threshold = 0.85
+action = "Charge"
+priority = "High"
+requires_target = true
+description = "A burst of chaotic fury causes the demon to recklessly assault the nearest foe."
+
+[[idle_behaviors]]
+value = "corruptive_urge"
+threshold = 0.6
+action = "IdleWander"
+requires_target = false
+description = "The demon stalks its territory, leaving a faint trail of corruption."
+
+[[idle_behaviors]]
+value = "malicious_cunning"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "The demon watches potential victims or rivals from the shadows, plotting."

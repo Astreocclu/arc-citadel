@@ -7,8 +7,8 @@
 use arc_citadel::core::error::Result;
 use arc_citadel::ecs::world::World;
 use arc_citadel::llm::client::LlmClient;
-use arc_citadel::llm::parser::parse_command;
 use arc_citadel::llm::context::GameContext;
+use arc_citadel::llm::parser::parse_command;
 use arc_citadel::simulation::tick::run_simulation_tick;
 
 use std::io::{self, Write};
@@ -149,8 +149,11 @@ fn main() -> Result<()> {
         }
     }
 
-    println!("\nGoodbye! Final state: {} entities, {} ticks elapsed.",
-             world.entity_count(), world.current_tick);
+    println!(
+        "\nGoodbye! Final state: {} entities, {} ticks elapsed.",
+        world.entity_count(),
+        world.current_tick
+    );
     Ok(())
 }
 
@@ -203,7 +206,11 @@ fn spawn_initial_population(world: &mut World) {
 /// Display a brief status summary
 fn display_status(world: &World) {
     println!();
-    println!("--- Tick {} | Population: {} ---", world.current_tick, world.entity_count());
+    println!(
+        "--- Tick {} | Population: {} ---",
+        world.current_tick,
+        world.entity_count()
+    );
 
     for i in world.humans.iter_living().take(5) {
         let name = &world.humans.names[i];
@@ -216,7 +223,8 @@ fn display_status(world: &World) {
             .map(|t| format!("{:?}", t.action))
             .unwrap_or_else(|| "idle".to_string());
 
-        println!("  {} - Fatigue: {:.0}%, Top need: {:?} ({:.0}%), Task: {}",
+        println!(
+            "  {} - Fatigue: {:.0}%, Top need: {:?} ({:.0}%), Task: {}",
             name,
             body.fatigue * 100.0,
             top_need,
@@ -246,13 +254,15 @@ fn display_detailed_status(world: &World) {
         let task_queue = &world.humans.task_queues[i];
 
         println!("{}", name);
-        println!("  Body: Fatigue {:.0}%, Hunger {:.0}%, Pain {:.0}%, Health {:.0}%",
+        println!(
+            "  Body: Fatigue {:.0}%, Hunger {:.0}%, Pain {:.0}%, Health {:.0}%",
             body.fatigue * 100.0,
             body.hunger * 100.0,
             body.pain * 100.0,
             body.overall_health * 100.0
         );
-        println!("  Needs: Rest {:.0}%, Food {:.0}%, Safety {:.0}%, Social {:.0}%, Purpose {:.0}%",
+        println!(
+            "  Needs: Rest {:.0}%, Food {:.0}%, Safety {:.0}%, Social {:.0}%, Purpose {:.0}%",
             needs.rest * 100.0,
             needs.food * 100.0,
             needs.safety * 100.0,
@@ -261,10 +271,15 @@ fn display_detailed_status(world: &World) {
         );
 
         let (dominant_value, level) = values.dominant();
-        println!("  Dominant value: {} ({:.0}%)", dominant_value, level * 100.0);
+        println!(
+            "  Dominant value: {} ({:.0}%)",
+            dominant_value,
+            level * 100.0
+        );
 
         if let Some(strongest) = thoughts.strongest() {
-            println!("  Strongest thought: {:?} ({}) - {:.0}% intensity",
+            println!(
+                "  Strongest thought: {:?} ({}) - {:.0}% intensity",
                 strongest.valence,
                 strongest.concept_category,
                 strongest.intensity * 100.0
@@ -272,8 +287,11 @@ fn display_detailed_status(world: &World) {
         }
 
         if let Some(task) = task_queue.current() {
-            println!("  Current task: {:?} (progress: {:.0}%)",
-                task.action, task.progress * 100.0);
+            println!(
+                "  Current task: {:?} (progress: {:.0}%)",
+                task.action,
+                task.progress * 100.0
+            );
         } else {
             println!("  Current task: idle");
         }

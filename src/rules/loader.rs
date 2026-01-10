@@ -4,7 +4,7 @@ use crate::actions::catalog::ActionId;
 use crate::core::types::Species;
 use crate::entity::tasks::TaskPriority;
 use crate::rules::action_rules::{ActionRule, IdleBehavior, SpeciesRuleSet, SpeciesRules};
-use crate::rules::value_dynamics::{TickDelta, ValueEvent, SpeciesDynamics, ValueDynamicsRules};
+use crate::rules::value_dynamics::{SpeciesDynamics, TickDelta, ValueDynamicsRules, ValueEvent};
 use std::fs;
 use std::path::Path;
 
@@ -89,7 +89,8 @@ pub fn load_species_dynamics(species_dir: &Path) -> Result<ValueDynamicsRules, S
 }
 
 fn parse_species_dynamics(content: &str, species: Species) -> Result<SpeciesDynamics, String> {
-    let toml: toml::Value = content.parse()
+    let toml: toml::Value = content
+        .parse()
         .map_err(|e| format!("{:?}: Invalid TOML: {}", species, e))?;
 
     let mut dynamics = SpeciesDynamics::default();
@@ -98,15 +99,12 @@ fn parse_species_dynamics(content: &str, species: Species) -> Result<SpeciesDyna
     if let Some(dyn_table) = toml.get("value_dynamics").and_then(|v| v.as_table()) {
         for (name, config) in dyn_table {
             if let Some(table) = config.as_table() {
-                let tick_delta = table.get("tick_delta")
+                let tick_delta = table
+                    .get("tick_delta")
                     .and_then(|v| v.as_float())
                     .unwrap_or(0.0) as f32;
-                let min = table.get("min")
-                    .and_then(|v| v.as_float())
-                    .unwrap_or(0.0) as f32;
-                let max = table.get("max")
-                    .and_then(|v| v.as_float())
-                    .unwrap_or(1.0) as f32;
+                let min = table.get("min").and_then(|v| v.as_float()).unwrap_or(0.0) as f32;
+                let max = table.get("max").and_then(|v| v.as_float()).unwrap_or(1.0) as f32;
 
                 dynamics.tick_deltas.push(TickDelta {
                     value_name: name.clone(),
@@ -139,7 +137,8 @@ fn parse_species_dynamics(content: &str, species: Species) -> Result<SpeciesDyna
 }
 
 fn parse_species_toml(content: &str, species: Species) -> Result<SpeciesRuleSet, String> {
-    let toml: toml::Value = content.parse()
+    let toml: toml::Value = content
+        .parse()
         .map_err(|e| format!("{:?}: Invalid TOML: {}", species, e))?;
 
     let mut rule_set = SpeciesRuleSet::default();
@@ -147,14 +146,18 @@ fn parse_species_toml(content: &str, species: Species) -> Result<SpeciesRuleSet,
     // Parse action_rules
     if let Some(rules) = toml.get("action_rules").and_then(|v| v.as_array()) {
         for rule in rules {
-            rule_set.action_rules.push(parse_action_rule(rule, species)?);
+            rule_set
+                .action_rules
+                .push(parse_action_rule(rule, species)?);
         }
     }
 
     // Parse idle_behaviors
     if let Some(behaviors) = toml.get("idle_behaviors").and_then(|v| v.as_array()) {
         for behavior in behaviors {
-            rule_set.idle_behaviors.push(parse_idle_behavior(behavior, species)?);
+            rule_set
+                .idle_behaviors
+                .push(parse_idle_behavior(behavior, species)?);
         }
     }
 
@@ -162,24 +165,28 @@ fn parse_species_toml(content: &str, species: Species) -> Result<SpeciesRuleSet,
 }
 
 fn parse_action_rule(value: &toml::Value, species: Species) -> Result<ActionRule, String> {
-    let trigger_value = value.get("trigger_value")
+    let trigger_value = value
+        .get("trigger_value")
         .and_then(|v| v.as_str())
         .ok_or_else(|| format!("{:?}: action_rule missing trigger_value", species))?
         .to_string();
 
-    let threshold = value.get("threshold")
+    let threshold = value
+        .get("threshold")
         .and_then(|v| v.as_float())
         .ok_or_else(|| format!("{:?}: action_rule missing threshold", species))?
         as f32;
 
-    let action_str = value.get("action")
+    let action_str = value
+        .get("action")
         .and_then(|v| v.as_str())
         .ok_or_else(|| format!("{:?}: action_rule missing action", species))?;
 
     let action = parse_action_id(action_str)
         .ok_or_else(|| format!("{:?}: Unknown action '{}'", species, action_str))?;
 
-    let priority_str = value.get("priority")
+    let priority_str = value
+        .get("priority")
         .and_then(|v| v.as_str())
         .unwrap_or("Normal");
 
@@ -191,11 +198,13 @@ fn parse_action_rule(value: &toml::Value, species: Species) -> Result<ActionRule
         _ => TaskPriority::Normal,
     };
 
-    let requires_target = value.get("requires_target")
+    let requires_target = value
+        .get("requires_target")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let description = value.get("description")
+    let description = value
+        .get("description")
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
@@ -211,28 +220,33 @@ fn parse_action_rule(value: &toml::Value, species: Species) -> Result<ActionRule
 }
 
 fn parse_idle_behavior(value: &toml::Value, species: Species) -> Result<IdleBehavior, String> {
-    let val = value.get("value")
+    let val = value
+        .get("value")
         .and_then(|v| v.as_str())
         .ok_or_else(|| format!("{:?}: idle_behavior missing value", species))?
         .to_string();
 
-    let threshold = value.get("threshold")
+    let threshold = value
+        .get("threshold")
         .and_then(|v| v.as_float())
         .ok_or_else(|| format!("{:?}: idle_behavior missing threshold", species))?
         as f32;
 
-    let action_str = value.get("action")
+    let action_str = value
+        .get("action")
         .and_then(|v| v.as_str())
         .ok_or_else(|| format!("{:?}: idle_behavior missing action", species))?;
 
     let action = parse_action_id(action_str)
         .ok_or_else(|| format!("{:?}: Unknown action '{}'", species, action_str))?;
 
-    let requires_target = value.get("requires_target")
+    let requires_target = value
+        .get("requires_target")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let description = value.get("description")
+    let description = value
+        .get("description")
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
@@ -329,7 +343,10 @@ description = "Prowl territory seeking prey."
 
             // Check vampire rules loaded
             let vampire_rules = rules.get_action_rules(Species::Vampire);
-            assert!(!vampire_rules.is_empty(), "Vampire should have action rules");
+            assert!(
+                !vampire_rules.is_empty(),
+                "Vampire should have action rules"
+            );
 
             // Check kobold rules loaded
             let kobold_rules = rules.get_action_rules(Species::Kobold);
@@ -341,7 +358,10 @@ description = "Prowl territory seeking prey."
     fn test_parse_action_id() {
         assert!(matches!(parse_action_id("Attack"), Some(ActionId::Attack)));
         assert!(matches!(parse_action_id("Flee"), Some(ActionId::Flee)));
-        assert!(matches!(parse_action_id("IdleWander"), Some(ActionId::IdleWander)));
+        assert!(matches!(
+            parse_action_id("IdleWander"),
+            Some(ActionId::IdleWander)
+        ));
         assert!(parse_action_id("NonexistentAction").is_none());
     }
 
@@ -368,13 +388,21 @@ delta = -0.4
         assert_eq!(dynamics.events.len(), 2);
 
         // Check tick deltas
-        let bloodlust_delta = dynamics.tick_deltas.iter().find(|d| d.value_name == "bloodlust").unwrap();
+        let bloodlust_delta = dynamics
+            .tick_deltas
+            .iter()
+            .find(|d| d.value_name == "bloodlust")
+            .unwrap();
         assert!((bloodlust_delta.delta - 0.002).abs() < 0.0001);
         assert!((bloodlust_delta.min - 0.0).abs() < 0.0001);
         assert!((bloodlust_delta.max - 1.0).abs() < 0.0001);
 
         // Check events
-        let combat_event = dynamics.events.iter().find(|e| e.event_type == "combat_victory").unwrap();
+        let combat_event = dynamics
+            .events
+            .iter()
+            .find(|e| e.event_type == "combat_victory")
+            .unwrap();
         assert_eq!(combat_event.value_name, "bloodlust");
         assert!((combat_event.delta - 0.15).abs() < 0.0001);
     }
@@ -391,11 +419,18 @@ delta = -0.4
 
             // Check vampire dynamics loaded
             let vampire_deltas = dynamics.get_tick_deltas(Species::Vampire);
-            assert!(!vampire_deltas.is_empty(), "Vampire should have tick deltas");
+            assert!(
+                !vampire_deltas.is_empty(),
+                "Vampire should have tick deltas"
+            );
 
             // Check event lookup
-            let gnoll_combat_events = dynamics.get_events_for_type(Species::Gnoll, "combat_victory");
-            assert!(!gnoll_combat_events.is_empty(), "Gnoll should have combat_victory events");
+            let gnoll_combat_events =
+                dynamics.get_events_for_type(Species::Gnoll, "combat_victory");
+            assert!(
+                !gnoll_combat_events.is_empty(),
+                "Gnoll should have combat_victory events"
+            );
         }
     }
 }

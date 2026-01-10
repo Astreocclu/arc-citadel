@@ -2,9 +2,9 @@
 //!
 //! Entities reproduce when housing and food are available.
 
+use crate::city::building::BuildingState;
 use crate::ecs::world::World;
 use crate::simulation::resource_zone::ResourceType;
-use crate::city::building::BuildingState;
 use rand::Rng;
 
 /// Calculate current housing surplus (available - occupied)
@@ -18,7 +18,10 @@ pub fn housing_surplus(world: &World) -> i32 {
         total_capacity += world.buildings.building_types[idx].housing_capacity() as i32;
     }
 
-    let occupied = world.humans.assigned_houses.iter()
+    let occupied = world
+        .humans
+        .assigned_houses
+        .iter()
         .filter(|h: &&Option<crate::city::BuildingId>| h.is_some())
         .count() as i32;
 
@@ -59,8 +62,8 @@ pub fn try_population_growth(world: &mut World) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::Vec2;
     use crate::city::building::BuildingType;
+    use crate::core::types::Vec2;
 
     #[test]
     fn test_housing_surplus_calculation() {
@@ -104,8 +107,11 @@ mod tests {
             try_population_growth(&mut world);
         }
 
-        assert_eq!(world.humans.count(), initial_count,
-            "Should not grow without housing surplus");
+        assert_eq!(
+            world.humans.count(),
+            initial_count,
+            "Should not grow without housing surplus"
+        );
     }
 
     #[test]
@@ -124,8 +130,11 @@ mod tests {
             try_population_growth(&mut world);
         }
 
-        assert_eq!(world.humans.count(), initial_count,
-            "Should not grow without sufficient food");
+        assert_eq!(
+            world.humans.count(),
+            initial_count,
+            "Should not grow without sufficient food"
+        );
     }
 
     #[test]
@@ -150,6 +159,9 @@ mod tests {
         }
 
         assert!(grew, "Should have grown with conditions met");
-        assert!(world.humans.count() > initial_count, "Population should have increased");
+        assert!(
+            world.humans.count() > initial_count,
+            "Population should have increased"
+        );
     }
 }

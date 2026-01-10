@@ -1,0 +1,86 @@
+[metadata]
+name = "Fey"
+module_name = "fey"
+
+[entity_values]
+whimsy = { type = "f32", default = 0.5, description = "Desire for playful mischief and chaotic fun." }
+cruelty = { type = "f32", default = 0.3, description = "Drive for malicious pranks and causing suffering." }
+bargain_hunger = { type = "f32", default = 0.6, description = "Lust for striking deals and binding oaths." }
+territoriality = { type = "f32", default = 0.4, description = "Possessive attachment to their claimed glades and rings." }
+fear_of_iron = { type = "f32", default = 0.7, description = "Deep aversion to cold iron and the mundane." }
+
+[polity_state]
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+oath_ledger = { type = "Vec<String>", default = "Vec::new()" }
+mischief_targets = { type = "Vec<u32>", default = "Vec::new()" }
+
+[terrain_fitness]
+mountain = 0.2
+hills = 0.4
+forest = 0.9
+plains = 0.5
+marsh = 0.8
+coast = 0.3
+desert = 0.1
+river = 0.7
+
+[growth]
+rate = 1.03
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Glimmer", "Whisper", "Mist", "Thorn", "Puck", "Trick", "Willow", "Briar", "Gossamer", "Riddle"]
+suffixes = ["dancer", "tongue", "shadow", "leaf", "bind", "weaver", "spark", "thorn", "song", "trick"]
+
+[polity_types]
+small = "Grove"
+medium = "Court"
+large = "Kingdom"
+
+[[action_rules]]
+trigger_value = "bargain_hunger"
+threshold = 0.75
+action = "TalkTo"
+priority = "High"
+requires_target = true
+description = "Seeks to engage another entity in conversation, aiming to propose a binding bargain or oath."
+
+[[action_rules]]
+trigger_value = "cruelty"
+threshold = 0.8
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Lashes out with cruel magic when malice overcomes whimsy."
+
+[[action_rules]]
+trigger_value = "fear_of_iron"
+threshold = 0.6
+action = "Flee"
+priority = "High"
+requires_target = true
+description = "Retreats from entities perceived to wield or be made of cold iron."
+
+[[action_rules]]
+trigger_value = "territoriality"
+threshold = 0.7
+action = "Defend"
+priority = "Normal"
+requires_target = true
+description = "Defends a claimed site, such as a mushroom ring or ancient tree, from intruders."
+
+[[idle_behaviors]]
+value = "whimsy"
+threshold = 0.5
+action = "IdleWander"
+requires_target = false
+description = "Capriciously wanders their domain, playing minor pranks on the environment."
+
+[[idle_behaviors]]
+value = "whimsy"
+threshold = 0.4
+action = "IdleObserve"
+requires_target = true
+description = "Watches other entities from hiding, assessing them for potential mischief or bargains."

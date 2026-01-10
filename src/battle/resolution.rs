@@ -2,13 +2,9 @@
 //!
 //! Uses categorical property comparisons - NO percentage modifiers.
 
-use crate::combat::{
-    WeaponProperties, ArmorProperties,
-    Edge, Mass, Rigidity, Padding,
-    ShockType,
-};
-use crate::battle::units::BattleUnit;
 use crate::battle::unit_type::UnitType;
+use crate::battle::units::BattleUnit;
+use crate::combat::{ArmorProperties, Edge, Mass, Padding, Rigidity, ShockType, WeaponProperties};
 
 /// Level of detail for combat resolution
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,23 +57,21 @@ pub fn calculate_casualty_rate(
         (Edge::Sharp, Rigidity::Plate) => 0.005,
 
         // Blunt weapons care about mass vs padding
-        (Edge::Blunt, _) => {
-            match (weapon.mass, armor.padding) {
-                (Mass::Massive, Padding::None) => 0.08,
-                (Mass::Massive, Padding::Light) => 0.05,
-                (Mass::Massive, Padding::Heavy) => 0.03,
+        (Edge::Blunt, _) => match (weapon.mass, armor.padding) {
+            (Mass::Massive, Padding::None) => 0.08,
+            (Mass::Massive, Padding::Light) => 0.05,
+            (Mass::Massive, Padding::Heavy) => 0.03,
 
-                (Mass::Heavy, Padding::None) => 0.04,
-                (Mass::Heavy, Padding::Light) => 0.02,
-                (Mass::Heavy, Padding::Heavy) => 0.01,
+            (Mass::Heavy, Padding::None) => 0.04,
+            (Mass::Heavy, Padding::Light) => 0.02,
+            (Mass::Heavy, Padding::Heavy) => 0.01,
 
-                (Mass::Medium, Padding::None) => 0.02,
-                (Mass::Medium, Padding::Light) => 0.01,
-                (Mass::Medium, Padding::Heavy) => 0.005,
+            (Mass::Medium, Padding::None) => 0.02,
+            (Mass::Medium, Padding::Light) => 0.01,
+            (Mass::Medium, Padding::Heavy) => 0.005,
 
-                (Mass::Light, _) => 0.005,
-            }
-        }
+            (Mass::Light, _) => 0.005,
+        },
     };
 
     // Pressure modifier (ADDITIVE, not multiplicative)
@@ -182,9 +176,9 @@ fn calculate_shock_casualties(
 
     // Survival rate based on padding
     let survival_rate = match defender_props.avg_armor.padding {
-        Padding::None => 0.3,   // 70% casualties
-        Padding::Light => 0.5,  // 50% casualties
-        Padding::Heavy => 0.7,  // 30% casualties
+        Padding::None => 0.3,  // 70% casualties
+        Padding::Light => 0.5, // 50% casualties
+        Padding::Heavy => 0.7, // 30% casualties
     };
 
     let mut casualties = (front_rank_size as f32 * (1.0 - survival_rate)) as u32;
@@ -246,7 +240,7 @@ pub fn determine_combat_lod(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::battle::units::{UnitId, Element};
+    use crate::battle::units::{Element, UnitId};
     use crate::core::types::EntityId;
 
     #[test]
@@ -285,13 +279,19 @@ mod tests {
     #[test]
     fn test_spearmen_reduce_charge_casualties() {
         let mut cavalry = BattleUnit::new(UnitId::new(), UnitType::HeavyCavalry);
-        cavalry.elements.push(Element::new(vec![EntityId::new(); 50]));
+        cavalry
+            .elements
+            .push(Element::new(vec![EntityId::new(); 50]));
 
         let mut infantry = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        infantry.elements.push(Element::new(vec![EntityId::new(); 100]));
+        infantry
+            .elements
+            .push(Element::new(vec![EntityId::new(); 100]));
 
         let mut spearmen = BattleUnit::new(UnitId::new(), UnitType::Spearmen);
-        spearmen.elements.push(Element::new(vec![EntityId::new(); 100]));
+        spearmen
+            .elements
+            .push(Element::new(vec![EntityId::new(); 100]));
 
         let infantry_result = resolve_shock_attack(&cavalry, &infantry, ShockType::CavalryCharge);
         let spearmen_result = resolve_shock_attack(&cavalry, &spearmen, ShockType::CavalryCharge);
@@ -305,7 +305,10 @@ mod tests {
         assert_eq!(determine_combat_lod(30, false, true), CombatLOD::Element);
         assert_eq!(determine_combat_lod(30, false, false), CombatLOD::Element);
         assert_eq!(determine_combat_lod(100, false, false), CombatLOD::Unit);
-        assert_eq!(determine_combat_lod(300, false, false), CombatLOD::Formation);
+        assert_eq!(
+            determine_combat_lod(300, false, false),
+            CombatLOD::Formation
+        );
     }
 
     #[test]

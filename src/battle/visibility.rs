@@ -101,7 +101,9 @@ mod tests {
     use crate::battle::battle_map::BattleMap;
     use crate::battle::hex::BattleHexCoord;
     use crate::battle::unit_type::UnitType;
-    use crate::battle::units::{Army, ArmyId, BattleFormation, BattleUnit, Element, FormationId, UnitId};
+    use crate::battle::units::{
+        Army, ArmyId, BattleFormation, BattleUnit, Element, FormationId, UnitId,
+    };
     use crate::core::types::EntityId;
 
     #[test]

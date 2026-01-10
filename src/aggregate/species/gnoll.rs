@@ -1,9 +1,9 @@
 //! Gnoll-specific polity behavior - Raider archetype
 
+use crate::aggregate::behavior::PolityBehavior;
+use crate::aggregate::events::EventType;
 use crate::aggregate::polity::Polity;
 use crate::aggregate::world::AggregateWorld;
-use crate::aggregate::events::EventType;
-use crate::aggregate::behavior::PolityBehavior;
 use crate::core::types::PolityId;
 
 pub struct GnollBehavior;
@@ -53,7 +53,8 @@ impl PolityBehavior for GnollBehavior {
 
 fn find_raid_target(polity: &Polity, world: &AggregateWorld) -> Option<PolityId> {
     // Find neighboring polities with lower military strength
-    world.get_neighbors(polity.id)
+    world
+        .get_neighbors(polity.id)
         .into_iter()
         .find(|&neighbor_id| {
             if let Some(neighbor) = world.get_polity_by_polity_id(neighbor_id) {
@@ -73,7 +74,7 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
 mod tests {
     use super::*;
     use crate::aggregate::polity::*;
-    use crate::core::types::{PolityId, Species, PolityTier, GovernmentType};
+    use crate::core::types::{GovernmentType, PolityId, PolityTier, Species};
     use std::collections::HashMap;
 
     fn create_test_polity() -> Polity {
@@ -91,6 +92,7 @@ mod tests {
             capital: 0,
             military_strength: 100.0,
             economic_strength: 100.0,
+            founding_conditions: FoundingConditions::default(),
             cultural_drift: CulturalDrift::default(),
             relations: HashMap::new(),
             species_state: SpeciesState::Gnoll(GnollState::default()),
@@ -108,8 +110,8 @@ mod tests {
     }
 
     fn create_test_world() -> AggregateWorld {
-        use rand_chacha::ChaCha8Rng;
         use rand_chacha::rand_core::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
 
         AggregateWorld::new(vec![], vec![], ChaCha8Rng::seed_from_u64(42))
     }
@@ -129,8 +131,12 @@ mod tests {
         let events = GnollBehavior.tick(&polity, &world, 1);
 
         // Should have CorruptionSpreads but no RaidLaunched (no neighbors)
-        assert!(events.iter().any(|e| matches!(e, EventType::CorruptionSpreads { .. })));
-        assert!(!events.iter().any(|e| matches!(e, EventType::RaidLaunched { .. })));
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, EventType::CorruptionSpreads { .. })));
+        assert!(!events
+            .iter()
+            .any(|e| matches!(e, EventType::RaidLaunched { .. })));
     }
 
     #[test]
@@ -148,7 +154,13 @@ mod tests {
         let world = create_test_world();
         let initial_frenzy = polity.gnoll_state().unwrap().pack_frenzy;
 
-        GnollBehavior.on_event(&mut polity, &EventType::BattleWon { polity: PolityId(1) }, &world);
+        GnollBehavior.on_event(
+            &mut polity,
+            &EventType::BattleWon {
+                polity: PolityId(1),
+            },
+            &world,
+        );
 
         let final_frenzy = polity.gnoll_state().unwrap().pack_frenzy;
         assert!(final_frenzy > initial_frenzy);
@@ -160,7 +172,13 @@ mod tests {
         let world = create_test_world();
         let initial_frenzy = polity.gnoll_state().unwrap().pack_frenzy;
 
-        GnollBehavior.on_event(&mut polity, &EventType::BattleLost { polity: PolityId(1) }, &world);
+        GnollBehavior.on_event(
+            &mut polity,
+            &EventType::BattleLost {
+                polity: PolityId(1),
+            },
+            &world,
+        );
 
         let final_frenzy = polity.gnoll_state().unwrap().pack_frenzy;
         assert!(final_frenzy < initial_frenzy);

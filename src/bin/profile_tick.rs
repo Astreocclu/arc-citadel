@@ -1,6 +1,6 @@
-use std::time::Instant;
-use arc_citadel::ecs::world::World;
 use arc_citadel::core::types::Vec2;
+use arc_citadel::ecs::world::World;
+use std::time::Instant;
 
 fn main() {
     let count = 10000;
@@ -33,12 +33,36 @@ fn main() {
     println!("----------------|------------|------------");
 
     let total = times.total / 100;
-    println!("Needs update    | {:>8.2?} | {:>5.1}%", times.needs / 100, pct(times.needs, times.total));
-    println!("Perception      | {:>8.2?} | {:>5.1}%", times.perception / 100, pct(times.perception, times.total));
-    println!("Thought gen     | {:>8.2?} | {:>5.1}%", times.thought_gen / 100, pct(times.thought_gen, times.total));
-    println!("Thought decay   | {:>8.2?} | {:>5.1}%", times.thought_decay / 100, pct(times.thought_decay, times.total));
-    println!("Action select   | {:>8.2?} | {:>5.1}%", times.action_select / 100, pct(times.action_select, times.total));
-    println!("Task execute    | {:>8.2?} | {:>5.1}%", times.task_execute / 100, pct(times.task_execute, times.total));
+    println!(
+        "Needs update    | {:>8.2?} | {:>5.1}%",
+        times.needs / 100,
+        pct(times.needs, times.total)
+    );
+    println!(
+        "Perception      | {:>8.2?} | {:>5.1}%",
+        times.perception / 100,
+        pct(times.perception, times.total)
+    );
+    println!(
+        "Thought gen     | {:>8.2?} | {:>5.1}%",
+        times.thought_gen / 100,
+        pct(times.thought_gen, times.total)
+    );
+    println!(
+        "Thought decay   | {:>8.2?} | {:>5.1}%",
+        times.thought_decay / 100,
+        pct(times.thought_decay, times.total)
+    );
+    println!(
+        "Action select   | {:>8.2?} | {:>5.1}%",
+        times.action_select / 100,
+        pct(times.action_select, times.total)
+    );
+    println!(
+        "Task execute    | {:>8.2?} | {:>5.1}%",
+        times.task_execute / 100,
+        pct(times.task_execute, times.total)
+    );
     println!("----------------|------------|------------");
     println!("TOTAL           | {:>8.2?} | 100.0%", total);
     println!("\nTarget: <16.6ms for 60 ticks/sec");
@@ -97,16 +121,18 @@ fn profile_tick(world: &mut World, times: &mut TickTimes) {
 }
 
 // Inline the tick functions here for profiling
-use arc_citadel::spatial::sparse_hash::SparseHashGrid;
-use arc_citadel::simulation::perception::{Perception, PerceivedEntity, RelationshipType};
-use arc_citadel::simulation::action_select::{select_action_human, SelectionContext};
-use arc_citadel::entity::thoughts::{Thought, Valence, CauseType};
 use arc_citadel::entity::needs::NeedType;
+use arc_citadel::entity::thoughts::{CauseType, Thought, Valence};
+use arc_citadel::simulation::action_select::{select_action_human, SelectionContext};
+use arc_citadel::simulation::perception::{PerceivedEntity, Perception, RelationshipType};
+use arc_citadel::spatial::sparse_hash::SparseHashGrid;
 
 fn update_needs(world: &mut World) {
     let dt = 1.0;
     for i in 0..world.humans.ids.len() {
-        if !world.humans.alive[i] { continue; }
+        if !world.humans.alive[i] {
+            continue;
+        }
         let is_active = world.humans.task_queues[i].current().is_some();
         world.humans.needs[i].decay(dt, is_active);
     }
@@ -119,11 +145,7 @@ fn run_perception(world: &World) -> Vec<Perception> {
 
     grid.rebuild(ids.iter().cloned().zip(positions.iter().cloned()));
 
-    let id_to_idx: ahash::AHashMap<_, _> = ids
-        .iter()
-        .enumerate()
-        .map(|(i, &id)| (id, i))
-        .collect();
+    let id_to_idx: ahash::AHashMap<_, _> = ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
 
     ids.iter()
         .enumerate()
@@ -169,14 +191,18 @@ fn run_perception(world: &World) -> Vec<Perception> {
 
 fn generate_thoughts(world: &mut World, perceptions: &[Perception]) {
     // Build O(1) lookup map once
-    let id_to_idx: ahash::AHashMap<_, _> = world.humans.ids
+    let id_to_idx: ahash::AHashMap<_, _> = world
+        .humans
+        .ids
         .iter()
         .enumerate()
         .map(|(i, &id)| (id, i))
         .collect();
 
     for perception in perceptions {
-        let Some(&idx) = id_to_idx.get(&perception.observer) else { continue };
+        let Some(&idx) = id_to_idx.get(&perception.observer) else {
+            continue;
+        };
         let values = &world.humans.values[idx];
 
         for perceived in &perception.perceived_entities {
@@ -184,7 +210,11 @@ fn generate_thoughts(world: &mut World, perceptions: &[Perception]) {
                 let thought = Thought::new(
                     Valence::Negative,
                     perceived.threat_level,
-                    if values.safety > 0.5 { "fear" } else { "concern" },
+                    if values.safety > 0.5 {
+                        "fear"
+                    } else {
+                        "concern"
+                    },
                     "threatening entity nearby",
                     CauseType::Entity,
                     world.current_tick,
@@ -202,7 +232,9 @@ fn generate_thoughts(world: &mut World, perceptions: &[Perception]) {
 
 fn decay_thoughts(world: &mut World) {
     for i in 0..world.humans.ids.len() {
-        if !world.humans.alive[i] { continue; }
+        if !world.humans.alive[i] {
+            continue;
+        }
         world.humans.thoughts[i].decay_all();
     }
 }
@@ -212,13 +244,16 @@ fn select_actions(world: &mut World) {
 
     let current_tick = world.current_tick;
     for i in 0..world.humans.ids.len() {
-        if !world.humans.alive[i] { continue; }
-        if world.humans.task_queues[i].current().is_some() { continue; }
+        if !world.humans.alive[i] {
+            continue;
+        }
+        if world.humans.task_queues[i].current().is_some() {
+            continue;
+        }
 
         let pos = world.humans.positions[i];
         // Check if entity is AT a food zone
-        let food_available = world.food_zones.iter()
-            .any(|zone| zone.contains(pos));
+        let food_available = world.food_zones.iter().any(|zone| zone.contains(pos));
         // Find nearest food zone within perception range
         let nearest_food_zone = find_nearest_food_zone(pos, 50.0, &world.food_zones);
 
@@ -247,7 +282,9 @@ fn select_actions(world: &mut World) {
 
 fn execute_tasks(world: &mut World) {
     for i in 0..world.humans.ids.len() {
-        if !world.humans.alive[i] { continue; }
+        if !world.humans.alive[i] {
+            continue;
+        }
 
         let task_info = world.humans.task_queues[i].current_mut().map(|task| {
             task.progress += 0.01;

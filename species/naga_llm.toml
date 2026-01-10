@@ -1,0 +1,85 @@
+[metadata]
+name = "Naga"
+module_name = "naga"
+
+[entity_values]
+duty = { type = "f32", default = 0.8, description = "Drive to protect sacred sites and secrets." }
+curiosity = { type = "f32", default = 0.4, description = "Desire to learn new knowledge and observe outsiders." }
+territoriality = { type = "f32", default = 0.7, description = "Aggressive defense of claimed territory." }
+venomous_rage = { type = "f32", default = 0.3, description = "Builds when threatened, leading to venomous attacks." }
+
+[polity_state]
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+hoarded_secrets = { type = "Vec<String>", default = "Vec::new()" }
+sacred_sites_claimed = { type = "u32", default = "0" }
+
+[terrain_fitness]
+mountain = 0.8
+hills = 0.7
+forest = 0.6
+plains = 0.3
+marsh = 0.9
+coast = 0.5
+desert = 0.2
+river = 0.7
+
+[growth]
+rate = 1.03
+
+[expansion]
+threshold = 0.35
+
+[naming]
+prefixes = ["Sesha", "Vasuki", "Nagini", "Apep", "Jormun", "Tiamat", "Quetzal", "Mucalinda", "Ananta", "Shesha"]
+suffixes = ["-Guardian", "-Watcher", "-Coiled", "-the-Keeper", "-of-Secrets", "-Venom-Tongue", "-Ancient-Scale", "-Temple-Born", "-Oracle", "-the-Cursed"]
+
+[polity_types]
+small = "Clan"
+medium = "Court"
+large = "Kingdom"
+
+[[action_rules]]
+trigger_value = "territoriality"
+threshold = 0.75
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Attack any non-Naga entity that enters a sacred site."
+
+[[action_rules]]
+trigger_value = "venomous_rage"
+threshold = 0.85
+action = "Charge"
+priority = "High"
+requires_target = true
+description = "Launch a venomous strike against a target that has provoked them."
+
+[[action_rules]]
+trigger_value = "duty"
+threshold = 0.6
+action = "HoldPosition"
+priority = "Normal"
+requires_target = false
+description = "Stand guard at a sacred site or temple entrance."
+
+[[action_rules]]
+trigger_value = "curiosity"
+threshold = 0.7
+action = "TalkTo"
+priority = "Low"
+requires_target = true
+description = "Attempt to parley with an intelligent trespasser, seeking knowledge or offering a warning."
+
+[[idle_behaviors]]
+value = "curiosity"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "Observe the surroundings from a high vantage point."
+
+[[idle_behaviors]]
+value = "duty"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "Patrol the perimeter of their claimed territory."

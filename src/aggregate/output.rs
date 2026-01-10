@@ -1,10 +1,10 @@
 //! Simulation output and serialization
 
-use std::time::Duration;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
+use crate::aggregate::events::{EventType, HistoryLog};
 use crate::aggregate::world::AggregateWorld;
-use crate::aggregate::events::{HistoryLog, EventType};
 
 /// Complete simulation output
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -39,7 +39,9 @@ impl SimulationOutput {
         let polities_alive = world.polities.iter().filter(|p| p.alive).count() as u32;
         let polities_at_start = world.polities.len() as u32;
 
-        let wars_fought = history.events.iter()
+        let wars_fought = history
+            .events
+            .iter()
             .filter(|e| matches!(e.event_type, EventType::WarDeclared { .. }))
             .count() as u32;
 

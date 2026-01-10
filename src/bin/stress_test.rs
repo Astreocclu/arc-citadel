@@ -1,7 +1,7 @@
-use std::time::Instant;
-use arc_citadel::ecs::world::{World, Abundance};
 use arc_citadel::core::types::Vec2;
+use arc_citadel::ecs::world::{Abundance, World};
 use arc_citadel::simulation::tick::run_simulation_tick;
+use std::time::Instant;
 
 fn main() {
     let count = 10000;
@@ -51,14 +51,20 @@ fn main() {
             world.add_food_zone(
                 Vec2::new(x as f32, y as f32),
                 50.0,
-                Abundance::Scarce { current: 500.0, max: 500.0, regen: 5.0 },
+                Abundance::Scarce {
+                    current: 500.0,
+                    max: 500.0,
+                    regen: 5.0,
+                },
             );
         }
     }
 
-    println!("Created {} food zones (4 abundant corners, {} scarce center)",
+    println!(
+        "Created {} food zones (4 abundant corners, {} scarce center)",
         world.food_zones.len(),
-        world.food_zones.len() - 4);
+        world.food_zones.len() - 4
+    );
 
     // Verify initial state
     println!("\n=== Initial State ===");
@@ -79,7 +85,8 @@ fn main() {
         // Sample work done every 10 ticks
         if tick % 10 == 9 {
             sample_work(&world, &mut work_done);
-            println!("Tick {:>3}: {:>6.2?} | Tasks: {} | Thoughts: {} | Needs changed: {}",
+            println!(
+                "Tick {:>3}: {:>6.2?} | Tasks: {} | Thoughts: {} | Needs changed: {}",
                 tick + 1,
                 elapsed,
                 work_done.entities_with_tasks,
@@ -130,7 +137,11 @@ fn print_stats(world: &World) {
         }
     }
 
-    println!("  Entities with tasks: {}/{}", tasks, world.humans.ids.len());
+    println!(
+        "  Entities with tasks: {}/{}",
+        tasks,
+        world.humans.ids.len()
+    );
     println!("  Total thoughts: {}", thoughts);
     println!("  High food need: {}", high_food);
     println!("  High rest need: {}", high_rest);
@@ -181,18 +192,25 @@ fn verify_work(world: &World, count: usize) {
 
     println!("  Entities with active tasks: {}/{}", tasks_ever, count);
     println!("  Entities with needs decay:  {}/{}", needs_decayed, count);
-    println!("  Tasks with progress:        {}/{}", progress_made, tasks_ever);
+    println!(
+        "  Tasks with progress:        {}/{}",
+        progress_made, tasks_ever
+    );
 
     // Count perception work (neighbors per entity)
-    let grid = arc_citadel::spatial::sparse_hash::SparseHashGrid::new(10.0);
+    let _grid = arc_citadel::spatial::sparse_hash::SparseHashGrid::new(10.0);
     let mut total_neighbors = 0usize;
 
     // Quick sample of first 100 entities
     use arc_citadel::spatial::sparse_hash::SparseHashGrid;
     let mut grid = SparseHashGrid::new(10.0);
     grid.rebuild(
-        world.humans.ids.iter().cloned()
-            .zip(world.humans.positions.iter().cloned())
+        world
+            .humans
+            .ids
+            .iter()
+            .cloned()
+            .zip(world.humans.positions.iter().cloned()),
     );
 
     for i in 0..100 {
@@ -211,11 +229,20 @@ fn verify_work(world: &World, count: usize) {
         println!("\n✅ PASS: Simulation is doing real work!");
         println!("   - All entities processing");
         println!("   - Needs decaying over time");
-        println!("   - Perception finding {:.0} neighbors per entity", avg_neighbors);
+        println!(
+            "   - Perception finding {:.0} neighbors per entity",
+            avg_neighbors
+        );
     } else {
         println!("\n❌ FAIL: Simulation might be skipping work");
-        if task_pct <= 90.0 { println!("   Expected >90% tasks, got {:.1}%", task_pct); }
-        if decay_pct <= 50.0 { println!("   Expected >50% decay, got {:.1}%", decay_pct); }
-        if avg_neighbors <= 10.0 { println!("   Expected >10 neighbors, got {:.1}", avg_neighbors); }
+        if task_pct <= 90.0 {
+            println!("   Expected >90% tasks, got {:.1}%", task_pct);
+        }
+        if decay_pct <= 50.0 {
+            println!("   Expected >50% decay, got {:.1}%", decay_pct);
+        }
+        if avg_neighbors <= 10.0 {
+            println!("   Expected >10 neighbors, got {:.1}", avg_neighbors);
+        }
     }
 }

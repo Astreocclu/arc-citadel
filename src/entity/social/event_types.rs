@@ -11,8 +11,8 @@ pub enum Valence {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventType {
     // Positive events
-    AidReceived,      // They helped me
-    AidGiven,         // I helped them
+    AidReceived, // They helped me
+    AidGiven,    // I helped them
     GiftReceived,
     GiftGiven,
     SharedExperience, // Survived danger together
@@ -20,8 +20,8 @@ pub enum EventType {
     PromiseKept,
 
     // Negative events
-    HarmReceived,     // They hurt me
-    HarmGiven,        // I hurt them
+    HarmReceived, // They hurt me
+    HarmGiven,    // I hurt them
     Insult,
     Theft,
     Betrayal,
@@ -29,26 +29,33 @@ pub enum EventType {
 
     // Neutral but formative
     FirstMeeting,
-    Transaction,      // Trade, business
-    Observation,      // Witnessed them do something notable
+    Transaction, // Trade, business
+    Observation, // Witnessed them do something notable
 }
 
 impl EventType {
     /// Default valence for this event type
     pub fn default_valence(&self) -> Valence {
         match self {
-            EventType::AidReceived | EventType::AidGiven |
-            EventType::GiftReceived | EventType::GiftGiven |
-            EventType::SharedExperience | EventType::Compliment |
-            EventType::PromiseKept => Valence::Positive,
+            EventType::AidReceived
+            | EventType::AidGiven
+            | EventType::GiftReceived
+            | EventType::GiftGiven
+            | EventType::SharedExperience
+            | EventType::Compliment
+            | EventType::PromiseKept => Valence::Positive,
 
-            EventType::HarmReceived | EventType::HarmGiven |
-            EventType::Insult | EventType::Theft |
-            EventType::Betrayal | EventType::PromiseBroken => Valence::Negative,
+            EventType::HarmReceived
+            | EventType::HarmGiven
+            | EventType::Insult
+            | EventType::Theft
+            | EventType::Betrayal
+            | EventType::PromiseBroken => Valence::Negative,
 
             // Neutral events default to positive (slight familiarity bonus)
-            EventType::FirstMeeting | EventType::Transaction |
-            EventType::Observation => Valence::Positive,
+            EventType::FirstMeeting | EventType::Transaction | EventType::Observation => {
+                Valence::Positive
+            }
         }
     }
 
@@ -83,7 +90,12 @@ mod tests {
         ];
 
         for event in positive_events {
-            assert_eq!(event.default_valence(), Valence::Positive, "{:?} should be positive", event);
+            assert_eq!(
+                event.default_valence(),
+                Valence::Positive,
+                "{:?} should be positive",
+                event
+            );
         }
     }
 
@@ -99,7 +111,12 @@ mod tests {
         ];
 
         for event in negative_events {
-            assert_eq!(event.default_valence(), Valence::Negative, "{:?} should be negative", event);
+            assert_eq!(
+                event.default_valence(),
+                Valence::Negative,
+                "{:?} should be negative",
+                event
+            );
         }
     }
 
@@ -112,7 +129,12 @@ mod tests {
         ];
 
         for event in neutral_events {
-            assert_eq!(event.default_valence(), Valence::Positive, "{:?} should default to positive", event);
+            assert_eq!(
+                event.default_valence(),
+                Valence::Positive,
+                "{:?} should default to positive",
+                event
+            );
         }
     }
 
@@ -139,7 +161,12 @@ mod tests {
 
         for event in all_events {
             let intensity = event.base_intensity();
-            assert!(intensity >= 0.0 && intensity <= 1.0, "{:?} intensity {} out of range", event, intensity);
+            assert!(
+                intensity >= 0.0 && intensity <= 1.0,
+                "{:?} intensity {} out of range",
+                event,
+                intensity
+            );
         }
     }
 

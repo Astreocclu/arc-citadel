@@ -3,17 +3,17 @@
 //! Locations are the nodes in the campaign map graph.
 //! They have a controller (polity that owns them) and various properties.
 
-use serde::{Deserialize, Serialize};
 use crate::core::types::{LocationId, PolityId};
+use serde::{Deserialize, Serialize};
 
 /// A location on the campaign map
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Location {
     pub id: LocationId,
     pub name: String,
-    pub controller: Option<PolityId>,  // Which polity controls this location
+    pub controller: Option<PolityId>, // Which polity controls this location
     pub population: u32,
-    pub fortification: u8,  // 0-10, affects siege difficulty
+    pub fortification: u8, // 0-10, affects siege difficulty
 }
 
 impl Location {

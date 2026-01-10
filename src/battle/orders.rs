@@ -78,11 +78,17 @@ fn apply_order_to_unit(
         }
 
         OrderType::Attack(target_id) => {
-            // Get target position, create attack waypoint
-            let target_pos = army
-                .get_unit(*target_id)
-                .map(|u| u.position)
-                .unwrap_or_default();
+            // Get target position - fail if target no longer exists
+            let target_pos = match army.get_unit(*target_id).map(|u| u.position) {
+                Some(pos) => pos,
+                None => {
+                    return ApplyOrderResult {
+                        success: false,
+                        affected_units: vec![],
+                        message: format!("Attack target {:?} no longer exists", target_id),
+                    };
+                }
+            };
 
             let waypoint_plan = get_or_create_waypoint_plan(plan, unit_id);
             waypoint_plan.waypoints.clear();
@@ -319,6 +325,25 @@ mod tests {
         // Check engagement rule is aggressive
         let rule = plan.get_engagement_rule(unit_id);
         assert!(matches!(rule, EngagementRule::Aggressive));
+    }
+
+    #[test]
+    fn test_attack_order_fails_for_nonexistent_target() {
+        let (mut army, unit_id) = create_test_army_with_unit();
+        let mut plan = BattlePlan::new();
+
+        // Try to attack a target that doesn't exist
+        let nonexistent_target_id = UnitId::new();
+        let order = Order::attack(unit_id, nonexistent_target_id);
+        let result = apply_order(&order, &mut army, &mut plan);
+
+        // Order should fail
+        assert!(!result.success);
+        assert!(result.affected_units.is_empty());
+        assert!(result.message.contains("no longer exists"));
+
+        // No waypoint plan should be created
+        assert!(plan.get_waypoint_plan(unit_id).is_none());
     }
 
     #[test]

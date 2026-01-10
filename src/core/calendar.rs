@@ -16,10 +16,10 @@ use serde::{Deserialize, Serialize};
 /// Time of day periods for LocationDuring expectations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TimePeriod {
-    Morning,    // 06:00-12:00
-    Afternoon,  // 12:00-18:00
-    Evening,    // 18:00-22:00
-    Night,      // 22:00-06:00
+    Morning,   // 06:00-12:00
+    Afternoon, // 12:00-18:00
+    Evening,   // 18:00-22:00
+    Night,     // 22:00-06:00
 }
 
 impl TimePeriod {

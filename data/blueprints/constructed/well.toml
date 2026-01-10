@@ -1,0 +1,77 @@
+# Well Blueprint
+# A water source structure
+
+[meta]
+id = "well"
+name = "Well"
+category = "building"
+origin = "constructed"
+description = "A stone-lined well providing water"
+
+[parameters]
+diameter = { type = "float", min = 1.0, max = 3.0, default = 1.5 }
+depth = { type = "float", min = 5.0, max = 20.0, default = 10.0 }
+
+[geometry]
+width = "diameter + 0.5"
+depth = "diameter + 0.5"
+height = "1.0"
+shape = "circle"
+
+[stats.military]
+max_hp = "diameter * 100"
+hardness = "4"
+cover_value = "0.0"
+blocks_movement = "1"
+blocks_los = "0"
+movement_cost = "999"
+flammable = "0"
+elevation = "0"
+
+[stats.civilian]
+pedestrian_capacity = "0"
+cart_accessible = "0"
+worker_capacity = "1"
+storage_capacity = "0"
+prestige_modifier = "0.3"
+
+[construction]
+base_time = "depth * 30"
+labor_cap = "2"
+
+[construction.cost]
+stone = "diameter * depth * 5"
+
+[[construction.stages]]
+id = "digging"
+progress_threshold = 0.0
+height_multiplier = 0.0
+visual_state = "hole"
+
+[[construction.stages]]
+id = "lining"
+progress_threshold = 0.5
+height_multiplier = 0.5
+visual_state = "lined"
+
+[[construction.stages]]
+id = "complete"
+progress_threshold = 1.0
+height_multiplier = 1.0
+visual_state = "complete"
+
+[[damage_states]]
+name = "functional"
+threshold = 0.5
+visual_overlay = ""
+tags = ["water_source"]
+creates_breach = false
+produces_rubble = false
+
+[[damage_states]]
+name = "collapsed"
+threshold = 0.0
+visual_overlay = "filled"
+tags = ["blocked"]
+creates_breach = false
+produces_rubble = false

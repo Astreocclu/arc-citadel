@@ -1,0 +1,77 @@
+[metadata]
+name = "Merfolk"
+module_name = "merfolk"
+
+[entity_values]
+greed = { type = "f32", default = 0.3, description = "Desire for wealth and rare goods." }
+pride = { type = "f32", default = 0.5, description = "Sense of cultural superiority and honor." }
+xenophobia = { type = "f32", default = 0.6, description = "Distrust and fear of outsiders." }
+curiosity = { type = "f32", default = 0.4, description = "Interest in the unknown and surface artifacts." }
+
+[polity_state]
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+hoard_value = { type = "f32", default = "0.0" }
+trade_partners = { type = "Vec<u32>", default = "Vec::new()" }
+
+[terrain_fitness]
+mountain = 0.1
+hills = 0.2
+forest = 0.1
+plains = 0.1
+marsh = 0.8
+coast = 0.9
+desert = 0.1
+river = 0.7
+
+[growth]
+rate = 1.03
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Coral", "Pearl", "Abyssal", "Tidal", "Azure", "Siren", "Kelp", "Nautilus", "Trident", "Deep"]
+suffixes = ["Reef", "Tide", "Current", "Depths", "Shoal", "Breaker", "Crest", "Grotto", "Spire", "Shell"]
+
+[polity_types]
+small = "Clan"
+medium = "Tribe"
+large = "Kingdom"
+
+[[action_rules]]
+trigger_value = "xenophobia"
+threshold = 0.8
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Attack outsiders who encroach on sacred waters."
+
+[[action_rules]]
+trigger_value = "greed"
+threshold = 0.7
+action = "Trade"
+priority = "Normal"
+requires_target = true
+description = "Initiate trade if the potential profit is high enough."
+
+[[action_rules]]
+trigger_value = "pride"
+threshold = 0.75
+action = "Defend"
+priority = "High"
+requires_target = true
+description = "Defend the polity's territory against any aggressor."
+
+[[idle_behaviors]]
+value = "curiosity"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "Observe the environment and passing ships from a distance."
+
+[[idle_behaviors]]
+value = "pride"
+threshold = 0.3
+action = "IdleWander"
+requires_target = false
+description = "Patrol the claimed waters and reefs."

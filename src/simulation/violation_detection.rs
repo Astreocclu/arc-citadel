@@ -4,10 +4,10 @@
 //! When an entity observes another performing an action that contradicts their
 //! expectations, they experience negative thoughts (betrayal, disappointment, surprise).
 
-use crate::ecs::world::World;
 use crate::actions::catalog::ActionId;
+use crate::ecs::world::World;
 use crate::entity::social::{BehaviorPattern, PatternType, TraitIndicator, SALIENCE_THRESHOLD};
-use crate::entity::thoughts::{Thought, Valence, CauseType};
+use crate::entity::thoughts::{CauseType, Thought, Valence};
 use crate::simulation::perception::Perception;
 
 /// Types of violations that can occur
@@ -104,7 +104,10 @@ pub fn check_violations(
 /// # Returns
 /// * `Some(ViolationType)` if the action violates the pattern
 /// * `None` if no violation
-pub fn check_pattern_violation(pattern: &BehaviorPattern, action: ActionId) -> Option<ViolationType> {
+pub fn check_pattern_violation(
+    pattern: &BehaviorPattern,
+    action: ActionId,
+) -> Option<ViolationType> {
     match &pattern.pattern_type {
         PatternType::BehavesWithTrait { trait_indicator } => {
             // Check if action contradicts expected trait
@@ -123,7 +126,9 @@ pub fn check_pattern_violation(pattern: &BehaviorPattern, action: ActionId) -> O
             None
         }
 
-        PatternType::RespondsToEvent { typical_response, .. } => {
+        PatternType::RespondsToEvent {
+            typical_response, ..
+        } => {
             // Check if action category matches expected response
             if action.category() != *typical_response {
                 return Some(ViolationType::UnexpectedResponse);
@@ -146,9 +151,19 @@ pub fn check_pattern_violation(pattern: &BehaviorPattern, action: ActionId) -> O
 pub fn process_violations(world: &mut World, perceptions: &[Perception]) {
     let current_tick = world.current_tick;
 
+    // Build O(1) lookup map once instead of O(N) index_of per perceived entity
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world
+        .humans
+        .ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
     for (observer_idx, perception) in perceptions.iter().enumerate() {
         for perceived in &perception.perceived_entities {
-            if let Some(observed_idx) = world.humans.index_of(perceived.entity) {
+            // O(1) lookup instead of O(N) index_of
+            if let Some(&observed_idx) = id_to_idx.get(&perceived.entity) {
                 if let Some(task) = world.humans.task_queues[observed_idx].current() {
                     check_violations(world, observer_idx, observed_idx, task.action, current_tick);
                 }
@@ -161,8 +176,8 @@ pub fn process_violations(world: &mut World, perceptions: &[Perception]) {
 mod tests {
     use super::*;
     use crate::core::types::Vec2;
-    use crate::entity::tasks::{Task, TaskPriority};
     use crate::entity::social::{BehaviorPattern, PatternType};
+    use crate::entity::tasks::{Task, TaskPriority};
     use crate::simulation::expectation_formation::record_observation;
 
     #[test]
@@ -187,11 +202,19 @@ mod tests {
         }
 
         // Verify expectation exists with decent confidence
-        let slot = world.humans.social_memories[observer_idx].find_slot(actor_id).unwrap();
-        let exp = slot.find_expectation(&PatternType::BehavesWithTrait {
-            trait_indicator: TraitIndicator::Peaceful
-        }).unwrap();
-        assert!(exp.confidence > 0.5, "Confidence should be > 0.5, got {}", exp.confidence);
+        let slot = world.humans.social_memories[observer_idx]
+            .find_slot(actor_id)
+            .unwrap();
+        let exp = slot
+            .find_expectation(&PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Peaceful,
+            })
+            .unwrap();
+        assert!(
+            exp.confidence > 0.5,
+            "Confidence should be > 0.5, got {}",
+            exp.confidence
+        );
 
         let initial_thoughts = world.humans.thoughts[observer_idx].iter().count();
 
@@ -201,11 +224,18 @@ mod tests {
 
         // Should have generated a negative thought
         let final_thoughts = world.humans.thoughts[observer_idx].iter().count();
-        assert!(final_thoughts > initial_thoughts, "Should have generated a thought");
+        assert!(
+            final_thoughts > initial_thoughts,
+            "Should have generated a thought"
+        );
 
         let thought = world.humans.thoughts[observer_idx].strongest();
         assert!(thought.is_some(), "Should have a strongest thought");
-        assert_eq!(thought.unwrap().valence, Valence::Negative, "Thought should be negative");
+        assert_eq!(
+            thought.unwrap().valence,
+            Valence::Negative,
+            "Thought should be negative"
+        );
     }
 
     #[test]
@@ -213,7 +243,9 @@ mod tests {
         // Test that Aggressive action violates Peaceful expectation
         // Note: Generous.opposite() = Stingy, not Aggressive, so we use Peaceful/Aggressive
         let peaceful_pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Peaceful },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Peaceful,
+            },
             0,
         );
 
@@ -231,7 +263,9 @@ mod tests {
     fn test_check_pattern_violation_aggressive_vs_peaceful() {
         // Expect Aggressive, observe Peaceful (Flee)
         let pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Aggressive },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Aggressive,
+            },
             0,
         );
 
@@ -283,10 +317,14 @@ mod tests {
 
         // Get initial violation count
         let initial_violations = {
-            let slot = world.humans.social_memories[observer_idx].find_slot(actor_id).unwrap();
-            let exp = slot.find_expectation(&PatternType::BehavesWithTrait {
-                trait_indicator: TraitIndicator::Peaceful
-            }).unwrap();
+            let slot = world.humans.social_memories[observer_idx]
+                .find_slot(actor_id)
+                .unwrap();
+            let exp = slot
+                .find_expectation(&PatternType::BehavesWithTrait {
+                    trait_indicator: TraitIndicator::Peaceful,
+                })
+                .unwrap();
             exp.violation_count
         };
 
@@ -295,15 +333,23 @@ mod tests {
 
         // Violation count should increase
         let final_violations = {
-            let slot = world.humans.social_memories[observer_idx].find_slot(actor_id).unwrap();
-            let exp = slot.find_expectation(&PatternType::BehavesWithTrait {
-                trait_indicator: TraitIndicator::Peaceful
-            }).unwrap();
+            let slot = world.humans.social_memories[observer_idx]
+                .find_slot(actor_id)
+                .unwrap();
+            let exp = slot
+                .find_expectation(&PatternType::BehavesWithTrait {
+                    trait_indicator: TraitIndicator::Peaceful,
+                })
+                .unwrap();
             exp.violation_count
         };
 
-        assert!(final_violations > initial_violations,
-            "Violation count should increase from {} to > {}", initial_violations, initial_violations);
+        assert!(
+            final_violations > initial_violations,
+            "Violation count should increase from {} to > {}",
+            initial_violations,
+            initial_violations
+        );
     }
 
     #[test]
@@ -323,10 +369,19 @@ mod tests {
         let initial_thoughts = world.humans.thoughts[observer_idx].iter().count();
 
         // Check for violations (should find none since no relationship)
-        check_violations(&mut world, observer_idx, stranger_idx, ActionId::Attack, 100);
+        check_violations(
+            &mut world,
+            observer_idx,
+            stranger_idx,
+            ActionId::Attack,
+            100,
+        );
 
         let final_thoughts = world.humans.thoughts[observer_idx].iter().count();
-        assert_eq!(final_thoughts, initial_thoughts, "Should not generate thought for unknown entity");
+        assert_eq!(
+            final_thoughts, initial_thoughts,
+            "Should not generate thought for unknown entity"
+        );
     }
 
     #[test]
@@ -347,7 +402,9 @@ mod tests {
 
         // Manually decay salience below threshold for ALL patterns
         {
-            let slot = world.humans.social_memories[observer_idx].find_slot_mut(actor_id).unwrap();
+            let slot = world.humans.social_memories[observer_idx]
+                .find_slot_mut(actor_id)
+                .unwrap();
             for exp in &mut slot.expectations {
                 exp.salience = 0.05; // Below SALIENCE_THRESHOLD (0.1)
             }
@@ -359,7 +416,10 @@ mod tests {
         check_violations(&mut world, observer_idx, actor_idx, ActionId::Attack, 200);
 
         let final_thoughts = world.humans.thoughts[observer_idx].iter().count();
-        assert_eq!(final_thoughts, initial_thoughts, "Should not check low salience patterns");
+        assert_eq!(
+            final_thoughts, initial_thoughts,
+            "Should not check low salience patterns"
+        );
     }
 
     #[test]
@@ -381,10 +441,14 @@ mod tests {
         }
 
         let confidence = {
-            let slot = world.humans.social_memories[observer_idx].find_slot(actor_id).unwrap();
+            let slot = world.humans.social_memories[observer_idx]
+                .find_slot(actor_id)
+                .unwrap();
             slot.find_expectation(&PatternType::BehavesWithTrait {
-                trait_indicator: TraitIndicator::Peaceful
-            }).unwrap().confidence
+                trait_indicator: TraitIndicator::Peaceful,
+            })
+            .unwrap()
+            .confidence
         };
 
         // Violation
@@ -397,7 +461,9 @@ mod tests {
         assert!(
             (thought.intensity - expected_intensity).abs() < 0.01,
             "Intensity should be {} (confidence {} * 0.8), got {}",
-            expected_intensity, confidence, thought.intensity
+            expected_intensity,
+            confidence,
+            thought.intensity
         );
     }
 
@@ -430,9 +496,13 @@ mod tests {
         check_violations(&mut world, observer_idx, actor_idx, ActionId::Attack, 600);
 
         // Check that BETRAYAL thought exists (there may also be SURPRISE from RespondsToEvent)
-        let has_betrayal = world.humans.thoughts[observer_idx].iter()
+        let has_betrayal = world.humans.thoughts[observer_idx]
+            .iter()
             .any(|t| t.concept_category == "BETRAYAL");
-        assert!(has_betrayal, "TraitContradiction should produce BETRAYAL thought");
+        assert!(
+            has_betrayal,
+            "TraitContradiction should produce BETRAYAL thought"
+        );
     }
 
     #[test]
@@ -457,13 +527,17 @@ mod tests {
         check_violations(&mut world, observer_idx, actor_idx, ActionId::Attack, 600);
 
         let thought = world.humans.thoughts[observer_idx].strongest().unwrap();
-        assert_eq!(thought.cause_entity, Some(actor_id), "Thought should reference the violating entity");
+        assert_eq!(
+            thought.cause_entity,
+            Some(actor_id),
+            "Thought should reference the violating entity"
+        );
     }
 
     #[test]
     fn test_process_violations_iterates_perceptions() {
-        use crate::simulation::perception::{Perception, PerceivedEntity, RelationshipType};
         use crate::entity::social::Disposition;
+        use crate::simulation::perception::{PerceivedEntity, Perception, RelationshipType};
 
         let mut world = World::new();
 
@@ -519,6 +593,9 @@ mod tests {
         process_violations(&mut world, &perceptions);
 
         let final_thoughts = world.humans.thoughts[observer_idx].iter().count();
-        assert!(final_thoughts > initial_thoughts, "process_violations should detect and generate thoughts");
+        assert!(
+            final_thoughts > initial_thoughts,
+            "process_violations should detect and generate thoughts"
+        );
     }
 }

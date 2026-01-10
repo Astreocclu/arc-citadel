@@ -4,13 +4,8 @@
 //! NO PERCENTAGE MODIFIERS. Property comparisons only.
 
 use crate::combat::{
-    BodyZone, WoundSeverity,
-    WeaponProperties, WeaponSpecial,
-    ArmorProperties,
-    CombatStance,
-    CombatSkill, SkillLevel,
-    resolve_penetration, resolve_trauma, combine_results,
-    Wound,
+    combine_results, resolve_penetration, resolve_trauma, ArmorProperties, BodyZone, CombatSkill,
+    CombatStance, SkillLevel, WeaponProperties, WeaponSpecial, Wound, WoundSeverity,
 };
 
 /// A combatant in an exchange

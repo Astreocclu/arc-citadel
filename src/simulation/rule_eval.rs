@@ -170,15 +170,13 @@ mod tests {
         let mut values = GnollValues::default();
         values.hunger = 0.5;
 
-        let behaviors = vec![
-            IdleBehavior {
-                value: "hunger".to_string(),
-                threshold: 0.4,
-                action: ActionId::IdleWander,
-                requires_target: false,
-                description: "Prowl".to_string(),
-            },
-        ];
+        let behaviors = vec![IdleBehavior {
+            value: "hunger".to_string(),
+            threshold: 0.4,
+            action: ActionId::IdleWander,
+            requires_target: false,
+            description: "Prowl".to_string(),
+        }];
 
         let task = select_idle_behavior(&values, &behaviors, 0);
         assert!(matches!(task.action, ActionId::IdleWander));

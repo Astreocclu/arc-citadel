@@ -60,6 +60,12 @@ pub enum TransitionTrigger {
     // Fatigue
     Exhausted,
     Recovered,
+
+    // Incapacitation (leads to Broken)
+    CriticalWoundHead,
+    CriticalWoundTorso,
+    MoraleBreak,
+    WoundThresholdExceeded,
 }
 
 /// Stance transition rules (state machine)
@@ -99,6 +105,12 @@ impl StanceTransitions {
             // Fatigue
             (_, Exhausted) => Recovering,
             (Recovering, Recovered) => Neutral,
+
+            // Incapacitation - leads to Broken (out of fight)
+            (_, CriticalWoundHead) => Broken,
+            (_, CriticalWoundTorso) => Broken,
+            (_, MoraleBreak) => Broken,
+            (_, WoundThresholdExceeded) => Broken,
 
             // No change for invalid transitions
             _ => current,
@@ -153,5 +165,27 @@ mod tests {
         // Recover -> Neutral
         let stance = transitions.apply(CombatStance::Recovering, TransitionTrigger::Recovered);
         assert_eq!(stance, CombatStance::Neutral);
+    }
+
+    #[test]
+    fn test_incapacitation_leads_to_broken() {
+        let transitions = StanceTransitions::new();
+
+        // Critical head wound -> Broken
+        let stance = transitions.apply(CombatStance::Pressing, TransitionTrigger::CriticalWoundHead);
+        assert_eq!(stance, CombatStance::Broken);
+
+        // Critical torso wound -> Broken
+        let stance = transitions.apply(CombatStance::Neutral, TransitionTrigger::CriticalWoundTorso);
+        assert_eq!(stance, CombatStance::Broken);
+
+        // Morale break -> Broken
+        let stance = transitions.apply(CombatStance::Defensive, TransitionTrigger::MoraleBreak);
+        assert_eq!(stance, CombatStance::Broken);
+
+        // Wound threshold exceeded -> Broken
+        let stance =
+            transitions.apply(CombatStance::Recovering, TransitionTrigger::WoundThresholdExceeded);
+        assert_eq!(stance, CombatStance::Broken);
     }
 }

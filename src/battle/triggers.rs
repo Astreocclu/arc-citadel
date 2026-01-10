@@ -148,7 +148,7 @@ pub fn describe_contingency_response(response: &ContingencyResponse) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::battle::planning::{GoCode, GoCodeTrigger, GoCodeId};
+    use crate::battle::planning::{GoCode, GoCodeId, GoCodeTrigger};
     use crate::battle::units::UnitId;
 
     #[test]
@@ -223,9 +223,12 @@ mod tests {
     #[test]
     fn test_evaluate_all_gocodes() {
         let mut plan = BattlePlan::new();
-        plan.go_codes.push(GoCode::new("EARLY".into(), GoCodeTrigger::Time(10)));
-        plan.go_codes.push(GoCode::new("LATE".into(), GoCodeTrigger::Time(100)));
-        plan.go_codes.push(GoCode::new("MANUAL".into(), GoCodeTrigger::Manual));
+        plan.go_codes
+            .push(GoCode::new("EARLY".into(), GoCodeTrigger::Time(10)));
+        plan.go_codes
+            .push(GoCode::new("LATE".into(), GoCodeTrigger::Time(100)));
+        plan.go_codes
+            .push(GoCode::new("MANUAL".into(), GoCodeTrigger::Manual));
 
         let triggered = evaluate_all_gocodes(&plan, 50, &[]);
 

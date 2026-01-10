@@ -5,10 +5,10 @@
 //! control entity behavior - entities interpret commands through their
 //! own values and personality.
 
-use serde::{Deserialize, Serialize};
+use crate::core::error::Result;
 use crate::llm::client::LlmClient;
 use crate::llm::context::GameContext;
-use crate::core::error::Result;
+use serde::{Deserialize, Serialize};
 
 /// Parsed intent from a natural language command
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,20 +113,24 @@ pub async fn parse_command(
     let response = client.complete(system_prompt, &user_prompt).await?;
     let json_str = extract_json(&response)?;
 
-    let intent: ParsedIntent = serde_json::from_str(json_str)
-        .map_err(|e| crate::core::error::ArcError::LlmError(
-            format!("Failed to parse intent: {} - Response: {}", e, response)
-        ))?;
+    let intent: ParsedIntent = serde_json::from_str(json_str).map_err(|e| {
+        crate::core::error::ArcError::LlmError(format!(
+            "Failed to parse intent: {} - Response: {}",
+            e, response
+        ))
+    })?;
 
     Ok(intent)
 }
 
 /// Extract JSON object from LLM response (handles surrounding text)
 fn extract_json(response: &str) -> Result<&str> {
-    let start = response.find('{')
-        .ok_or_else(|| crate::core::error::ArcError::LlmError("No JSON found in response".into()))?;
-    let end = response.rfind('}')
-        .ok_or_else(|| crate::core::error::ArcError::LlmError("No closing brace found in response".into()))?;
+    let start = response.find('{').ok_or_else(|| {
+        crate::core::error::ArcError::LlmError("No JSON found in response".into())
+    })?;
+    let end = response.rfind('}').ok_or_else(|| {
+        crate::core::error::ArcError::LlmError("No closing brace found in response".into())
+    })?;
     Ok(&response[start..=end])
 }
 
@@ -236,7 +240,10 @@ Let me know if you need anything else."#;
         assert_eq!(intent.action, IntentAction::Assign);
         assert_eq!(intent.target, Some("guard duty".to_string()));
         assert_eq!(intent.location, Some("east gate".to_string()));
-        assert_eq!(intent.subjects, Some(vec!["Marcus".to_string(), "Elena".to_string()]));
+        assert_eq!(
+            intent.subjects,
+            Some(vec!["Marcus".to_string(), "Elena".to_string()])
+        );
         assert_eq!(intent.priority, IntentPriority::High);
         assert_eq!(intent.ambiguous_concepts, vec!["east".to_string()]);
         assert!((intent.confidence - 0.85).abs() < 0.001);

@@ -729,6 +729,8 @@ impl BattleState {
     }
 
     fn phase_rout(&mut self, events: &mut BattleEventLog) {
+        use crate::battle::constants::RALLY_TICKS_REQUIRED;
+
         // Move routing units
         let enemy_positions: Vec<BattleHexCoord> = self
             .enemy_army
@@ -749,7 +751,20 @@ impl BattleState {
         for (formation_idx, formation) in self.friendly_army.formations.iter_mut().enumerate() {
             let commander_pos = commander_positions[formation_idx];
             for unit in &mut formation.units {
-                if unit.is_broken() {
+                // Check Rallying → Formed transition
+                if matches!(unit.stance, UnitStance::Rallying) {
+                    if let Some(rally_start) = unit.rallying_since {
+                        if self.tick >= rally_start + RALLY_TICKS_REQUIRED {
+                            // Successfully rallied - return to Formed
+                            unit.stance = UnitStance::Formed;
+                            unit.rallying_since = None;
+                            // Restore some cohesion
+                            unit.cohesion = (unit.cohesion + 0.2).min(0.8);
+                        }
+                    }
+                }
+                // Check Routing → Rallying transition
+                else if unit.is_broken() {
                     // Check rally conditions
                     let is_near_enemy = enemy_positions
                         .iter()
@@ -759,6 +774,7 @@ impl BattleState {
                     let result = check_rally(unit, is_near_enemy, is_near_leader);
                     if result.rallies {
                         unit.stance = UnitStance::Rallying;
+                        unit.rallying_since = Some(self.tick);
                         unit.stress += result.stress_delta;
                         events.push(
                             BattleEventType::UnitRallied { unit_id: unit.id },
@@ -1517,5 +1533,74 @@ mod tests {
         // The test doesn't require interception to occur, just that the system handles it.
         // If interception occurs, it's recorded; if not, the courier system still works.
         let _ = any_interception_event; // Acknowledge the variable was used for tracking
+    }
+
+    #[test]
+    fn test_rallying_to_formed_transition() {
+        use crate::battle::constants::RALLY_TICKS_REQUIRED;
+        use crate::battle::hex::BattleHexCoord;
+        use crate::battle::unit_type::UnitType;
+        use crate::battle::units::{BattleFormation, BattleUnit, Element, FormationId, UnitStance};
+
+        let map = BattleMap::new(20, 20);
+        let mut friendly = Army::new(ArmyId::new(), EntityId::new());
+
+        // Create a rallying unit
+        let unit_id = UnitId::new();
+        let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
+        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.position = BattleHexCoord::new(5, 5);
+        unit.stance = UnitStance::Rallying;
+        unit.rallying_since = Some(0); // Started rallying at tick 0
+        unit.cohesion = 0.3; // Low cohesion from routing
+        formation.units.push(unit);
+        friendly.formations.push(formation);
+
+        // Enemy far away (won't interfere)
+        let mut enemy = Army::new(ArmyId::new(), EntityId::new());
+        let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
+        let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+        enemy_unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        enemy_unit.position = BattleHexCoord::new(15, 15);
+        enemy_formation.units.push(enemy_unit);
+        enemy.formations.push(enemy_formation);
+
+        let mut state = BattleState::new(map, friendly, enemy);
+        state.start_battle();
+
+        // Before RALLY_TICKS_REQUIRED ticks pass, unit should still be Rallying
+        // Note: phase_rout sees tick N-1 on run_tick call N (tick increments at end)
+        // So after 30 run_tick calls, phase_rout sees tick 29 on the last call
+        for _ in 0..RALLY_TICKS_REQUIRED {
+            let _ = state.run_tick();
+        }
+
+        let unit = state.friendly_army.get_unit(unit_id).unwrap();
+        assert_eq!(
+            unit.stance,
+            UnitStance::Rallying,
+            "Unit should still be Rallying (phase_rout saw tick {})",
+            RALLY_TICKS_REQUIRED - 1
+        );
+
+        // On the next tick, phase_rout sees tick = RALLY_TICKS_REQUIRED, transition happens
+        let _ = state.run_tick();
+
+        let unit = state.friendly_army.get_unit(unit_id).unwrap();
+        assert_eq!(
+            unit.stance,
+            UnitStance::Formed,
+            "Unit should be Formed after {} ticks",
+            RALLY_TICKS_REQUIRED
+        );
+        assert!(
+            unit.rallying_since.is_none(),
+            "rallying_since should be cleared"
+        );
+        assert!(
+            unit.cohesion >= 0.5,
+            "Cohesion should be restored after rallying"
+        );
     }
 }

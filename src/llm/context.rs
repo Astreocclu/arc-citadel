@@ -5,8 +5,8 @@
 //! The context includes information about entities, resources, threats,
 //! and recent events.
 
-use crate::ecs::world::World;
 use crate::core::types::Species;
+use crate::ecs::world::World;
 
 /// Game context for LLM prompts
 ///
@@ -51,7 +51,9 @@ impl GameContext {
     /// A GameContext suitable for LLM prompt construction
     pub fn from_world(world: &World) -> Self {
         // Extract named entities (limit to 10 for prompt size)
-        let named_entities: Vec<_> = world.humans.iter_living()
+        let named_entities: Vec<_> = world
+            .humans
+            .iter_living()
             .take(10)
             .map(|i| {
                 let body = &world.humans.body_states[i];
@@ -88,7 +90,9 @@ impl GameContext {
             .collect();
 
         // Detect threats based on entity safety needs
-        let threats: Vec<String> = world.humans.iter_living()
+        let threats: Vec<String> = world
+            .humans
+            .iter_living()
             .filter(|&i| world.humans.needs[i].safety > 0.7)
             .take(3)
             .map(|_| "danger nearby".to_string())
@@ -121,14 +125,19 @@ impl GameContext {
         if !self.named_entities.is_empty() {
             s.push_str("\nKey Personnel:\n");
             for entity in &self.named_entities {
-                s.push_str(&format!("- {} ({:?}, {}, {})\n",
-                    entity.name, entity.species, entity.role, entity.status));
+                s.push_str(&format!(
+                    "- {} ({:?}, {}, {})\n",
+                    entity.name, entity.species, entity.role, entity.status
+                ));
             }
         }
 
         // Resources
         if !self.available_resources.is_empty() {
-            s.push_str(&format!("\nResources: {}\n", self.available_resources.join(", ")));
+            s.push_str(&format!(
+                "\nResources: {}\n",
+                self.available_resources.join(", ")
+            ));
         }
 
         // Recent events
@@ -182,21 +191,24 @@ impl GameContext {
     /// Get entity by name (case-insensitive partial match)
     pub fn find_entity(&self, name: &str) -> Option<&NamedEntity> {
         let name_lower = name.to_lowercase();
-        self.named_entities.iter()
+        self.named_entities
+            .iter()
             .find(|e| e.name.to_lowercase().contains(&name_lower))
     }
 
     /// Get all entities with a specific role
     pub fn entities_with_role(&self, role: &str) -> Vec<&NamedEntity> {
         let role_lower = role.to_lowercase();
-        self.named_entities.iter()
+        self.named_entities
+            .iter()
             .filter(|e| e.role.to_lowercase().contains(&role_lower))
             .collect()
     }
 
     /// Get all healthy entities
     pub fn healthy_entities(&self) -> Vec<&NamedEntity> {
-        self.named_entities.iter()
+        self.named_entities
+            .iter()
             .filter(|e| e.status == "healthy")
             .collect()
     }

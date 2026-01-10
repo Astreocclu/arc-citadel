@@ -1,0 +1,43 @@
+# Boulder Blueprint
+# A large natural stone
+
+[meta]
+id = "boulder"
+name = "Boulder"
+category = "rock"
+origin = "natural"
+description = "A large natural boulder"
+
+[parameters]
+size = { type = "float", min = 1.0, max = 4.0, default = 2.0 }
+
+[geometry]
+width = "size"
+depth = "size * 0.8"
+height = "size * 0.7"
+shape = "circle"
+
+[stats.military]
+max_hp = "999999"
+hardness = "10"
+cover_value = "size >= 1.5 ? 0.8 : 0.4"
+blocks_movement = "1"
+blocks_los = "size >= 2.0 ? 1 : 0"
+movement_cost = "999"
+flammable = "0"
+elevation = "size * 0.7"
+
+[stats.civilian]
+pedestrian_capacity = "0"
+cart_accessible = "0"
+worker_capacity = "0"
+storage_capacity = "0"
+prestige_modifier = "0"
+
+[[damage_states]]
+name = "intact"
+threshold = 0.0
+visual_overlay = ""
+tags = ["indestructible", "natural"]
+creates_breach = false
+produces_rubble = false

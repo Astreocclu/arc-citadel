@@ -1,7 +1,7 @@
-use std::time::Instant;
+use arc_citadel::core::types::Vec2;
 use arc_citadel::ecs::world::World;
 use arc_citadel::simulation::tick::run_simulation_tick;
-use arc_citadel::core::types::Vec2;
+use std::time::Instant;
 
 fn main() {
     let counts = [100, 1000, 2000, 5000, 10000, 20000];

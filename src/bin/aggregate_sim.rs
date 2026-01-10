@@ -1,7 +1,7 @@
 //! Aggregate History Simulation binary
 
-use std::time::Instant;
 use arc_citadel::aggregate::{simulate, SimulationConfig};
+use std::time::Instant;
 
 fn main() {
     let config = SimulationConfig::default();
@@ -9,10 +9,9 @@ fn main() {
     println!("Starting Aggregate History Simulation");
     println!("======================================");
     println!("Map: {}x{} regions", config.map.width, config.map.height);
-    println!("Polities: {} humans, {} dwarves, {} elves",
-        config.polities.human_count,
-        config.polities.dwarf_count,
-        config.polities.elf_count,
+    println!(
+        "Polities: {} humans, {} dwarves, {} elves",
+        config.polities.human_count, config.polities.dwarf_count, config.polities.elf_count,
     );
     println!("Simulating {} years...", config.years);
     println!();
@@ -32,13 +31,22 @@ fn main() {
     // Print some interesting stats
     println!("\n--- Species Summary ---");
 
-    let humans_alive = output.final_world.polities.iter()
+    let humans_alive = output
+        .final_world
+        .polities
+        .iter()
         .filter(|p| p.alive && p.species == arc_citadel::core::types::Species::Human)
         .count();
-    let dwarves_alive = output.final_world.polities.iter()
+    let dwarves_alive = output
+        .final_world
+        .polities
+        .iter()
         .filter(|p| p.alive && p.species == arc_citadel::core::types::Species::Dwarf)
         .count();
-    let elves_alive = output.final_world.polities.iter()
+    let elves_alive = output
+        .final_world
+        .polities
+        .iter()
         .filter(|p| p.alive && p.species == arc_citadel::core::types::Species::Elf)
         .count();
 

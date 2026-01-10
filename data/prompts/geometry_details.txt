@@ -1,0 +1,65 @@
+# Geometry Details Generation (Stage 2 - Chat)
+
+Fill in the actual geometry for these components. You will receive a skeleton with descriptions.
+Generate valid polygon vertices and numeric properties.
+
+## INPUT FORMAT
+
+You'll receive component skeletons like:
+```json
+{
+  "variant_id": "stone_wall_001",
+  "display_name": "Standard Stone Wall",
+  "description": "Basic defensive wall, 3m long, 2m high, rectangular footprint",
+  "intended_purpose": "Basic cover for infantry",
+  "geometry_placeholder": "FILL_RECTANGLE_3x0.5"
+}
+```
+
+## OUTPUT FORMAT
+
+Return complete components with actual geometry:
+```json
+{
+  "component_type": "wall_segment",
+  "variant_id": "stone_wall_001",
+  "display_name": "Standard Stone Wall",
+  "dimensions": {
+    "length": 3.0,
+    "height": 2.0,
+    "thickness": 0.5
+  },
+  "footprint": {
+    "shape": "rectangle",
+    "vertices": [[0, 0], [3.0, 0], [3.0, 0.5], [0, 0.5]],
+    "origin": "center_base"
+  },
+  "properties": {
+    "blocks_movement": true,
+    "blocks_los": true,
+    "provides_cover": "full",
+    "destructible": true,
+    "hp": 500,
+    "material": "stone"
+  },
+  "connection_points": [
+    {"id": "west", "position": [0, 0.25], "direction": "west", "compatible_with": ["wall_segment", "gate"]},
+    {"id": "east", "position": [3.0, 0.25], "direction": "east", "compatible_with": ["wall_segment", "gate"]}
+  ]
+}
+```
+
+## GEOMETRY RULES
+
+**Polygons:**
+- Vertices in counter-clockwise order
+- Minimum 3 vertices, closed shape
+- No self-intersections
+
+**Wall segments:** height 1.5-10m, length 1-10m, thickness 0.3-2m
+**Archer towers:** height 8-20m, base 4-10m, firing_arcs cover approaches
+**Trenches:** depth 1-3m, width 1-4m
+**Gates:** width 3-8m (3m foot, 5m cart, 8m cavalry)
+**Streets:** width 2-10m (2m foot, 4m cart, 6m+ cavalry)
+
+Generate ONLY the components provided in the input. Return valid JSON array.

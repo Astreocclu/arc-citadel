@@ -93,7 +93,8 @@ pub fn filter_perception_human(
     raw_perception: &[PerceivedObject],
     values: &HumanValues,
 ) -> Vec<PerceivedObject> {
-    raw_perception.iter()
+    raw_perception
+        .iter()
         .filter(|obj| {
             if obj.properties.iter().any(|p| p.name == "threat") {
                 return true;
@@ -145,8 +146,6 @@ pub fn find_nearest_building_site(
     range: f32,
     buildings: &BuildingArchetype,
 ) -> Option<(BuildingId, Vec2, f32)> {
-    
-
     let mut nearest: Option<(BuildingId, Vec2, f32)> = None;
 
     for i in buildings.iter_under_construction() {
@@ -177,48 +176,54 @@ pub fn perception_system(
         .map(|(i, &id)| (id, i))
         .collect();
 
-    entity_ids.iter().enumerate().map(|(i, &observer_id)| {
-        let observer_pos = positions[i];
-        let observer_memory = &social_memories[i];
-        let perception_range = perception_ranges[i];
+    entity_ids
+        .iter()
+        .enumerate()
+        .map(|(i, &observer_id)| {
+            let observer_pos = positions[i];
+            let observer_memory = &social_memories[i];
+            let perception_range = perception_ranges[i];
 
-        let nearby: Vec<_> = spatial_grid.query_neighbors(observer_pos)
-            .filter(|&e| e != observer_id)
-            .collect();
+            let nearby: Vec<_> = spatial_grid
+                .query_neighbors(observer_pos)
+                .filter(|&e| e != observer_id)
+                .collect();
 
-        let perceived_entities: Vec<_> = nearby.iter()
-            .filter_map(|&entity| {
-                let entity_idx = *id_to_idx.get(&entity)?;
-                let entity_pos = positions[entity_idx];
-                let distance = observer_pos.distance(&entity_pos);
+            let perceived_entities: Vec<_> = nearby
+                .iter()
+                .filter_map(|&entity| {
+                    let entity_idx = *id_to_idx.get(&entity)?;
+                    let entity_pos = positions[entity_idx];
+                    let distance = observer_pos.distance(&entity_pos);
 
-                if distance <= perception_range {
-                    // Look up disposition from social memory
-                    let disposition = observer_memory.get_disposition(entity);
+                    if distance <= perception_range {
+                        // Look up disposition from social memory
+                        let disposition = observer_memory.get_disposition(entity);
 
-                    Some(PerceivedEntity {
-                        entity,
-                        distance,
-                        relationship: RelationshipType::Unknown,
-                        disposition,
-                        threat_level: 0.0,
-                        notable_features: vec![],
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
+                        Some(PerceivedEntity {
+                            entity,
+                            distance,
+                            relationship: RelationshipType::Unknown,
+                            disposition,
+                            threat_level: 0.0,
+                            notable_features: vec![],
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
-        Perception {
-            observer: observer_id,
-            perceived_entities,
-            perceived_objects: vec![],
-            perceived_events: vec![],
-            nearest_food_zone: None, // Will be populated by caller with food zone data
-            nearest_building_site: None, // Will be populated by caller with building data
-        }
-    }).collect()
+            Perception {
+                observer: observer_id,
+                perceived_entities,
+                perceived_objects: vec![],
+                perceived_events: vec![],
+                nearest_food_zone: None, // Will be populated by caller with food zone data
+                nearest_building_site: None, // Will be populated by caller with building data
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -232,8 +237,18 @@ mod tests {
     #[test]
     fn test_perception_finds_food_zone() {
         let zones = vec![
-            FoodZone { id: 0, position: Vec2::new(50.0, 50.0), radius: 10.0, abundance: Abundance::Unlimited },
-            FoodZone { id: 1, position: Vec2::new(200.0, 200.0), radius: 20.0, abundance: Abundance::Unlimited },
+            FoodZone {
+                id: 0,
+                position: Vec2::new(50.0, 50.0),
+                radius: 10.0,
+                abundance: Abundance::Unlimited,
+            },
+            FoodZone {
+                id: 1,
+                position: Vec2::new(200.0, 200.0),
+                radius: 20.0,
+                abundance: Abundance::Unlimited,
+            },
         ];
 
         let observer_pos = Vec2::new(60.0, 60.0);
@@ -243,13 +258,13 @@ mod tests {
 
         assert!(nearest.is_some());
         let (zone_id, _zone_pos, distance) = nearest.unwrap();
-        assert_eq!(zone_id, 0);  // Closer zone
+        assert_eq!(zone_id, 0); // Closer zone
         assert!(distance < 20.0);
     }
 
     #[test]
     fn test_find_nearest_building_site() {
-        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId};
+        use crate::city::building::{BuildingArchetype, BuildingId, BuildingType};
 
         let mut buildings = BuildingArchetype::new();
         // Spawn two buildings under construction at different distances
@@ -269,13 +284,13 @@ mod tests {
 
     #[test]
     fn test_find_nearest_building_site_ignores_completed() {
-        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId};
+        use crate::city::building::{BuildingArchetype, BuildingId, BuildingType};
 
         let mut buildings = BuildingArchetype::new();
         let id1 = BuildingId::new();
         let id2 = BuildingId::new();
-        buildings.spawn(id1, BuildingType::House, Vec2::new(5.0, 0.0), 0);  // Closer
-        buildings.spawn(id2, BuildingType::Farm, Vec2::new(10.0, 0.0), 0);  // Farther
+        buildings.spawn(id1, BuildingType::House, Vec2::new(5.0, 0.0), 0); // Closer
+        buildings.spawn(id2, BuildingType::Farm, Vec2::new(10.0, 0.0), 0); // Farther
 
         // Complete the closer building
         buildings.states[0] = BuildingState::Complete;
@@ -292,10 +307,15 @@ mod tests {
 
     #[test]
     fn test_find_nearest_building_site_none_in_range() {
-        use crate::city::building::{BuildingArchetype, BuildingType, BuildingId};
+        use crate::city::building::{BuildingArchetype, BuildingId, BuildingType};
 
         let mut buildings = BuildingArchetype::new();
-        buildings.spawn(BuildingId::new(), BuildingType::House, Vec2::new(100.0, 0.0), 0);
+        buildings.spawn(
+            BuildingId::new(),
+            BuildingType::House,
+            Vec2::new(100.0, 0.0),
+            0,
+        );
 
         let observer = Vec2::new(0.0, 0.0);
         // Perception range is only 50, building is at 100
@@ -313,8 +333,8 @@ mod tests {
         let bob = EntityId::new();
 
         let positions = vec![
-            Vec2::new(0.0, 0.0),  // Alice at origin
-            Vec2::new(5.0, 0.0),  // Bob nearby
+            Vec2::new(0.0, 0.0), // Alice at origin
+            Vec2::new(5.0, 0.0), // Bob nearby
         ];
         let ids = vec![alice, bob];
 
@@ -327,13 +347,19 @@ mod tests {
         alice_memory.record_encounter(bob, EventType::AidReceived, 0.8, 0);
         alice_memory.record_encounter(bob, EventType::GiftReceived, 0.6, 10);
 
-        let bob_memory = SocialMemory::new();  // Bob has no memories
+        let bob_memory = SocialMemory::new(); // Bob has no memories
 
         let social_memories = vec![alice_memory, bob_memory];
 
         // Run perception (both entities have base range 50.0)
         let perception_ranges = vec![50.0, 50.0];
-        let perceptions = perception_system(&grid, &positions, &ids, &social_memories, &perception_ranges);
+        let perceptions = perception_system(
+            &grid,
+            &positions,
+            &ids,
+            &social_memories,
+            &perception_ranges,
+        );
 
         // Alice's perception of Bob should include disposition
         let alice_perception = perceptions.iter().find(|p| p.observer == alice).unwrap();

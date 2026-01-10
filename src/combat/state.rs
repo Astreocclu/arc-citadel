@@ -2,12 +2,8 @@
 //!
 //! Every entity has combat state (mandatory but minimal).
 
+use crate::combat::{ArmorProperties, CombatSkill, CombatStance, MoraleState, WeaponProperties};
 use serde::{Deserialize, Serialize};
-use crate::combat::{
-    CombatStance, CombatSkill,
-    MoraleState,
-    WeaponProperties, ArmorProperties,
-};
 
 /// Combat state component
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,7 +43,10 @@ impl CombatState {
 
     /// Is this entity actively in combat?
     pub fn in_combat(&self) -> bool {
-        matches!(self.stance, CombatStance::Pressing | CombatStance::Defensive)
+        matches!(
+            self.stance,
+            CombatStance::Pressing | CombatStance::Defensive
+        )
     }
 
     /// Apply fatigue (additive, clamped)

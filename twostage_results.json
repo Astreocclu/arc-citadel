@@ -1,0 +1,4246 @@
+{
+  "stage1_skeleton": {
+    "archer_towers": [
+      {
+        "description": "Compact square tower, 4m base, 8m height, 360-degree firing arc",
+        "display_name": "Small Square Watchtower",
+        "geometry_placeholder": "FILL_SQUARE_4x4",
+        "intended_purpose": "Basic observation and defense",
+        "variant_id": "watchtower_square_small"
+      },
+      {
+        "description": "Square tower, 6m base, 12m height, 360-degree firing arc",
+        "display_name": "Standard Square Watchtower",
+        "geometry_placeholder": "FILL_SQUARE_6x6",
+        "intended_purpose": "Full coverage observation point",
+        "variant_id": "watchtower_square_standard"
+      },
+      {
+        "description": "Large square tower, 8m base, 15m height, 360-degree firing arc",
+        "display_name": "Large Square Watchtower",
+        "geometry_placeholder": "FILL_SQUARE_8x8",
+        "intended_purpose": "Major defensive position with room for multiple archers",
+        "variant_id": "watchtower_square_large"
+      },
+      {
+        "description": "Compact round tower, 4m diameter, 10m height, 360-degree firing arc",
+        "display_name": "Small Round Watchtower",
+        "geometry_placeholder": "FILL_CIRCLE_2R",
+        "intended_purpose": "Defensive position with no blind corners",
+        "variant_id": "watchtower_round_small"
+      },
+      {
+        "description": "Round tower, 7m diameter, 14m height, 360-degree firing arc",
+        "display_name": "Large Round Watchtower",
+        "geometry_placeholder": "FILL_CIRCLE_3.5R",
+        "intended_purpose": "Major defensive bastion",
+        "variant_id": "watchtower_round_large"
+      },
+      {
+        "description": "Semi-circular tower, 6m radius, 10m height, 180-degree firing arc",
+        "display_name": "Half-Moon Corner Tower",
+        "geometry_placeholder": "FILL_SEMICIRCLE_6R",
+        "intended_purpose": "Wall corner defense projecting outward",
+        "variant_id": "corner_tower_halfmoon"
+      },
+      {
+        "description": "Rectangular tower flanking gates, 5m x 8m base, 12m height, 270-degree firing arc",
+        "display_name": "Rectangular Gate Tower",
+        "geometry_placeholder": "FILL_RECTANGLE_5x8",
+        "intended_purpose": "Gate defense with focused coverage",
+        "variant_id": "gate_tower_rectangular"
+      },
+      {
+        "description": "Hexagonal tower integrated into walls, 5m across flats, 11m height, 360-degree firing arc",
+        "display_name": "Hexagonal Wall Tower",
+        "geometry_placeholder": "FILL_HEXAGON_5W",
+        "intended_purpose": "Wall reinforcement with overlapping fields of fire",
+        "variant_id": "wall_tower_hexagonal"
+      },
+      {
+        "description": "Slender tower, 3m base diameter, 18m height, 360-degree firing arc",
+        "display_name": "Tall Observation Tower",
+        "geometry_placeholder": "FILL_CIRCLE_1.5R",
+        "intended_purpose": "Long-range observation and signaling",
+        "variant_id": "observation_tower_tall"
+      },
+      {
+        "description": "Heavy defensive tower with overhang, 7m square base, 14m height, 270-degree firing arc with murder holes",
+        "display_name": "Barbican Tower",
+        "geometry_placeholder": "FILL_SQUARE_7x7",
+        "intended_purpose": "Gatehouse defense with downward firing positions",
+        "variant_id": "barbican_tower"
+      }
+    ],
+    "gates": [
+      {
+        "description": "Narrow gate for infantry, 3m wide, 4m tall opening, with simple doors",
+        "display_name": "Small Foot Gate",
+        "geometry_placeholder": "FILL_GATE_3x4",
+        "intended_purpose": "Controlled pedestrian access",
+        "variant_id": "gate_small_foot"
+      },
+      {
+        "description": "Main gate for carts and small vehicles, 5m wide, 5m tall opening, reinforced doors",
+        "display_name": "Standard Cart Gate",
+        "geometry_placeholder": "FILL_GATE_5x5",
+        "intended_purpose": "Primary civilian and supply access",
+        "variant_id": "gate_standard_cart"
+      },
+      {
+        "description": "Wide gate for mounted troops, 6m wide, 6m tall opening, double doors",
+        "display_name": "Large Cavalry Gate",
+        "geometry_placeholder": "FILL_GATE_6x6",
+        "intended_purpose": "Rapid deployment of cavalry",
+        "variant_id": "gate_large_cavalry"
+      },
+      {
+        "description": "Extra wide gate for siege engines, 8m wide, 7m tall opening, massive reinforced doors",
+        "display_name": "Siege Equipment Gate",
+        "geometry_placeholder": "FILL_GATE_8x7",
+        "intended_purpose": "Movement of catapults and rams",
+        "variant_id": "gate_siege_equipment"
+      },
+      {
+        "description": "Gate with vertical portcullis, 3m wide, 4m tall, iron grille",
+        "display_name": "Small Portcullis Gate",
+        "geometry_placeholder": "FILL_GATE_3x4",
+        "intended_purpose": "Quick-closing defensive gate",
+        "variant_id": "gate_portcullis_small"
+      },
+      {
+        "description": "Large gate with portcullis and doors, 5m wide, 6m tall, layered defense",
+        "display_name": "Large Portcullis Gate",
+        "geometry_placeholder": "FILL_GATE_5x6",
+        "intended_purpose": "Heavily defended main entrance",
+        "variant_id": "gate_portcullis_large"
+      },
+      {
+        "description": "Hidden side gate, 2m wide, 2.5m tall, concealed design",
+        "display_name": "Sally Port",
+        "geometry_placeholder": "FILL_GATE_2x2.5",
+        "intended_purpose": "Secret exits for sorties",
+        "variant_id": "gate_sally_port"
+      },
+      {
+        "description": "Gate within fortified barbican, 4m wide, 5m tall, killing zone approach",
+        "display_name": "Barbican Entrance",
+        "geometry_placeholder": "FILL_GATE_4x5",
+        "intended_purpose": "Trapping attackers in confined space",
+        "variant_id": "gate_barbican_entrance"
+      },
+      {
+        "description": "Gate with wooden drawbridge, 5m wide, 5m tall, spans moat",
+        "display_name": "Drawbridge Gate",
+        "geometry_placeholder": "FILL_GATE_5x5",
+        "intended_purpose": "Crossing water defenses",
+        "variant_id": "gate_drawbridge"
+      },
+      {
+        "description": "Small rear gate, 2.5m wide, 3m tall, lightly fortified",
+        "display_name": "Postern Gate",
+        "geometry_placeholder": "FILL_GATE_2.5x3",
+        "intended_purpose": "Emergency exit and resupply",
+        "variant_id": "gate_postern"
+      }
+    ],
+    "street_segments": [
+      {
+        "description": "Tight passage between buildings, 2m wide, straight 10m segment",
+        "display_name": "Narrow Alley",
+        "geometry_placeholder": "FILL_STREET_10x2",
+        "intended_purpose": "Foot traffic in dense urban areas",
+        "variant_id": "alley_narrow"
+      },
+      {
+        "description": "Standard residential street, 4m wide, straight 12m segment",
+        "display_name": "Residential Street",
+        "geometry_placeholder": "FILL_STREET_12x4",
+        "intended_purpose": "Local traffic and foot travel",
+        "variant_id": "street_residential"
+      },
+      {
+        "description": "Wide commercial thoroughfare, 6m wide, straight 15m segment",
+        "display_name": "Commercial Street",
+        "geometry_placeholder": "FILL_STREET_15x6",
+        "intended_purpose": "Cart traffic and market access",
+        "variant_id": "street_commercial"
+      },
+      {
+        "description": "Broad main avenue, 8m wide, straight 20m segment",
+        "display_name": "Main Avenue",
+        "geometry_placeholder": "FILL_STREET_20x8",
+        "intended_purpose": "Processional and military routes",
+        "variant_id": "avenue_main"
+      },
+      {
+        "description": "Extra wide road for siege equipment, 10m wide, straight 25m segment",
+        "display_name": "Siege Road",
+        "geometry_placeholder": "FILL_STREET_25x10",
+        "intended_purpose": "Movement of large siege engines",
+        "variant_id": "road_siege"
+      },
+      {
+        "description": "Street with gentle 45-degree curve, 5m wide, 15m arc length",
+        "display_name": "Gentle Curve Street",
+        "geometry_placeholder": "FILL_STREET_CURVE_15x5",
+        "intended_purpose": "Following terrain or property lines",
+        "variant_id": "street_curved_gentle"
+      },
+      {
+        "description": "T-shaped intersection, 5m wide arms, each 10m long",
+        "display_name": "T-Junction Segment",
+        "geometry_placeholder": "FILL_T_JUNCTION_10x5",
+        "intended_purpose": "Street intersection",
+        "variant_id": "street_t_junction"
+      },
+      {
+        "description": "Four-way intersection, 6m wide arms, each 12m long",
+        "display_name": "Crossroads Segment",
+        "geometry_placeholder": "FILL_CROSSROADS_12x6",
+        "intended_purpose": "Major intersection",
+        "variant_id": "street_crossroads"
+      },
+      {
+        "description": "Paved street segment, 5m wide, 15m long, textured surface",
+        "display_name": "Cobblestone Street",
+        "geometry_placeholder": "FILL_STREET_15x5",
+        "intended_purpose": "High-quality road in wealthy districts",
+        "variant_id": "street_cobblestone"
+      },
+      {
+        "description": "Unpaved path, 3m wide, 10m long, rough surface",
+        "display_name": "Dirt Path",
+        "geometry_placeholder": "FILL_STREET_10x3",
+        "intended_purpose": "Rural tracks and informal routes",
+        "variant_id": "path_dirt"
+      }
+    ],
+    "trenches": [
+      {
+        "description": "Basic trench, 1m deep, 1m wide, straight segment 4m long",
+        "display_name": "Shallow Narrow Trench",
+        "geometry_placeholder": "FILL_TRENCH_4x1x1",
+        "intended_purpose": "Quick infantry cover in open ground",
+        "variant_id": "trench_shallow_narrow"
+      },
+      {
+        "description": "Infantry trench, 1.5m deep, 1.5m wide, straight segment 6m long",
+        "display_name": "Standard Infantry Trench",
+        "geometry_placeholder": "FILL_TRENCH_6x1.5x1.5",
+        "intended_purpose": "Protected firing positions for infantry",
+        "variant_id": "trench_standard_infantry"
+      },
+      {
+        "description": "Steep-sided trench, 2m deep, 2m wide, 5m long with sharp angles",
+        "display_name": "Deep Anti-Cavalry Trench",
+        "geometry_placeholder": "FILL_TRENCH_5x2x2",
+        "intended_purpose": "Cavalry obstacle and defensive line",
+        "variant_id": "trench_deep_anti_cavalry"
+      },
+      {
+        "description": "Broad trench, 1m deep, 3m wide, 8m long",
+        "display_name": "Wide Supply Trench",
+        "geometry_placeholder": "FILL_TRENCH_8x1x3",
+        "intended_purpose": "Protected movement of supplies and troops",
+        "variant_id": "trench_wide_supply"
+      },
+      {
+        "description": "Trench with 45-degree turns, 1.5m deep, 1.5m wide, 8m total length with 2 turns",
+        "display_name": "Zigzag Trench Segment",
+        "geometry_placeholder": "FILL_ZIGZAG_8x1.5x1.5",
+        "intended_purpose": "Prevent enfilading fire along trench line",
+        "variant_id": "trench_zigzag_segment"
+      },
+      {
+        "description": "Narrow connecting trench, 1.2m deep, 1m wide, 10m long",
+        "display_name": "Communication Trench",
+        "geometry_placeholder": "FILL_TRENCH_10x1.2x1",
+        "intended_purpose": "Safe movement between positions",
+        "variant_id": "trench_communication"
+      },
+      {
+        "description": "Trench with built-in firing step, 1.8m deep, 2m wide, 4m long with raised platform",
+        "display_name": "Firing Step Trench",
+        "geometry_placeholder": "FILL_TRENCH_STEP_4x1.8x2",
+        "intended_purpose": "Improved firing position with cover",
+        "variant_id": "trench_firing_step"
+      },
+      {
+        "description": "Water-filled trench, 3m deep, 4m wide, 8m long with sloping sides",
+        "display_name": "Moat Segment",
+        "geometry_placeholder": "FILL_TRENCH_8x3x4",
+        "intended_purpose": "Major obstacle for siege equipment",
+        "variant_id": "trench_moat_segment"
+      },
+      {
+        "description": "Very deep narrow trench, 3m deep, 0.8m wide, 6m long",
+        "display_name": "Sapper's Trench",
+        "geometry_placeholder": "FILL_TRENCH_6x3x0.8",
+        "intended_purpose": "Approach trench for sappers and miners",
+        "variant_id": "trench_sapper"
+      },
+      {
+        "description": "Wide deep trench with flat bottom, 2m deep, 4m wide, 6m long",
+        "display_name": "Artillery Emplacement",
+        "geometry_placeholder": "FILL_TRENCH_6x2x4",
+        "intended_purpose": "Protected position for siege engines",
+        "variant_id": "trench_artillery"
+      }
+    ],
+    "wall_segments": [
+      {
+        "description": "Compact defensive wall, 2m long, 2m high, 0.5m thick",
+        "display_name": "Short Stone Wall",
+        "geometry_placeholder": "FILL_RECTANGLE_2x0.5",
+        "intended_purpose": "Quick cover in tight spaces",
+        "variant_id": "stone_wall_short_001"
+      },
+      {
+        "description": "Basic defensive wall, 3m long, 2.5m high, 0.5m thick",
+        "display_name": "Standard Stone Wall",
+        "geometry_placeholder": "FILL_RECTANGLE_3x0.5",
+        "intended_purpose": "Basic infantry cover",
+        "variant_id": "stone_wall_standard_001"
+      },
+      {
+        "description": "Extended defensive wall, 6m long, 3m high, 0.5m thick",
+        "display_name": "Long Stone Wall",
+        "geometry_placeholder": "FILL_RECTANGLE_6x0.5",
+        "intended_purpose": "Cover for multiple squads",
+        "variant_id": "stone_wall_long_001"
+      },
+      {
+        "description": "Imposing defensive wall, 4m long, 5m high, 0.5m thick",
+        "display_name": "Tall Fortification Wall",
+        "geometry_placeholder": "FILL_RECTANGLE_4x0.5",
+        "intended_purpose": "High cover against archers",
+        "variant_id": "stone_wall_tall_001"
+      },
+      {
+        "description": "Special wall segment, 2.5m long, 3m high, 0.5m thick, designed to connect to gates",
+        "display_name": "Gate Adjacent Wall",
+        "geometry_placeholder": "FILL_RECTANGLE_2.5x0.5",
+        "intended_purpose": "Structural connector for gatehouses",
+        "variant_id": "stone_wall_gate_adjacent"
+      },
+      {
+        "description": "Gentle curve wall, 4m chord length, 2.5m high, 0.5m thick, 60-degree arc",
+        "display_name": "Curved Wall Segment",
+        "geometry_placeholder": "FILL_CURVED_4x0.5",
+        "intended_purpose": "Follow terrain contours",
+        "variant_id": "stone_wall_curved"
+      },
+      {
+        "description": "Wooden defensive wall, 2.5m long, 1.8m high, 0.3m thick",
+        "display_name": "Short Wooden Palisade",
+        "geometry_placeholder": "FILL_RECTANGLE_2.5x0.3",
+        "intended_purpose": "Quick temporary fortifications",
+        "variant_id": "wooden_palisade_short"
+      },
+      {
+        "description": "Extended wooden wall, 5m long, 2m high, 0.3m thick",
+        "display_name": "Long Wooden Palisade",
+        "geometry_placeholder": "FILL_RECTANGLE_5x0.3",
+        "intended_purpose": "Field fortifications",
+        "variant_id": "wooden_palisade_long"
+      },
+      {
+        "description": "90-degree inner corner wall segment, 2m arms, 2.5m high",
+        "display_name": "Inner Corner Wall",
+        "geometry_placeholder": "FILL_L_SHAPE_2x2",
+        "intended_purpose": "Create defensive corners",
+        "variant_id": "stone_wall_corner_inner"
+      },
+      {
+        "description": "90-degree outer corner wall segment, 2m arms, 2.5m high",
+        "display_name": "Outer Corner Wall",
+        "geometry_placeholder": "FILL_L_SHAPE_2x2",
+        "intended_purpose": "Create projecting defensive positions",
+        "variant_id": "stone_wall_corner_outer"
+      }
+    ]
+  },
+  "stage2_components": [
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            2.0,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 2.0,
+        "length": 2.0,
+        "thickness": 0.5
+      },
+      "display_name": "Short Stone Wall",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            2.0,
+            0
+          ],
+          [
+            2.0,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 300,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "variant_id": "stone_wall_short_001"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            3.0,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 2.5,
+        "length": 3.0,
+        "thickness": 0.5
+      },
+      "display_name": "Standard Stone Wall",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            3.0,
+            0
+          ],
+          [
+            3.0,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 500,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "variant_id": "stone_wall_standard_001"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            6.0,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 3.0,
+        "length": 6.0,
+        "thickness": 0.5
+      },
+      "display_name": "Long Stone Wall",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            6.0,
+            0
+          ],
+          [
+            6.0,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 800,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "variant_id": "stone_wall_long_001"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            4.0,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 5.0,
+        "length": 4.0,
+        "thickness": 0.5
+      },
+      "display_name": "Tall Fortification Wall",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            4.0,
+            0
+          ],
+          [
+            4.0,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 1000,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "variant_id": "stone_wall_tall_001"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            2.5,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 3.0,
+        "length": 2.5,
+        "thickness": 0.5
+      },
+      "display_name": "Gate Adjacent Wall",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            2.5,
+            0
+          ],
+          [
+            2.5,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 600,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "variant_id": "stone_wall_gate_adjacent"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            4.0,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 2.5,
+        "length": 4.0,
+        "thickness": 0.5
+      },
+      "display_name": "Curved Wall Segment",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            0.5,
+            0
+          ],
+          [
+            4.0,
+            0.5
+          ],
+          [
+            4.0,
+            0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 550,
+        "material": "stone",
+        "provides_cover": "partial"
+      },
+      "variant_id": "stone_wall_curved"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.15
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            2.5,
+            0.15
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 1.8,
+        "length": 2.5,
+        "thickness": 0.3
+      },
+      "display_name": "Short Wooden Palisade",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            2.5,
+            0
+          ],
+          [
+            2.5,
+            0.3
+          ],
+          [
+            0,
+            0.3
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 150,
+        "material": "wood",
+        "provides_cover": "partial"
+      },
+      "variant_id": "wooden_palisade_short"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.15
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            5.0,
+            0.15
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 2.0,
+        "length": 5.0,
+        "thickness": 0.3
+      },
+      "display_name": "Long Wooden Palisade",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            5.0,
+            0
+          ],
+          [
+            5.0,
+            0.3
+          ],
+          [
+            0,
+            0.3
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 250,
+        "material": "wood",
+        "provides_cover": "partial"
+      },
+      "variant_id": "wooden_palisade_long"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            1.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            1.0,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 2.5,
+        "length": 2.0,
+        "thickness": 0.5
+      },
+      "display_name": "Inner Corner Wall",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            2.0,
+            0
+          ],
+          [
+            2.0,
+            0.5
+          ],
+          [
+            0.5,
+            0.5
+          ],
+          [
+            0.5,
+            2.0
+          ],
+          [
+            0,
+            2.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 700,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "variant_id": "stone_wall_corner_inner"
+    },
+    {
+      "component_type": "wall_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment",
+            "gate"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0.25,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 2.5,
+        "length": 2.0,
+        "thickness": 0.5
+      },
+      "display_name": "Outer Corner Wall",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            2.0,
+            0
+          ],
+          [
+            2.0,
+            2.0
+          ],
+          [
+            1.5,
+            2.0
+          ],
+          [
+            1.5,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "cover_direction": "perpendicular_to_length",
+        "destructible": true,
+        "hp": 700,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "variant_id": "stone_wall_corner_outer"
+    },
+    {
+      "archer_capacity": 3,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            2.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -2.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            2.0,
+            0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -2.0,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 4.0,
+        "base_width": 4.0,
+        "height": 8.0
+      },
+      "display_name": "Small Square Watchtower",
+      "firing_arcs": [
+        {
+          "end_angle": 360,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            -2.0,
+            -2.0
+          ],
+          [
+            2.0,
+            -2.0
+          ],
+          [
+            2.0,
+            2.0
+          ],
+          [
+            -2.0,
+            2.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 600,
+        "material": "wood",
+        "provides_cover": "full"
+      },
+      "range": 25,
+      "variant_id": "watchtower_square_small"
+    },
+    {
+      "archer_capacity": 5,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            3.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -3.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            3.0,
+            0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -3.0,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 6.0,
+        "base_width": 6.0,
+        "height": 12.0
+      },
+      "display_name": "Standard Square Watchtower",
+      "firing_arcs": [
+        {
+          "end_angle": 360,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            -3.0,
+            -3.0
+          ],
+          [
+            3.0,
+            -3.0
+          ],
+          [
+            3.0,
+            3.0
+          ],
+          [
+            -3.0,
+            3.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 900,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 30,
+      "variant_id": "watchtower_square_standard"
+    },
+    {
+      "archer_capacity": 8,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            4.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -4.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            4.0,
+            0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -4.0,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 8.0,
+        "base_width": 8.0,
+        "height": 15.0
+      },
+      "display_name": "Large Square Watchtower",
+      "firing_arcs": [
+        {
+          "end_angle": 360,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            -4.0,
+            -4.0
+          ],
+          [
+            4.0,
+            -4.0
+          ],
+          [
+            4.0,
+            4.0
+          ],
+          [
+            -4.0,
+            4.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 1400,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 35,
+      "variant_id": "watchtower_square_large"
+    },
+    {
+      "archer_capacity": 4,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            2.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -2.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            2.0,
+            0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -2.0,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 4.0,
+        "base_width": 4.0,
+        "height": 10.0
+      },
+      "display_name": "Small Round Watchtower",
+      "firing_arcs": [
+        {
+          "end_angle": 360,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            2.0,
+            0.0
+          ],
+          [
+            1.732,
+            1.0
+          ],
+          [
+            1.0,
+            1.732
+          ],
+          [
+            0.0,
+            2.0
+          ],
+          [
+            -1.0,
+            1.732
+          ],
+          [
+            -1.732,
+            1.0
+          ],
+          [
+            -2.0,
+            0.0
+          ],
+          [
+            -1.732,
+            -1.0
+          ],
+          [
+            -1.0,
+            -1.732
+          ],
+          [
+            0.0,
+            -2.0
+          ],
+          [
+            1.0,
+            -1.732
+          ],
+          [
+            1.732,
+            -1.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 800,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 28,
+      "variant_id": "watchtower_round_small"
+    },
+    {
+      "archer_capacity": 7,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            3.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -3.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            3.5,
+            0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -3.5,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 7.0,
+        "base_width": 7.0,
+        "height": 14.0
+      },
+      "display_name": "Large Round Watchtower",
+      "firing_arcs": [
+        {
+          "end_angle": 360,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            3.5,
+            0.0
+          ],
+          [
+            3.031,
+            1.75
+          ],
+          [
+            1.75,
+            3.031
+          ],
+          [
+            0.0,
+            3.5
+          ],
+          [
+            -1.75,
+            3.031
+          ],
+          [
+            -3.031,
+            1.75
+          ],
+          [
+            -3.5,
+            0.0
+          ],
+          [
+            -3.031,
+            -1.75
+          ],
+          [
+            -1.75,
+            -3.031
+          ],
+          [
+            0.0,
+            -3.5
+          ],
+          [
+            1.75,
+            -3.031
+          ],
+          [
+            3.031,
+            -1.75
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 1600,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 40,
+      "variant_id": "watchtower_round_large"
+    },
+    {
+      "archer_capacity": 6,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -6.0,
+            0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 6.0,
+        "base_width": 12.0,
+        "height": 10.0
+      },
+      "display_name": "Half-Moon Corner Tower",
+      "firing_arcs": [
+        {
+          "end_angle": 90,
+          "start_angle": 270
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            6.0,
+            0.0
+          ],
+          [
+            6.0,
+            3.0
+          ],
+          [
+            5.196,
+            4.5
+          ],
+          [
+            3.0,
+            5.196
+          ],
+          [
+            0.0,
+            6.0
+          ],
+          [
+            -3.0,
+            5.196
+          ],
+          [
+            -5.196,
+            4.5
+          ],
+          [
+            -6.0,
+            3.0
+          ],
+          [
+            -6.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 1200,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 30,
+      "variant_id": "corner_tower_halfmoon"
+    },
+    {
+      "archer_capacity": 6,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            4.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -4.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -2.5,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 8.0,
+        "base_width": 5.0,
+        "height": 12.0
+      },
+      "display_name": "Rectangular Gate Tower",
+      "firing_arcs": [
+        {
+          "end_angle": 270,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            -2.5,
+            -4.0
+          ],
+          [
+            2.5,
+            -4.0
+          ],
+          [
+            2.5,
+            4.0
+          ],
+          [
+            -2.5,
+            4.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 1300,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 35,
+      "variant_id": "gate_tower_rectangular"
+    },
+    {
+      "archer_capacity": 5,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            2.165
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -2.165
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "northeast",
+          "id": "northeast",
+          "position": [
+            1.25,
+            1.083
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "northwest",
+          "id": "northwest",
+          "position": [
+            -1.25,
+            1.083
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "southeast",
+          "id": "southeast",
+          "position": [
+            1.25,
+            -1.083
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "southwest",
+          "id": "southwest",
+          "position": [
+            -1.25,
+            -1.083
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 5.77,
+        "base_width": 5.0,
+        "height": 11.0
+      },
+      "display_name": "Hexagonal Wall Tower",
+      "firing_arcs": [
+        {
+          "end_angle": 360,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            2.5,
+            0.0
+          ],
+          [
+            1.25,
+            2.165
+          ],
+          [
+            -1.25,
+            2.165
+          ],
+          [
+            -2.5,
+            0.0
+          ],
+          [
+            -1.25,
+            -2.165
+          ],
+          [
+            1.25,
+            -2.165
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 1100,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 32,
+      "variant_id": "wall_tower_hexagonal"
+    },
+    {
+      "archer_capacity": 2,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            1.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -1.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            1.5,
+            0
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -1.5,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 3.0,
+        "base_width": 3.0,
+        "height": 18.0
+      },
+      "display_name": "Tall Observation Tower",
+      "firing_arcs": [
+        {
+          "end_angle": 360,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            1.5,
+            0.0
+          ],
+          [
+            1.299,
+            0.75
+          ],
+          [
+            0.75,
+            1.299
+          ],
+          [
+            0.0,
+            1.5
+          ],
+          [
+            -0.75,
+            1.299
+          ],
+          [
+            -1.299,
+            0.75
+          ],
+          [
+            -1.5,
+            0.0
+          ],
+          [
+            -1.299,
+            -0.75
+          ],
+          [
+            -0.75,
+            -1.299
+          ],
+          [
+            0.0,
+            -1.5
+          ],
+          [
+            0.75,
+            -1.299
+          ],
+          [
+            1.299,
+            -0.75
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 700,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 50,
+      "variant_id": "observation_tower_tall"
+    },
+    {
+      "archer_capacity": 8,
+      "component_type": "archer_tower",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            0,
+            3.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            0,
+            -3.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -3.5,
+            0
+          ]
+        }
+      ],
+      "dimensions": {
+        "base_length": 7.0,
+        "base_width": 7.0,
+        "height": 14.0
+      },
+      "display_name": "Barbican Tower",
+      "firing_arcs": [
+        {
+          "end_angle": 270,
+          "start_angle": 0
+        }
+      ],
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            -3.5,
+            -3.5
+          ],
+          [
+            3.5,
+            -3.5
+          ],
+          [
+            3.5,
+            3.5
+          ],
+          [
+            -3.5,
+            3.5
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "hp": 1800,
+        "material": "stone",
+        "provides_cover": "full"
+      },
+      "range": 35,
+      "variant_id": "barbican_tower"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            0.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            4.0,
+            0.5
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 1.0,
+        "length": 4.0,
+        "width": 1.0
+      },
+      "display_name": "Shallow Narrow Trench",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            4.0,
+            0
+          ],
+          [
+            4.0,
+            1.0
+          ],
+          [
+            0,
+            1.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.4,
+        "provides_cover": "partial",
+        "water_filled": false
+      },
+      "variant_id": "trench_shallow_narrow"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            0.75
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            6.0,
+            0.75
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 1.5,
+        "length": 6.0,
+        "width": 1.5
+      },
+      "display_name": "Standard Infantry Trench",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            6.0,
+            0
+          ],
+          [
+            6.0,
+            1.5
+          ],
+          [
+            0,
+            1.5
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.5,
+        "provides_cover": "full",
+        "water_filled": false
+      },
+      "variant_id": "trench_standard_infantry"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            1.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            5.0,
+            1.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 2.0,
+        "length": 5.0,
+        "width": 2.0
+      },
+      "display_name": "Deep Anti-Cavalry Trench",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            5.0,
+            0
+          ],
+          [
+            5.0,
+            2.0
+          ],
+          [
+            0,
+            2.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.6,
+        "provides_cover": "full",
+        "water_filled": false
+      },
+      "variant_id": "trench_deep_anti_cavalry"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            1.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            8.0,
+            1.5
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 1.0,
+        "length": 8.0,
+        "width": 3.0
+      },
+      "display_name": "Wide Supply Trench",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            8.0,
+            0
+          ],
+          [
+            8.0,
+            3.0
+          ],
+          [
+            0,
+            3.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.3,
+        "provides_cover": "partial",
+        "water_filled": false
+      },
+      "variant_id": "trench_wide_supply"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            0.75
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            8.0,
+            0.75
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 1.5,
+        "length": 8.0,
+        "width": 1.5
+      },
+      "display_name": "Zigzag Trench Segment",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            2.0,
+            0
+          ],
+          [
+            2.0,
+            1.5
+          ],
+          [
+            4.0,
+            1.5
+          ],
+          [
+            4.0,
+            0
+          ],
+          [
+            6.0,
+            0
+          ],
+          [
+            6.0,
+            1.5
+          ],
+          [
+            8.0,
+            1.5
+          ],
+          [
+            8.0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.6,
+        "provides_cover": "full",
+        "water_filled": false
+      },
+      "variant_id": "trench_zigzag_segment"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            0.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            10.0,
+            0.5
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 1.2,
+        "length": 10.0,
+        "width": 1.0
+      },
+      "display_name": "Communication Trench",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            10.0,
+            0
+          ],
+          [
+            10.0,
+            1.0
+          ],
+          [
+            0,
+            1.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.4,
+        "provides_cover": "full",
+        "water_filled": false
+      },
+      "variant_id": "trench_communication"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            1.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            4.0,
+            1.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 1.8,
+        "length": 4.0,
+        "width": 2.0
+      },
+      "display_name": "Firing Step Trench",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            4.0,
+            0
+          ],
+          [
+            4.0,
+            2.0
+          ],
+          [
+            0,
+            2.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": true,
+        "movement_penalty": 0.5,
+        "provides_cover": "full",
+        "water_filled": false
+      },
+      "variant_id": "trench_firing_step"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            2.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            8.0,
+            2.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 3.0,
+        "length": 8.0,
+        "width": 4.0
+      },
+      "display_name": "Moat Segment",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            8.0,
+            0
+          ],
+          [
+            8.0,
+            4.0
+          ],
+          [
+            0,
+            4.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.7,
+        "provides_cover": "partial",
+        "water_filled": true
+      },
+      "variant_id": "trench_moat_segment"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            0.4
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            6.0,
+            0.4
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 3.0,
+        "length": 6.0,
+        "width": 0.8
+      },
+      "display_name": "Sapper's Trench",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            6.0,
+            0
+          ],
+          [
+            6.0,
+            0.8
+          ],
+          [
+            0,
+            0.8
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.6,
+        "provides_cover": "full",
+        "water_filled": false
+      },
+      "variant_id": "trench_sapper"
+    },
+    {
+      "component_type": "trench_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "west",
+          "id": "end_a",
+          "position": [
+            0,
+            2.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "trench_segment"
+          ],
+          "direction": "east",
+          "id": "end_b",
+          "position": [
+            6.0,
+            2.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "depth": 2.0,
+        "length": 6.0,
+        "width": 4.0
+      },
+      "display_name": "Artillery Emplacement",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            6.0,
+            0
+          ],
+          [
+            6.0,
+            4.0
+          ],
+          [
+            0,
+            4.0
+          ]
+        ]
+      },
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "cover_direction": "from_above",
+        "has_firing_step": false,
+        "movement_penalty": 0.4,
+        "provides_cover": "full",
+        "water_filled": false
+      },
+      "variant_id": "trench_artillery"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.2
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            3.0,
+            0.2
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 4.0,
+        "thickness": 0.4,
+        "width": 3.0
+      },
+      "display_name": "Small Foot Gate",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            3.0,
+            0
+          ],
+          [
+            3.0,
+            0.4
+          ],
+          [
+            0,
+            0.4
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry"
+      ],
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "double",
+        "hp": 400,
+        "material": "wood",
+        "open_state": "closed",
+        "provides_cover": "full"
+      },
+      "variant_id": "gate_small_foot"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            5.0,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 5.0,
+        "thickness": 0.5,
+        "width": 5.0
+      },
+      "display_name": "Standard Cart Gate",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            5.0,
+            0
+          ],
+          [
+            5.0,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "double",
+        "hp": 800,
+        "material": "wood",
+        "open_state": "closed",
+        "provides_cover": "full"
+      },
+      "variant_id": "gate_standard_cart"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.3
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            6.0,
+            0.3
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 6.0,
+        "thickness": 0.6,
+        "width": 6.0
+      },
+      "display_name": "Large Cavalry Gate",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            6.0,
+            0
+          ],
+          [
+            6.0,
+            0.6
+          ],
+          [
+            0,
+            0.6
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cavalry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "double",
+        "hp": 1000,
+        "material": "wood",
+        "open_state": "closed",
+        "provides_cover": "full"
+      },
+      "variant_id": "gate_large_cavalry"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.4
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            8.0,
+            0.4
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 7.0,
+        "thickness": 0.8,
+        "width": 8.0
+      },
+      "display_name": "Siege Equipment Gate",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            8.0,
+            0
+          ],
+          [
+            8.0,
+            0.8
+          ],
+          [
+            0,
+            0.8
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cavalry",
+        "cart",
+        "siege_engine"
+      ],
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "double",
+        "hp": 1500,
+        "material": "stone",
+        "open_state": "closed",
+        "provides_cover": "full"
+      },
+      "variant_id": "gate_siege_equipment"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.2
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            3.0,
+            0.2
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 4.0,
+        "thickness": 0.4,
+        "width": 3.0
+      },
+      "display_name": "Small Portcullis Gate",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            3.0,
+            0
+          ],
+          [
+            3.0,
+            0.4
+          ],
+          [
+            0,
+            0.4
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "portcullis",
+        "hp": 600,
+        "material": "iron",
+        "open_state": "closed",
+        "provides_cover": "partial"
+      },
+      "variant_id": "gate_portcullis_small"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.3
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            5.0,
+            0.3
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 6.0,
+        "thickness": 0.6,
+        "width": 5.0
+      },
+      "display_name": "Large Portcullis Gate",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            5.0,
+            0
+          ],
+          [
+            5.0,
+            0.6
+          ],
+          [
+            0,
+            0.6
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "portcullis",
+        "hp": 1200,
+        "material": "iron",
+        "open_state": "closed",
+        "provides_cover": "partial"
+      },
+      "variant_id": "gate_portcullis_large"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.15
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            2.0,
+            0.15
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 2.5,
+        "thickness": 0.3,
+        "width": 2.0
+      },
+      "display_name": "Sally Port",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            2.0,
+            0
+          ],
+          [
+            2.0,
+            0.3
+          ],
+          [
+            0,
+            0.3
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry"
+      ],
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "single",
+        "hp": 300,
+        "material": "wood",
+        "open_state": "closed",
+        "provides_cover": "full"
+      },
+      "variant_id": "gate_sally_port"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            4.0,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 5.0,
+        "thickness": 0.5,
+        "width": 4.0
+      },
+      "display_name": "Barbican Entrance",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            4.0,
+            0
+          ],
+          [
+            4.0,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "double",
+        "hp": 900,
+        "material": "stone",
+        "open_state": "closed",
+        "provides_cover": "full"
+      },
+      "variant_id": "gate_barbican_entrance"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.25
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            5.0,
+            0.25
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 5.0,
+        "thickness": 0.5,
+        "width": 5.0
+      },
+      "display_name": "Drawbridge Gate",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            5.0,
+            0
+          ],
+          [
+            5.0,
+            0.5
+          ],
+          [
+            0,
+            0.5
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "drawbridge",
+        "hp": 700,
+        "material": "wood",
+        "open_state": "closed",
+        "provides_cover": "full"
+      },
+      "variant_id": "gate_drawbridge"
+    },
+    {
+      "component_type": "gate",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            0.175
+          ]
+        },
+        {
+          "compatible_with": [
+            "wall_segment"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            2.5,
+            0.175
+          ]
+        }
+      ],
+      "dimensions": {
+        "height": 3.0,
+        "thickness": 0.35,
+        "width": 2.5
+      },
+      "display_name": "Postern Gate",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            2.5,
+            0
+          ],
+          [
+            2.5,
+            0.35
+          ],
+          [
+            0,
+            0.35
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry"
+      ],
+      "properties": {
+        "blocks_los": true,
+        "blocks_movement": true,
+        "destructible": true,
+        "door_type": "single",
+        "hp": 350,
+        "material": "wood",
+        "open_state": "closed",
+        "provides_cover": "full"
+      },
+      "variant_id": "gate_postern"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            1.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            10.0,
+            1.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 10.0,
+        "width": 2.0
+      },
+      "display_name": "Narrow Alley",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            10.0,
+            0
+          ],
+          [
+            10.0,
+            2.0
+          ],
+          [
+            0,
+            2.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.0,
+        "surface_type": "cobblestone"
+      },
+      "traffic_capacity": 20,
+      "variant_id": "alley_narrow"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            2.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            12.0,
+            2.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 12.0,
+        "width": 4.0
+      },
+      "display_name": "Residential Street",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            12.0,
+            0
+          ],
+          [
+            12.0,
+            4.0
+          ],
+          [
+            0,
+            4.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.1,
+        "surface_type": "dirt"
+      },
+      "traffic_capacity": 40,
+      "variant_id": "street_residential"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            3.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            15.0,
+            3.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 15.0,
+        "width": 6.0
+      },
+      "display_name": "Commercial Street",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            15.0,
+            0
+          ],
+          [
+            15.0,
+            6.0
+          ],
+          [
+            0,
+            6.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart",
+        "cavalry"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.2,
+        "surface_type": "cobblestone"
+      },
+      "traffic_capacity": 80,
+      "variant_id": "street_commercial"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            4.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            20.0,
+            4.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 20.0,
+        "width": 8.0
+      },
+      "display_name": "Main Avenue",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            20.0,
+            0
+          ],
+          [
+            20.0,
+            8.0
+          ],
+          [
+            0,
+            8.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart",
+        "cavalry"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.3,
+        "surface_type": "paved"
+      },
+      "traffic_capacity": 120,
+      "variant_id": "avenue_main"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            5.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            25.0,
+            5.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 25.0,
+        "width": 10.0
+      },
+      "display_name": "Siege Road",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            25.0,
+            0
+          ],
+          [
+            25.0,
+            10.0
+          ],
+          [
+            0,
+            10.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart",
+        "cavalry"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.1,
+        "surface_type": "gravel"
+      },
+      "traffic_capacity": 200,
+      "variant_id": "road_siege"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            -1.5,
+            3.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "northeast",
+          "id": "northeast",
+          "position": [
+            16.5,
+            4.5
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 15.0,
+        "width": 5.0
+      },
+      "display_name": "Gentle Curve Street",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            15.0,
+            0
+          ],
+          [
+            18.0,
+            3.0
+          ],
+          [
+            15.0,
+            6.0
+          ],
+          [
+            0,
+            6.0
+          ],
+          [
+            -3.0,
+            3.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.1,
+        "surface_type": "cobblestone"
+      },
+      "traffic_capacity": 50,
+      "variant_id": "street_curved_gentle"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            2.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            10.0,
+            2.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            2.5,
+            10.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 10.0,
+        "width": 5.0
+      },
+      "display_name": "T-Junction Segment",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            10.0,
+            0
+          ],
+          [
+            10.0,
+            5.0
+          ],
+          [
+            5.0,
+            5.0
+          ],
+          [
+            5.0,
+            10.0
+          ],
+          [
+            0,
+            10.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.0,
+        "surface_type": "cobblestone"
+      },
+      "traffic_capacity": 60,
+      "variant_id": "street_t_junction"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "north",
+          "id": "north",
+          "position": [
+            9.0,
+            18.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            18.0,
+            9.0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "south",
+          "id": "south",
+          "position": [
+            9.0,
+            0
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            9.0
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 12.0,
+        "width": 6.0
+      },
+      "display_name": "Crossroads Segment",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "polygon",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            12.0,
+            0
+          ],
+          [
+            12.0,
+            6.0
+          ],
+          [
+            18.0,
+            6.0
+          ],
+          [
+            18.0,
+            12.0
+          ],
+          [
+            12.0,
+            12.0
+          ],
+          [
+            12.0,
+            18.0
+          ],
+          [
+            6.0,
+            18.0
+          ],
+          [
+            6.0,
+            12.0
+          ],
+          [
+            0,
+            12.0
+          ],
+          [
+            0,
+            6.0
+          ],
+          [
+            6.0,
+            6.0
+          ],
+          [
+            6.0,
+            0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart",
+        "cavalry"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.0,
+        "surface_type": "paved"
+      },
+      "traffic_capacity": 100,
+      "variant_id": "street_crossroads"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            2.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            15.0,
+            2.5
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 15.0,
+        "width": 5.0
+      },
+      "display_name": "Cobblestone Street",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            15.0,
+            0
+          ],
+          [
+            15.0,
+            5.0
+          ],
+          [
+            0,
+            5.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry",
+        "cart"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.2,
+        "surface_type": "cobblestone"
+      },
+      "traffic_capacity": 60,
+      "variant_id": "street_cobblestone"
+    },
+    {
+      "component_type": "street_segment",
+      "connection_points": [
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "west",
+          "id": "west",
+          "position": [
+            0,
+            1.5
+          ]
+        },
+        {
+          "compatible_with": [
+            "street_segment",
+            "gate"
+          ],
+          "direction": "east",
+          "id": "east",
+          "position": [
+            10.0,
+            1.5
+          ]
+        }
+      ],
+      "dimensions": {
+        "length": 10.0,
+        "width": 3.0
+      },
+      "display_name": "Dirt Path",
+      "footprint": {
+        "origin": "center_base",
+        "shape": "rectangle",
+        "vertices": [
+          [
+            0,
+            0
+          ],
+          [
+            10.0,
+            0
+          ],
+          [
+            10.0,
+            3.0
+          ],
+          [
+            0,
+            3.0
+          ]
+        ]
+      },
+      "passable_by": [
+        "infantry"
+      ],
+      "properties": {
+        "blocks_los": false,
+        "blocks_movement": false,
+        "movement_bonus": 1.0,
+        "surface_type": "dirt"
+      },
+      "traffic_capacity": 15,
+      "variant_id": "path_dirt"
+    }
+  ],
+  "total_components": 50
+}

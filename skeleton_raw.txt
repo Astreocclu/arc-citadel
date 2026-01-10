@@ -1,0 +1,364 @@
+```json
+{
+  "wall_segments": [
+    {
+      "variant_id": "stone_wall_short_001",
+      "display_name": "Short Stone Wall",
+      "description": "Compact defensive wall, 2m long, 2m high, 0.5m thick",
+      "intended_purpose": "Quick cover in tight spaces",
+      "geometry_placeholder": "FILL_RECTANGLE_2x0.5"
+    },
+    {
+      "variant_id": "stone_wall_standard_001",
+      "display_name": "Standard Stone Wall",
+      "description": "Basic defensive wall, 3m long, 2.5m high, 0.5m thick",
+      "intended_purpose": "Basic infantry cover",
+      "geometry_placeholder": "FILL_RECTANGLE_3x0.5"
+    },
+    {
+      "variant_id": "stone_wall_long_001",
+      "display_name": "Long Stone Wall",
+      "description": "Extended defensive wall, 6m long, 3m high, 0.5m thick",
+      "intended_purpose": "Cover for multiple squads",
+      "geometry_placeholder": "FILL_RECTANGLE_6x0.5"
+    },
+    {
+      "variant_id": "stone_wall_tall_001",
+      "display_name": "Tall Fortification Wall",
+      "description": "Imposing defensive wall, 4m long, 5m high, 0.5m thick",
+      "intended_purpose": "High cover against archers",
+      "geometry_placeholder": "FILL_RECTANGLE_4x0.5"
+    },
+    {
+      "variant_id": "stone_wall_gate_adjacent",
+      "display_name": "Gate Adjacent Wall",
+      "description": "Special wall segment, 2.5m long, 3m high, 0.5m thick, designed to connect to gates",
+      "intended_purpose": "Structural connector for gatehouses",
+      "geometry_placeholder": "FILL_RECTANGLE_2.5x0.5"
+    },
+    {
+      "variant_id": "stone_wall_curved",
+      "display_name": "Curved Wall Segment",
+      "description": "Gentle curve wall, 4m chord length, 2.5m high, 0.5m thick, 60-degree arc",
+      "intended_purpose": "Follow terrain contours",
+      "geometry_placeholder": "FILL_CURVED_4x0.5"
+    },
+    {
+      "variant_id": "wooden_palisade_short",
+      "display_name": "Short Wooden Palisade",
+      "description": "Wooden defensive wall, 2.5m long, 1.8m high, 0.3m thick",
+      "intended_purpose": "Quick temporary fortifications",
+      "geometry_placeholder": "FILL_RECTANGLE_2.5x0.3"
+    },
+    {
+      "variant_id": "wooden_palisade_long",
+      "display_name": "Long Wooden Palisade",
+      "description": "Extended wooden wall, 5m long, 2m high, 0.3m thick",
+      "intended_purpose": "Field fortifications",
+      "geometry_placeholder": "FILL_RECTANGLE_5x0.3"
+    },
+    {
+      "variant_id": "stone_wall_corner_inner",
+      "display_name": "Inner Corner Wall",
+      "description": "90-degree inner corner wall segment, 2m arms, 2.5m high",
+      "intended_purpose": "Create defensive corners",
+      "geometry_placeholder": "FILL_L_SHAPE_2x2"
+    },
+    {
+      "variant_id": "stone_wall_corner_outer",
+      "display_name": "Outer Corner Wall",
+      "description": "90-degree outer corner wall segment, 2m arms, 2.5m high",
+      "intended_purpose": "Create projecting defensive positions",
+      "geometry_placeholder": "FILL_L_SHAPE_2x2"
+    }
+  ],
+  "archer_towers": [
+    {
+      "variant_id": "watchtower_square_small",
+      "display_name": "Small Square Watchtower",
+      "description": "Compact square tower, 4m base, 8m height, 360-degree firing arc",
+      "intended_purpose": "Basic observation and defense",
+      "geometry_placeholder": "FILL_SQUARE_4x4"
+    },
+    {
+      "variant_id": "watchtower_square_standard",
+      "display_name": "Standard Square Watchtower",
+      "description": "Square tower, 6m base, 12m height, 360-degree firing arc",
+      "intended_purpose": "Full coverage observation point",
+      "geometry_placeholder": "FILL_SQUARE_6x6"
+    },
+    {
+      "variant_id": "watchtower_square_large",
+      "display_name": "Large Square Watchtower",
+      "description": "Large square tower, 8m base, 15m height, 360-degree firing arc",
+      "intended_purpose": "Major defensive position with room for multiple archers",
+      "geometry_placeholder": "FILL_SQUARE_8x8"
+    },
+    {
+      "variant_id": "watchtower_round_small",
+      "display_name": "Small Round Watchtower",
+      "description": "Compact round tower, 4m diameter, 10m height, 360-degree firing arc",
+      "intended_purpose": "Defensive position with no blind corners",
+      "geometry_placeholder": "FILL_CIRCLE_2R"
+    },
+    {
+      "variant_id": "watchtower_round_large",
+      "display_name": "Large Round Watchtower",
+      "description": "Round tower, 7m diameter, 14m height, 360-degree firing arc",
+      "intended_purpose": "Major defensive bastion",
+      "geometry_placeholder": "FILL_CIRCLE_3.5R"
+    },
+    {
+      "variant_id": "corner_tower_halfmoon",
+      "display_name": "Half-Moon Corner Tower",
+      "description": "Semi-circular tower, 6m radius, 10m height, 180-degree firing arc",
+      "intended_purpose": "Wall corner defense projecting outward",
+      "geometry_placeholder": "FILL_SEMICIRCLE_6R"
+    },
+    {
+      "variant_id": "gate_tower_rectangular",
+      "display_name": "Rectangular Gate Tower",
+      "description": "Rectangular tower flanking gates, 5m x 8m base, 12m height, 270-degree firing arc",
+      "intended_purpose": "Gate defense with focused coverage",
+      "geometry_placeholder": "FILL_RECTANGLE_5x8"
+    },
+    {
+      "variant_id": "wall_tower_hexagonal",
+      "display_name": "Hexagonal Wall Tower",
+      "description": "Hexagonal tower integrated into walls, 5m across flats, 11m height, 360-degree firing arc",
+      "intended_purpose": "Wall reinforcement with overlapping fields of fire",
+      "geometry_placeholder": "FILL_HEXAGON_5W"
+    },
+    {
+      "variant_id": "observation_tower_tall",
+      "display_name": "Tall Observation Tower",
+      "description": "Slender tower, 3m base diameter, 18m height, 360-degree firing arc",
+      "intended_purpose": "Long-range observation and signaling",
+      "geometry_placeholder": "FILL_CIRCLE_1.5R"
+    },
+    {
+      "variant_id": "barbican_tower",
+      "display_name": "Barbican Tower",
+      "description": "Heavy defensive tower with overhang, 7m square base, 14m height, 270-degree firing arc with murder holes",
+      "intended_purpose": "Gatehouse defense with downward firing positions",
+      "geometry_placeholder": "FILL_SQUARE_7x7"
+    }
+  ],
+  "trenches": [
+    {
+      "variant_id": "trench_shallow_narrow",
+      "display_name": "Shallow Narrow Trench",
+      "description": "Basic trench, 1m deep, 1m wide, straight segment 4m long",
+      "intended_purpose": "Quick infantry cover in open ground",
+      "geometry_placeholder": "FILL_TRENCH_4x1x1"
+    },
+    {
+      "variant_id": "trench_standard_infantry",
+      "display_name": "Standard Infantry Trench",
+      "description": "Infantry trench, 1.5m deep, 1.5m wide, straight segment 6m long",
+      "intended_purpose": "Protected firing positions for infantry",
+      "geometry_placeholder": "FILL_TRENCH_6x1.5x1.5"
+    },
+    {
+      "variant_id": "trench_deep_anti_cavalry",
+      "display_name": "Deep Anti-Cavalry Trench",
+      "description": "Steep-sided trench, 2m deep, 2m wide, 5m long with sharp angles",
+      "intended_purpose": "Cavalry obstacle and defensive line",
+      "geometry_placeholder": "FILL_TRENCH_5x2x2"
+    },
+    {
+      "variant_id": "trench_wide_supply",
+      "display_name": "Wide Supply Trench",
+      "description": "Broad trench, 1m deep, 3m wide, 8m long",
+      "intended_purpose": "Protected movement of supplies and troops",
+      "geometry_placeholder": "FILL_TRENCH_8x1x3"
+    },
+    {
+      "variant_id": "trench_zigzag_segment",
+      "display_name": "Zigzag Trench Segment",
+      "description": "Trench with 45-degree turns, 1.5m deep, 1.5m wide, 8m total length with 2 turns",
+      "intended_purpose": "Prevent enfilading fire along trench line",
+      "geometry_placeholder": "FILL_ZIGZAG_8x1.5x1.5"
+    },
+    {
+      "variant_id": "trench_communication",
+      "display_name": "Communication Trench",
+      "description": "Narrow connecting trench, 1.2m deep, 1m wide, 10m long",
+      "intended_purpose": "Safe movement between positions",
+      "geometry_placeholder": "FILL_TRENCH_10x1.2x1"
+    },
+    {
+      "variant_id": "trench_firing_step",
+      "display_name": "Firing Step Trench",
+      "description": "Trench with built-in firing step, 1.8m deep, 2m wide, 4m long with raised platform",
+      "intended_purpose": "Improved firing position with cover",
+      "geometry_placeholder": "FILL_TRENCH_STEP_4x1.8x2"
+    },
+    {
+      "variant_id": "trench_moat_segment",
+      "display_name": "Moat Segment",
+      "description": "Water-filled trench, 3m deep, 4m wide, 8m long with sloping sides",
+      "intended_purpose": "Major obstacle for siege equipment",
+      "geometry_placeholder": "FILL_TRENCH_8x3x4"
+    },
+    {
+      "variant_id": "trench_sapper",
+      "display_name": "Sapper's Trench",
+      "description": "Very deep narrow trench, 3m deep, 0.8m wide, 6m long",
+      "intended_purpose": "Approach trench for sappers and miners",
+      "geometry_placeholder": "FILL_TRENCH_6x3x0.8"
+    },
+    {
+      "variant_id": "trench_artillery",
+      "display_name": "Artillery Emplacement",
+      "description": "Wide deep trench with flat bottom, 2m deep, 4m wide, 6m long",
+      "intended_purpose": "Protected position for siege engines",
+      "geometry_placeholder": "FILL_TRENCH_6x2x4"
+    }
+  ],
+  "gates": [
+    {
+      "variant_id": "gate_small_foot",
+      "display_name": "Small Foot Gate",
+      "description": "Narrow gate for infantry, 3m wide, 4m tall opening, with simple doors",
+      "intended_purpose": "Controlled pedestrian access",
+      "geometry_placeholder": "FILL_GATE_3x4"
+    },
+    {
+      "variant_id": "gate_standard_cart",
+      "display_name": "Standard Cart Gate",
+      "description": "Main gate for carts and small vehicles, 5m wide, 5m tall opening, reinforced doors",
+      "intended_purpose": "Primary civilian and supply access",
+      "geometry_placeholder": "FILL_GATE_5x5"
+    },
+    {
+      "variant_id": "gate_large_cavalry",
+      "display_name": "Large Cavalry Gate",
+      "description": "Wide gate for mounted troops, 6m wide, 6m tall opening, double doors",
+      "intended_purpose": "Rapid deployment of cavalry",
+      "geometry_placeholder": "FILL_GATE_6x6"
+    },
+    {
+      "variant_id": "gate_siege_equipment",
+      "display_name": "Siege Equipment Gate",
+      "description": "Extra wide gate for siege engines, 8m wide, 7m tall opening, massive reinforced doors",
+      "intended_purpose": "Movement of catapults and rams",
+      "geometry_placeholder": "FILL_GATE_8x7"
+    },
+    {
+      "variant_id": "gate_portcullis_small",
+      "display_name": "Small Portcullis Gate",
+      "description": "Gate with vertical portcullis, 3m wide, 4m tall, iron grille",
+      "intended_purpose": "Quick-closing defensive gate",
+      "geometry_placeholder": "FILL_GATE_3x4"
+    },
+    {
+      "variant_id": "gate_portcullis_large",
+      "display_name": "Large Portcullis Gate",
+      "description": "Large gate with portcullis and doors, 5m wide, 6m tall, layered defense",
+      "intended_purpose": "Heavily defended main entrance",
+      "geometry_placeholder": "FILL_GATE_5x6"
+    },
+    {
+      "variant_id": "gate_sally_port",
+      "display_name": "Sally Port",
+      "description": "Hidden side gate, 2m wide, 2.5m tall, concealed design",
+      "intended_purpose": "Secret exits for sorties",
+      "geometry_placeholder": "FILL_GATE_2x2.5"
+    },
+    {
+      "variant_id": "gate_barbican_entrance",
+      "display_name": "Barbican Entrance",
+      "description": "Gate within fortified barbican, 4m wide, 5m tall, killing zone approach",
+      "intended_purpose": "Trapping attackers in confined space",
+      "geometry_placeholder": "FILL_GATE_4x5"
+    },
+    {
+      "variant_id": "gate_drawbridge",
+      "display_name": "Drawbridge Gate",
+      "description": "Gate with wooden drawbridge, 5m wide, 5m tall, spans moat",
+      "intended_purpose": "Crossing water defenses",
+      "geometry_placeholder": "FILL_GATE_5x5"
+    },
+    {
+      "variant_id": "gate_postern",
+      "display_name": "Postern Gate",
+      "description": "Small rear gate, 2.5m wide, 3m tall, lightly fortified",
+      "intended_purpose": "Emergency exit and resupply",
+      "geometry_placeholder": "FILL_GATE_2.5x3"
+    }
+  ],
+  "street_segments": [
+    {
+      "variant_id": "alley_narrow",
+      "display_name": "Narrow Alley",
+      "description": "Tight passage between buildings, 2m wide, straight 10m segment",
+      "intended_purpose": "Foot traffic in dense urban areas",
+      "geometry_placeholder": "FILL_STREET_10x2"
+    },
+    {
+      "variant_id": "street_residential",
+      "display_name": "Residential Street",
+      "description": "Standard residential street, 4m wide, straight 12m segment",
+      "intended_purpose": "Local traffic and foot travel",
+      "geometry_placeholder": "FILL_STREET_12x4"
+    },
+    {
+      "variant_id": "street_commercial",
+      "display_name": "Commercial Street",
+      "description": "Wide commercial thoroughfare, 6m wide, straight 15m segment",
+      "intended_purpose": "Cart traffic and market access",
+      "geometry_placeholder": "FILL_STREET_15x6"
+    },
+    {
+      "variant_id": "avenue_main",
+      "display_name": "Main Avenue",
+      "description": "Broad main avenue, 8m wide, straight 20m segment",
+      "intended_purpose": "Processional and military routes",
+      "geometry_placeholder": "FILL_STREET_20x8"
+    },
+    {
+      "variant_id": "road_siege",
+      "display_name": "Siege Road",
+      "description": "Extra wide road for siege equipment, 10m wide, straight 25m segment",
+      "intended_purpose": "Movement of large siege engines",
+      "geometry_placeholder": "FILL_STREET_25x10"
+    },
+    {
+      "variant_id": "street_curved_gentle",
+      "display_name": "Gentle Curve Street",
+      "description": "Street with gentle 45-degree curve, 5m wide, 15m arc length",
+      "intended_purpose": "Following terrain or property lines",
+      "geometry_placeholder": "FILL_STREET_CURVE_15x5"
+    },
+    {
+      "variant_id": "street_t_junction",
+      "display_name": "T-Junction Segment",
+      "description": "T-shaped intersection, 5m wide arms, each 10m long",
+      "intended_purpose": "Street intersection",
+      "geometry_placeholder": "FILL_T_JUNCTION_10x5"
+    },
+    {
+      "variant_id": "street_crossroads",
+      "display_name": "Crossroads Segment",
+      "description": "Four-way intersection, 6m wide arms, each 12m long",
+      "intended_purpose": "Major intersection",
+      "geometry_placeholder": "FILL_CROSSROADS_12x6"
+    },
+    {
+      "variant_id": "street_cobblestone",
+      "display_name": "Cobblestone Street",
+      "description": "Paved street segment, 5m wide, 15m long, textured surface",
+      "intended_purpose": "High-quality road in wealthy districts",
+      "geometry_placeholder": "FILL_STREET_15x5"
+    },
+    {
+      "variant_id": "path_dirt",
+      "display_name": "Dirt Path",
+      "description": "Unpaved path, 3m wide, 10m long, rough surface",
+      "intended_purpose": "Rural tracks and informal routes",
+      "geometry_placeholder": "FILL_STREET_10x3"
+    }
+  ]
+}
+```

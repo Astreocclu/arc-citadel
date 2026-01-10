@@ -94,7 +94,8 @@ impl ThoughtBuffer {
     pub fn add(&mut self, thought: Thought) {
         if self.thoughts.len() >= self.max_thoughts {
             // Find the weakest thought
-            if let Some(pos) = self.thoughts
+            if let Some(pos) = self
+                .thoughts
                 .iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| a.intensity.partial_cmp(&b.intensity).unwrap())
@@ -120,21 +121,27 @@ impl ThoughtBuffer {
     }
 
     pub fn strongest(&self) -> Option<&Thought> {
-        self.thoughts.iter()
+        self.thoughts
+            .iter()
             .max_by(|a, b| a.intensity.partial_cmp(&b.intensity).unwrap())
     }
 
     pub fn about_entity(&self, entity: EntityId) -> impl Iterator<Item = &Thought> {
-        self.thoughts.iter()
+        self.thoughts
+            .iter()
             .filter(move |t| t.cause_entity == Some(entity))
     }
 
     pub fn positive(&self) -> impl Iterator<Item = &Thought> {
-        self.thoughts.iter().filter(|t| t.valence == Valence::Positive)
+        self.thoughts
+            .iter()
+            .filter(|t| t.valence == Valence::Positive)
     }
 
     pub fn negative(&self) -> impl Iterator<Item = &Thought> {
-        self.thoughts.iter().filter(|t| t.valence == Valence::Negative)
+        self.thoughts
+            .iter()
+            .filter(|t| t.valence == Valence::Negative)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Thought> {

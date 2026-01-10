@@ -216,7 +216,11 @@ fn test_critical_need_triggers_appropriate_action() {
     run_simulation_tick(&mut world);
 
     let task = world.humans.task_queues[0].current().unwrap();
-    assert_eq!(task.action, ActionId::Eat, "Critical food need should trigger Eat action");
+    assert_eq!(
+        task.action,
+        ActionId::Eat,
+        "Critical food need should trigger Eat action"
+    );
     assert_eq!(
         task.priority,
         TaskPriority::Critical,
@@ -250,8 +254,8 @@ fn test_critical_safety_with_threat_triggers_flee() {
 
 #[test]
 fn test_task_progress_increases() {
-    use arc_citadel::entity::tasks::{Task, TaskPriority};
     use arc_citadel::actions::catalog::ActionId;
+    use arc_citadel::entity::tasks::{Task, TaskPriority};
 
     let mut world = World::new();
     world.spawn_human("Worker".into());
@@ -337,8 +341,12 @@ fn test_different_values_different_behavior() {
     // Both should have selected actions based on values
     // This validates the system runs without crashing with different values
     assert_eq!(world.entity_count(), 2);
-    assert!(world.humans.task_queues[0].current().is_some() || !world.humans.task_queues[0].is_idle());
-    assert!(world.humans.task_queues[1].current().is_some() || !world.humans.task_queues[1].is_idle());
+    assert!(
+        world.humans.task_queues[0].current().is_some() || !world.humans.task_queues[0].is_idle()
+    );
+    assert!(
+        world.humans.task_queues[1].current().is_some() || !world.humans.task_queues[1].is_idle()
+    );
 }
 
 #[test]
@@ -390,7 +398,7 @@ fn test_social_entity_selects_talk() {
 
     // Entity 1 should have a task (IdleWander or IdleObserve, which persist)
     // Entity 0 may or may not have a task (TalkTo without target completes immediately)
-    let entity_0_has_task = world.humans.task_queues[0].current().is_some();
+    let _entity_0_has_task = world.humans.task_queues[0].current().is_some();
     let entity_1_has_task = world.humans.task_queues[1].current().is_some();
 
     // At least Entity 1 should have a persistent idle task
@@ -420,7 +428,7 @@ fn test_social_entity_selects_talk() {
 fn test_value_impulse_from_strong_thought() {
     let mut world = World::new();
     world.spawn_human("Justice Jane".into());
-    world.spawn_human("Victim".into());  // Add a potential target for Help
+    world.spawn_human("Victim".into()); // Add a potential target for Help
 
     // Position entities close together
     world.humans.positions[0] = Vec2::new(0.0, 0.0);
@@ -481,7 +489,14 @@ fn test_thoughts_decay_over_time() {
     world.spawn_human("Thinker".into());
 
     // Add a thought
-    let thought = Thought::new(Valence::Negative, 0.5, "test", "test thought", CauseType::Event, 0);
+    let thought = Thought::new(
+        Valence::Negative,
+        0.5,
+        "test",
+        "test thought",
+        CauseType::Event,
+        0,
+    );
     world.humans.thoughts[0].add(thought);
 
     let initial_intensity = world.humans.thoughts[0]
@@ -510,7 +525,14 @@ fn test_thoughts_can_fade_completely() {
     world.spawn_human("Forgetful".into());
 
     // Add a low-intensity thought that will fade quickly
-    let thought = Thought::new(Valence::Negative, 0.15, "minor", "minor concern", CauseType::Event, 0);
+    let thought = Thought::new(
+        Valence::Negative,
+        0.15,
+        "minor",
+        "minor concern",
+        CauseType::Event,
+        0,
+    );
     world.humans.thoughts[0].add(thought);
 
     // Run many ticks
@@ -873,9 +895,9 @@ fn test_multiple_entities_compete_for_scarce_food() {
         zone_pos,
         15.0,
         Abundance::Scarce {
-            current: 5.0,  // Limited food
+            current: 5.0, // Limited food
             max: 10.0,
-            regen: 0.0,    // No regeneration for this test
+            regen: 0.0, // No regeneration for this test
         },
     );
 
@@ -905,17 +927,14 @@ fn test_multiple_entities_compete_for_scarce_food() {
 
     // At least one entity should have reduced hunger
     let any_ate = world.humans.needs.iter().take(3).any(|n| n.food < 0.9);
-    assert!(
-        any_ate,
-        "At least one entity should have eaten"
-    );
+    assert!(any_ate, "At least one entity should have eaten");
 }
 
 // ============================================================================
 // Social Memory Integration Tests
 // ============================================================================
 
-use arc_citadel::entity::social::{EventType, Disposition, SocialMemoryParams};
+use arc_citadel::entity::social::{Disposition, EventType, SocialMemoryParams};
 
 /// Integration test: Full social memory emergence cycle
 ///
@@ -947,24 +966,9 @@ fn test_social_memory_emergence() {
 
     // Manually seed some initial encounters to ensure relationship formation
     // This simulates what would happen through actual simulation interactions
-    world.humans.social_memories[alice_idx].record_encounter(
-        bob,
-        EventType::FirstMeeting,
-        0.4,
-        0,
-    );
-    world.humans.social_memories[alice_idx].record_encounter(
-        bob,
-        EventType::AidReceived,
-        0.7,
-        100,
-    );
-    world.humans.social_memories[bob_idx].record_encounter(
-        alice,
-        EventType::AidGiven,
-        0.5,
-        100,
-    );
+    world.humans.social_memories[alice_idx].record_encounter(bob, EventType::FirstMeeting, 0.4, 0);
+    world.humans.social_memories[alice_idx].record_encounter(bob, EventType::AidReceived, 0.7, 100);
+    world.humans.social_memories[bob_idx].record_encounter(alice, EventType::AidGiven, 0.5, 100);
     world.humans.social_memories[alice_idx].record_encounter(
         charlie,
         EventType::Transaction,
@@ -981,23 +985,29 @@ fn test_social_memory_emergence() {
     let alice_memory = &world.humans.social_memories[alice_idx];
 
     // Alice should have formed relationships
-    assert!(alice_memory.slots.len() >= 1,
+    assert!(
+        alice_memory.slots.len() >= 1,
         "Alice should know at least one other entity, has {} slots",
-        alice_memory.slots.len());
+        alice_memory.slots.len()
+    );
 
     // Check that dispositions are computed correctly (not Unknown for known entities)
     for slot in &alice_memory.slots {
         let disposition = slot.get_disposition();
         // Should have some disposition, not Unknown (since we seeded memories)
-        assert_ne!(disposition, Disposition::Unknown,
-            "Known entity should have a non-Unknown disposition, got {:?}", disposition);
+        assert_ne!(
+            disposition,
+            Disposition::Unknown,
+            "Known entity should have a non-Unknown disposition, got {:?}",
+            disposition
+        );
     }
 
     // Verify the relationship with Bob specifically (we gave Alice positive memories of Bob)
     let alice_disposition_to_bob = alice_memory.get_disposition(bob);
     assert!(
-        alice_disposition_to_bob == Disposition::Friendly ||
-        alice_disposition_to_bob == Disposition::Favorable,
+        alice_disposition_to_bob == Disposition::Friendly
+            || alice_disposition_to_bob == Disposition::Favorable,
         "Alice should have positive disposition toward Bob after receiving aid, got {:?}",
         alice_disposition_to_bob
     );
@@ -1033,7 +1043,7 @@ fn test_relationship_eviction_when_full() {
     for (i, &entity_id) in entity_ids.iter().enumerate() {
         world.humans.social_memories[observer_idx].record_encounter(
             entity_id,
-            EventType::AidReceived,  // High intensity (0.7) to ensure slot creation
+            EventType::AidReceived, // High intensity (0.7) to ensure slot creation
             0.7,
             i as u64,
         );
@@ -1041,7 +1051,9 @@ fn test_relationship_eviction_when_full() {
 
     // Should not exceed max slots (default is 200)
     let slots = &world.humans.social_memories[observer_idx].slots;
-    let max_slots = world.humans.social_memories[observer_idx].params.max_relationship_slots;
+    let max_slots = world.humans.social_memories[observer_idx]
+        .params
+        .max_relationship_slots;
 
     assert!(
         slots.len() <= max_slots,
@@ -1059,9 +1071,14 @@ fn test_relationship_eviction_when_full() {
 
     // Verify eviction actually occurred (some early entities should have been evicted)
     // The first entities (tick 0) should have lower recency scores and be evicted
-    let evicted_count = entity_ids.iter()
-        .take(10)  // Check first 10 entities
-        .filter(|&&id| world.humans.social_memories[observer_idx].find_slot(id).is_none())
+    let evicted_count = entity_ids
+        .iter()
+        .take(10) // Check first 10 entities
+        .filter(|&&id| {
+            world.humans.social_memories[observer_idx]
+                .find_slot(id)
+                .is_none()
+        })
         .count();
 
     assert!(
@@ -1143,18 +1160,8 @@ fn test_disposition_persistence_through_simulation() {
     world.add_food_zone(Vec2::new(2.5, 0.0), 10.0, Abundance::Unlimited);
 
     // Create a hostile relationship from Alice to Bob
-    world.humans.social_memories[alice_idx].record_encounter(
-        bob,
-        EventType::HarmReceived,
-        0.9,
-        0,
-    );
-    world.humans.social_memories[alice_idx].record_encounter(
-        bob,
-        EventType::Betrayal,
-        0.9,
-        10,
-    );
+    world.humans.social_memories[alice_idx].record_encounter(bob, EventType::HarmReceived, 0.9, 0);
+    world.humans.social_memories[alice_idx].record_encounter(bob, EventType::Betrayal, 0.9, 10);
 
     // Verify initial hostile disposition
     let initial_disposition = world.humans.social_memories[alice_idx].get_disposition(bob);
@@ -1180,7 +1187,9 @@ fn test_disposition_persistence_through_simulation() {
 
     // The slot should still exist
     assert!(
-        world.humans.social_memories[alice_idx].find_slot(bob).is_some(),
+        world.humans.social_memories[alice_idx]
+            .find_slot(bob)
+            .is_some(),
         "Relationship slot should persist through simulation"
     );
 }
@@ -1189,7 +1198,7 @@ fn test_disposition_persistence_through_simulation() {
 // Action Execution Workflow Integration Tests
 // ============================================================================
 
-use arc_citadel::simulation::{ResourceZone, ResourceType};
+use arc_citadel::simulation::{ResourceType, ResourceZone};
 
 /// Integration test: Survival priority chain
 ///
@@ -1214,8 +1223,8 @@ fn test_survival_priority_chain() {
     world.humans.positions[idx] = Vec2::new(0.0, 0.0);
 
     // Very hungry and tired, but feels safe (low safety need enables Rest)
-    world.humans.needs[idx].food = 0.9;   // Critical hunger
-    world.humans.needs[idx].rest = 0.85;  // Critical rest need (triggers Rest action)
+    world.humans.needs[idx].food = 0.9; // Critical hunger
+    world.humans.needs[idx].rest = 0.85; // Critical rest need (triggers Rest action)
     world.humans.needs[idx].safety = 0.1; // Low safety need = safe location
 
     let initial_hunger = world.humans.needs[idx].food;
@@ -1266,7 +1275,7 @@ fn test_social_clustering() {
         let id = world.spawn_human(format!("Person{}", i));
         let idx = world.humans.index_of(id).unwrap();
         world.humans.positions[idx] = Vec2::new(i as f32 * 10.0, 0.0);
-        world.humans.needs[idx].social = 0.8;  // High social need
+        world.humans.needs[idx].social = 0.8; // High social need
         ids.push(id);
     }
 
@@ -1274,12 +1283,12 @@ fn test_social_clustering() {
     // This creates the conditions for social interaction
     for i in 0..4 {
         let idx_a = world.humans.index_of(ids[i]).unwrap();
-        let idx_b = world.humans.index_of(ids[i+1]).unwrap();
+        let idx_b = world.humans.index_of(ids[i + 1]).unwrap();
 
         // Entity A has positive memory of entity B (and vice versa)
         world.humans.social_memories[idx_a].record_encounter(
-            ids[i+1],
-            EventType::AidReceived,  // Creates friendly disposition
+            ids[i + 1],
+            EventType::AidReceived, // Creates friendly disposition
             0.7,
             0,
         );
@@ -1354,11 +1363,11 @@ fn test_resource_gathering_workflow() {
     let id = world.spawn_human("Worker".into());
     let idx = world.humans.index_of(id).unwrap();
     world.humans.positions[idx] = Vec2::new(0.0, 0.0);
-    world.humans.needs[idx].purpose = 0.8;  // High purpose need
+    world.humans.needs[idx].purpose = 0.8; // High purpose need
 
     // Give gather task targeting the resource zone
-    let task = Task::new(ActionId::Gather, TaskPriority::Normal, 0)
-        .with_position(Vec2::new(20.0, 0.0));
+    let task =
+        Task::new(ActionId::Gather, TaskPriority::Normal, 0).with_position(Vec2::new(20.0, 0.0));
     world.humans.task_queues[idx].push(task);
 
     let initial_resources = world.resource_zones[0].current;
@@ -1441,7 +1450,11 @@ fn test_full_year_simulation() {
     assert_eq!(state.day_of_year, 1, "Day of year should reset to 1");
 
     // Season should be back to Spring
-    assert_eq!(state.season, Season::Spring, "Season should reset to Spring");
+    assert_eq!(
+        state.season,
+        Season::Spring,
+        "Season should reset to Spring"
+    );
 }
 
 /// Integration test: Light levels vary through the day
@@ -1584,11 +1597,8 @@ fn test_founding_conditions_integration() {
     );
 
     // Calculate founding modifiers based on current astronomical state
-    let modifiers = FoundingModifiers::calculate(
-        state.day_of_year,
-        state.season,
-        &state.active_events,
-    );
+    let modifiers =
+        FoundingModifiers::calculate(state.day_of_year, state.season, &state.active_events);
 
     // Deep winter (day_of_year >= 300) should trigger siege_mentality
     assert!(

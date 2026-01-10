@@ -1,9 +1,9 @@
 //! Vampire-specific polity behavior - Manipulator archetype
 
+use crate::aggregate::behavior::PolityBehavior;
+use crate::aggregate::events::EventType;
 use crate::aggregate::polity::Polity;
 use crate::aggregate::world::AggregateWorld;
-use crate::aggregate::events::EventType;
-use crate::aggregate::behavior::PolityBehavior;
 use crate::core::types::PolityId;
 
 pub struct VampireBehavior;
@@ -54,15 +54,22 @@ fn find_thrall_target(polity: &Polity, world: &AggregateWorld) -> Option<PolityI
     // Find wealthy neighbors not already in thrall network
     let state = polity.vampire_state()?;
 
-    world.get_neighbors(polity.id)
+    world
+        .get_neighbors(polity.id)
         .into_iter()
-        .filter(|&neighbor_id| {
-            !state.thrall_network.contains(&neighbor_id.0)
-        })
+        .filter(|&neighbor_id| !state.thrall_network.contains(&neighbor_id.0))
         .max_by(|&a, &b| {
-            let wealth_a = world.get_polity_by_polity_id(a).map(|p| p.economic_strength).unwrap_or(0.0);
-            let wealth_b = world.get_polity_by_polity_id(b).map(|p| p.economic_strength).unwrap_or(0.0);
-            wealth_a.partial_cmp(&wealth_b).unwrap_or(std::cmp::Ordering::Equal)
+            let wealth_a = world
+                .get_polity_by_polity_id(a)
+                .map(|p| p.economic_strength)
+                .unwrap_or(0.0);
+            let wealth_b = world
+                .get_polity_by_polity_id(b)
+                .map(|p| p.economic_strength)
+                .unwrap_or(0.0);
+            wealth_a
+                .partial_cmp(&wealth_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
         })
 }
 
@@ -75,7 +82,7 @@ pub fn tick(polity: &Polity, world: &AggregateWorld, year: u32) -> Vec<EventType
 mod tests {
     use super::*;
     use crate::aggregate::polity::*;
-    use crate::core::types::{PolityId, Species, PolityTier, GovernmentType};
+    use crate::core::types::{GovernmentType, PolityId, PolityTier, Species};
     use std::collections::HashMap;
 
     fn create_test_polity() -> Polity {
@@ -93,6 +100,7 @@ mod tests {
             capital: 0,
             military_strength: 100.0,
             economic_strength: 100.0,
+            founding_conditions: FoundingConditions::default(),
             cultural_drift: CulturalDrift::default(),
             relations: HashMap::new(),
             species_state: SpeciesState::Vampire(VampireState::default()),
@@ -109,8 +117,8 @@ mod tests {
     }
 
     fn create_test_world() -> AggregateWorld {
-        use rand_chacha::ChaCha8Rng;
         use rand_chacha::rand_core::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
 
         AggregateWorld::new(vec![], vec![], ChaCha8Rng::seed_from_u64(42))
     }
@@ -129,7 +137,9 @@ mod tests {
 
         let events = VampireBehavior.tick(&polity, &world, 1);
 
-        assert!(events.iter().any(|e| matches!(e, EventType::TributeDemanded { .. })));
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, EventType::TributeDemanded { .. })));
     }
 
     #[test]
@@ -139,7 +149,9 @@ mod tests {
 
         let events = VampireBehavior.tick(&polity, &world, 1);
 
-        assert!(!events.iter().any(|e| matches!(e, EventType::TributeDemanded { .. })));
+        assert!(!events
+            .iter()
+            .any(|e| matches!(e, EventType::TributeDemanded { .. })));
     }
 
     #[test]
@@ -154,7 +166,7 @@ mod tests {
                 infiltrator: PolityId(1),
                 target: PolityId(2),
             },
-            &world
+            &world,
         );
 
         let final_thralls = polity.vampire_state().unwrap().thrall_network.len();
@@ -174,7 +186,7 @@ mod tests {
                 to: PolityId(1),
                 amount: 50,
             },
-            &world
+            &world,
         );
 
         let final_debt = polity.vampire_state().unwrap().blood_debt_owed;

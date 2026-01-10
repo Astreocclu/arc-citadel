@@ -1,0 +1,104 @@
+# Wooden House Blueprint
+# A basic residential dwelling
+
+[meta]
+id = "wooden_house"
+name = "Wooden House"
+category = "building"
+origin = "constructed"
+description = "A simple wooden dwelling for common folk"
+
+[parameters]
+width = { type = "float", min = 4.0, max = 12.0, default = 6.0 }
+depth = { type = "float", min = 4.0, max = 10.0, default = 5.0 }
+stories = { type = "int", min = 1, max = 2, default = 1 }
+
+[geometry]
+width = "width"
+depth = "depth"
+height = "stories * 3.0"
+shape = "rectangle"
+
+[stats.military]
+max_hp = "width * depth * stories * 15"
+hardness = "1"
+cover_value = "1.0"
+blocks_movement = "1"
+blocks_los = "1"
+movement_cost = "999"
+flammable = "1"
+elevation = "0"
+
+[stats.civilian]
+pedestrian_capacity = "stories * 4"
+cart_accessible = "0"
+worker_capacity = "0"
+storage_capacity = "width * depth * 2"
+prestige_modifier = "0.2"
+
+[construction]
+base_time = "width * depth * stories * 30"
+labor_cap = "4"
+
+[construction.cost]
+wood = "width * depth * stories * 8"
+nails = "width * depth * stories * 20"
+
+[[construction.stages]]
+id = "foundation"
+progress_threshold = 0.0
+height_multiplier = 0.1
+visual_state = "foundation"
+
+[[construction.stages]]
+id = "frame"
+progress_threshold = 0.3
+height_multiplier = 0.6
+visual_state = "frame"
+
+[[construction.stages]]
+id = "walls"
+progress_threshold = 0.6
+height_multiplier = 0.9
+visual_state = "walls"
+
+[[construction.stages]]
+id = "complete"
+progress_threshold = 1.0
+height_multiplier = 1.0
+visual_state = "complete"
+
+[[anchors]]
+name = "door"
+position = ["0", "depth / 2", "0"]
+direction = "south"
+tags = ["entrance", "door"]
+
+[[damage_states]]
+name = "intact"
+threshold = 0.75
+visual_overlay = ""
+tags = []
+creates_breach = false
+produces_rubble = false
+
+[[damage_states]]
+name = "damaged"
+threshold = 0.4
+visual_overlay = "damaged"
+tags = ["damaged"]
+creates_breach = false
+produces_rubble = false
+[damage_states.overrides]
+cover_value = 0.7
+
+[[damage_states]]
+name = "burned"
+threshold = 0.0
+visual_overlay = "burned"
+tags = ["destroyed", "burned"]
+creates_breach = true
+produces_rubble = true
+[damage_states.overrides]
+cover_value = 0.2
+blocks_movement = false

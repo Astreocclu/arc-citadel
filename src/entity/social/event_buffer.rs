@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use crate::core::types::EntityId;
 use super::event_types::EventType;
+use crate::core::types::EntityId;
+use serde::{Deserialize, Serialize};
 
 /// A recent event witnessed or performed
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,12 +41,22 @@ impl EventBuffer {
     }
 
     /// Find a recent event by actor and type within last N ticks
-    pub fn find_recent(&self, actor: EntityId, event_type: EventType, within_ticks: u64) -> Option<&RecentEvent> {
-        let min_tick = self.events.last().map(|e| e.tick.saturating_sub(within_ticks)).unwrap_or(0);
+    pub fn find_recent(
+        &self,
+        actor: EntityId,
+        event_type: EventType,
+        within_ticks: u64,
+    ) -> Option<&RecentEvent> {
+        let min_tick = self
+            .events
+            .last()
+            .map(|e| e.tick.saturating_sub(within_ticks))
+            .unwrap_or(0);
 
-        self.events.iter().rev().find(|e| {
-            e.actor == actor && e.event_type == event_type && e.tick >= min_tick
-        })
+        self.events
+            .iter()
+            .rev()
+            .find(|e| e.actor == actor && e.event_type == event_type && e.tick >= min_tick)
     }
 
     /// Get events involving a specific actor
@@ -74,14 +84,30 @@ mod tests {
     fn test_event_buffer_ring() {
         let mut buffer = EventBuffer::new(3); // Small for testing
 
-        buffer.push(RecentEvent { event_type: EventType::Observation, actor: EntityId::new(), tick: 1 });
-        buffer.push(RecentEvent { event_type: EventType::Transaction, actor: EntityId::new(), tick: 2 });
-        buffer.push(RecentEvent { event_type: EventType::AidReceived, actor: EntityId::new(), tick: 3 });
+        buffer.push(RecentEvent {
+            event_type: EventType::Observation,
+            actor: EntityId::new(),
+            tick: 1,
+        });
+        buffer.push(RecentEvent {
+            event_type: EventType::Transaction,
+            actor: EntityId::new(),
+            tick: 2,
+        });
+        buffer.push(RecentEvent {
+            event_type: EventType::AidReceived,
+            actor: EntityId::new(),
+            tick: 3,
+        });
 
         assert_eq!(buffer.len(), 3);
 
         // Push fourth - oldest should be evicted
-        buffer.push(RecentEvent { event_type: EventType::Betrayal, actor: EntityId::new(), tick: 4 });
+        buffer.push(RecentEvent {
+            event_type: EventType::Betrayal,
+            actor: EntityId::new(),
+            tick: 4,
+        });
 
         assert_eq!(buffer.len(), 3);
         assert_eq!(buffer.events[0].tick, 2); // tick 1 evicted
@@ -92,7 +118,11 @@ mod tests {
         let mut buffer = EventBuffer::new(10);
         let actor = EntityId::new();
 
-        buffer.push(RecentEvent { event_type: EventType::AidReceived, actor, tick: 100 });
+        buffer.push(RecentEvent {
+            event_type: EventType::AidReceived,
+            actor,
+            tick: 100,
+        });
 
         let found = buffer.find_recent(actor, EventType::AidReceived, 50);
         assert!(found.is_some());
@@ -120,9 +150,21 @@ mod tests {
         let actor1 = EntityId::new();
         let actor2 = EntityId::new();
 
-        buffer.push(RecentEvent { event_type: EventType::Observation, actor: actor1, tick: 1 });
-        buffer.push(RecentEvent { event_type: EventType::Transaction, actor: actor2, tick: 2 });
-        buffer.push(RecentEvent { event_type: EventType::AidReceived, actor: actor1, tick: 3 });
+        buffer.push(RecentEvent {
+            event_type: EventType::Observation,
+            actor: actor1,
+            tick: 1,
+        });
+        buffer.push(RecentEvent {
+            event_type: EventType::Transaction,
+            actor: actor2,
+            tick: 2,
+        });
+        buffer.push(RecentEvent {
+            event_type: EventType::AidReceived,
+            actor: actor1,
+            tick: 3,
+        });
 
         let actor1_events: Vec<_> = buffer.events_by_actor(actor1).collect();
         assert_eq!(actor1_events.len(), 2);
@@ -134,9 +176,21 @@ mod tests {
         let mut buffer = EventBuffer::new(10);
         let actor = EntityId::new();
 
-        buffer.push(RecentEvent { event_type: EventType::Observation, actor, tick: 10 });
-        buffer.push(RecentEvent { event_type: EventType::Transaction, actor, tick: 20 });
-        buffer.push(RecentEvent { event_type: EventType::AidReceived, actor, tick: 30 });
+        buffer.push(RecentEvent {
+            event_type: EventType::Observation,
+            actor,
+            tick: 10,
+        });
+        buffer.push(RecentEvent {
+            event_type: EventType::Transaction,
+            actor,
+            tick: 20,
+        });
+        buffer.push(RecentEvent {
+            event_type: EventType::AidReceived,
+            actor,
+            tick: 30,
+        });
 
         assert_eq!(buffer.len(), 3);
 
@@ -150,8 +204,16 @@ mod tests {
         let mut buffer = EventBuffer::new(10);
         let actor = EntityId::new();
 
-        buffer.push(RecentEvent { event_type: EventType::AidReceived, actor, tick: 10 });
-        buffer.push(RecentEvent { event_type: EventType::Transaction, actor, tick: 100 });
+        buffer.push(RecentEvent {
+            event_type: EventType::AidReceived,
+            actor,
+            tick: 10,
+        });
+        buffer.push(RecentEvent {
+            event_type: EventType::Transaction,
+            actor,
+            tick: 100,
+        });
 
         // Looking for AidReceived within 50 ticks of most recent (100)
         // min_tick = 100 - 50 = 50, so tick 10 is outside range

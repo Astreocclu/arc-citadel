@@ -4,39 +4,39 @@ use crate::actions::catalog::ActionId;
 use crate::city::building::BuildingId;
 use crate::core::types::{EntityId, Tick, Vec2};
 use crate::entity::body::BodyState;
-use crate::entity::needs::{Needs, NeedType};
+use crate::entity::needs::{NeedType, Needs};
 use crate::entity::social::Disposition;
-use crate::entity::species::human::HumanValues;
-use crate::entity::species::orc::OrcValues;
-use crate::entity::species::kobold::KoboldValues;
-use crate::entity::species::gnoll::GnollValues;
-use crate::entity::species::lizardfolk::LizardfolkValues;
-use crate::entity::species::hobgoblin::HobgoblinValues;
-use crate::entity::species::ogre::OgreValues;
-use crate::entity::species::harpy::HarpyValues;
-use crate::entity::species::centaur::CentaurValues;
-use crate::entity::species::minotaur::MinotaurValues;
-use crate::entity::species::satyr::SatyrValues;
-use crate::entity::species::dryad::DryadValues;
-use crate::entity::species::goblin::GoblinValues;
-use crate::entity::species::troll::TrollValues;
 use crate::entity::species::abyssal_demons::AbyssalDemonsValues;
+use crate::entity::species::centaur::CentaurValues;
+use crate::entity::species::dryad::DryadValues;
 use crate::entity::species::elemental::ElementalValues;
 use crate::entity::species::fey::FeyValues;
-use crate::entity::species::stone_giants::StoneGiantsValues;
+use crate::entity::species::gnoll::GnollValues;
+use crate::entity::species::goblin::GoblinValues;
 use crate::entity::species::golem::GolemValues;
-use crate::entity::species::merfolk::MerfolkValues;
-use crate::entity::species::naga::NagaValues;
-use crate::entity::species::revenant::RevenantValues;
-use crate::entity::species::vampire::VampireValues;
+use crate::entity::species::harpy::HarpyValues;
+use crate::entity::species::hobgoblin::HobgoblinValues;
+use crate::entity::species::human::HumanValues;
+use crate::entity::species::kobold::KoboldValues;
+use crate::entity::species::lizardfolk::LizardfolkValues;
 use crate::entity::species::lupine::LupineValues;
+use crate::entity::species::merfolk::MerfolkValues;
+use crate::entity::species::minotaur::MinotaurValues;
+use crate::entity::species::naga::NagaValues;
+use crate::entity::species::ogre::OgreValues;
+use crate::entity::species::orc::OrcValues;
+use crate::entity::species::revenant::RevenantValues;
+use crate::entity::species::satyr::SatyrValues;
+use crate::entity::species::stone_giants::StoneGiantsValues;
+use crate::entity::species::troll::TrollValues;
+use crate::entity::species::vampire::VampireValues;
 // CODEGEN: species_values_imports
 use crate::core::types::Species;
 use crate::entity::species::value_access::ValueAccessor;
-use crate::rules::SpeciesRules;
-use crate::simulation::rule_eval::{evaluate_action_rules, select_idle_behavior};
 use crate::entity::tasks::{Task, TaskPriority, TaskSource};
 use crate::entity::thoughts::ThoughtBuffer;
+use crate::rules::SpeciesRules;
+use crate::simulation::rule_eval::{evaluate_action_rules, select_idle_behavior};
 
 /// Generic action selection using runtime-loaded rules
 ///
@@ -69,7 +69,12 @@ pub fn select_action_with_rules<V: ValueAccessor>(
 ) -> Option<Task> {
     // Critical needs always take priority (uses universal needs system)
     if let Some(critical) = needs.has_critical() {
-        return select_critical_response_generic(critical, threat_nearby, food_available, current_tick);
+        return select_critical_response_generic(
+            critical,
+            threat_nearby,
+            food_available,
+            current_tick,
+        );
     }
 
     // Don't interrupt existing tasks
@@ -333,7 +338,9 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
 fn check_disposition_response(ctx: &SelectionContext) -> Option<Task> {
     // Check for hostile entities nearby when safety need is elevated
     // Threshold: safety need > 0.5 triggers concern about hostile entities
-    let has_hostile = ctx.perceived_dispositions.iter()
+    let has_hostile = ctx
+        .perceived_dispositions
+        .iter()
         .any(|(_, d)| matches!(d, Disposition::Hostile | Disposition::Suspicious));
 
     if has_hostile && ctx.needs.safety > 0.5 {
@@ -352,7 +359,9 @@ fn check_disposition_response(ctx: &SelectionContext) -> Option<Task> {
 
     // Check for friendly entities when social need is elevated
     // Threshold: social need > 0.5 triggers desire to interact with friends
-    let friendly_target = ctx.perceived_dispositions.iter()
+    let friendly_target = ctx
+        .perceived_dispositions
+        .iter()
         .find(|(_, d)| matches!(d, Disposition::Friendly | Disposition::Favorable))
         .map(|(id, _)| *id);
 
@@ -386,27 +395,47 @@ fn check_value_impulses(ctx: &SelectionContext) -> Option<Task> {
         if thought.intensity > 0.7 {
             // Justice-oriented response to witnessing injustice
             if ctx.values.justice > 0.7 && thought.concept_category == "injustice" {
-                return Some(Task::new(ActionId::Help, TaskPriority::High, ctx.current_tick));
+                return Some(Task::new(
+                    ActionId::Help,
+                    TaskPriority::High,
+                    ctx.current_tick,
+                ));
             }
 
             // Loyalty-driven response to ally in need
             if ctx.values.loyalty > 0.7 && thought.concept_category == "ally_distress" {
-                return Some(Task::new(ActionId::Help, TaskPriority::High, ctx.current_tick));
+                return Some(Task::new(
+                    ActionId::Help,
+                    TaskPriority::High,
+                    ctx.current_tick,
+                ));
             }
 
             // Honor-driven response to challenge
             if ctx.values.honor > 0.7 && thought.concept_category == "challenge" {
-                return Some(Task::new(ActionId::Defend, TaskPriority::High, ctx.current_tick));
+                return Some(Task::new(
+                    ActionId::Defend,
+                    TaskPriority::High,
+                    ctx.current_tick,
+                ));
             }
 
             // Safety-oriented response to perceived danger
             if ctx.values.safety > 0.7 && thought.concept_category == "danger" {
-                return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));
+                return Some(Task::new(
+                    ActionId::Flee,
+                    TaskPriority::High,
+                    ctx.current_tick,
+                ));
             }
 
             // Piety-driven response to sacred events
             if ctx.values.piety > 0.7 && thought.concept_category == "sacred" {
-                return Some(Task::new(ActionId::IdleObserve, TaskPriority::High, ctx.current_tick));
+                return Some(Task::new(
+                    ActionId::IdleObserve,
+                    TaskPriority::High,
+                    ctx.current_tick,
+                ));
             }
         }
     }
@@ -483,15 +512,16 @@ fn select_idle_action(ctx: &SelectionContext) -> Task {
     // Use love + loyalty as social tendency proxy
     let social_tendency = (ctx.values.love + ctx.values.loyalty) / 2.0;
 
-    let action = if ctx.values.curiosity > social_tendency && ctx.values.curiosity > ctx.values.comfort {
-        ActionId::IdleObserve
-    } else if social_tendency > ctx.values.comfort && ctx.entity_nearby {
-        ActionId::TalkTo
-    } else if ctx.values.comfort > 0.7 {
-        ActionId::IdleObserve // Stay put, observe
-    } else {
-        ActionId::IdleWander
-    };
+    let action =
+        if ctx.values.curiosity > social_tendency && ctx.values.curiosity > ctx.values.comfort {
+            ActionId::IdleObserve
+        } else if social_tendency > ctx.values.comfort && ctx.entity_nearby {
+            ActionId::TalkTo
+        } else if ctx.values.comfort > 0.7 {
+            ActionId::IdleObserve // Stay put, observe
+        } else {
+            ActionId::IdleWander
+        };
 
     Task::new(action, TaskPriority::Low, ctx.current_tick)
 }
@@ -680,7 +710,9 @@ fn check_rage_response(ctx: &OrcSelectionContext) -> Option<Task> {
 fn check_blood_debt_response(ctx: &OrcSelectionContext) -> Option<Task> {
     if ctx.values.blood_debt > 0.5 {
         // Look for hostile entities to attack (settling blood debts)
-        let hostile_target = ctx.perceived_dispositions.iter()
+        let hostile_target = ctx
+            .perceived_dispositions
+            .iter()
             .find(|(_, d)| matches!(d, Disposition::Hostile | Disposition::Suspicious))
             .map(|(id, _)| *id);
 
@@ -722,9 +754,13 @@ fn check_dominance_response(ctx: &OrcSelectionContext) -> Option<Task> {
 fn check_clan_loyalty_response(ctx: &OrcSelectionContext) -> Option<Task> {
     if ctx.values.clan_loyalty > 0.7 {
         // Check if friendly entity is nearby with hostile also present
-        let has_friendly = ctx.perceived_dispositions.iter()
+        let has_friendly = ctx
+            .perceived_dispositions
+            .iter()
             .any(|(_, d)| matches!(d, Disposition::Friendly | Disposition::Favorable));
-        let hostile_target = ctx.perceived_dispositions.iter()
+        let hostile_target = ctx
+            .perceived_dispositions
+            .iter()
             .find(|(_, d)| matches!(d, Disposition::Hostile))
             .map(|(id, _)| *id);
 
@@ -757,7 +793,7 @@ fn address_moderate_need_orc(ctx: &OrcSelectionContext) -> Option<Task> {
         NeedType::Food if ctx.food_available => ActionId::Eat,
         NeedType::Rest if ctx.safe_location => ActionId::Rest,
         NeedType::Social if ctx.entity_nearby => ActionId::TalkTo, // Even orcs socialize
-        NeedType::Purpose => ActionId::Gather, // Productive work
+        NeedType::Purpose => ActionId::Gather,                     // Productive work
         NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
         _ => return None,
     };
@@ -818,19 +854,34 @@ pub fn select_action_kobold(ctx: &KoboldSelectionContext) -> Option<Task> {
 
     // Scout and plan ambush locations.
     if ctx.values.cunning > 0.7 {
-return Some(Task::new(ActionId::IdleObserve, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::IdleObserve,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // Run when threatened by stronger foes.
     if ctx.values.cowardice > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Flee,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Collect resources for the warren.
     if ctx.values.industriousness > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_kobold(ctx) {
@@ -943,11 +994,11 @@ fn address_moderate_need_kobold(ctx: &KoboldSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on kobold values
 fn select_idle_action_kobold(ctx: &KoboldSelectionContext) -> Task {
-if ctx.values.cunning > 0.5 {
+    if ctx.values.cunning > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.pack_loyalty > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -981,21 +1032,36 @@ pub fn select_action_gnoll(ctx: &GnollSelectionContext) -> Option<Task> {
 
     // Enter killing frenzy when blood is scented.
     if ctx.values.bloodlust > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Hunt for food.
     if ctx.values.hunger > 0.65 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Coordinate with packmates.
     if ctx.values.pack_instinct > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Follow, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Follow,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_gnoll(ctx) {
@@ -1108,11 +1174,11 @@ fn address_moderate_need_gnoll(ctx: &GnollSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on gnoll values
 fn select_idle_action_gnoll(ctx: &GnollSelectionContext) -> Task {
-if ctx.values.hunger > 0.4 {
+    if ctx.values.hunger > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.dominance > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -1146,21 +1212,36 @@ pub fn select_action_lizardfolk(ctx: &LizardfolkSelectionContext) -> Option<Task
 
     // Retreat when survival is threatened.
     if ctx.values.survival > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Flee,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Hunt efficiently for sustenance.
     if ctx.values.hunger > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Drive intruders from territory.
     if ctx.values.territoriality > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_lizardfolk(ctx) {
@@ -1172,7 +1253,10 @@ if ctx.entity_nearby {
 }
 
 /// Handle critical needs for lizardfolk
-fn select_critical_response_lizardfolk(need: NeedType, ctx: &LizardfolkSelectionContext) -> Option<Task> {
+fn select_critical_response_lizardfolk(
+    need: NeedType,
+    ctx: &LizardfolkSelectionContext,
+) -> Option<Task> {
     match need {
         NeedType::Safety if ctx.threat_nearby => Some(Task {
             action: ActionId::Flee,
@@ -1273,11 +1357,11 @@ fn address_moderate_need_lizardfolk(ctx: &LizardfolkSelectionContext) -> Option<
 
 /// Select an idle action based on lizardfolk values
 fn select_idle_action_lizardfolk(ctx: &LizardfolkSelectionContext) -> Task {
-if ctx.values.patience > 0.5 {
+    if ctx.values.patience > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.pragmatism > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -1311,21 +1395,36 @@ pub fn select_action_hobgoblin(ctx: &HobgoblinSelectionContext) -> Option<Task> 
 
     // Execute orders with precision.
     if ctx.values.discipline > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Follow, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Follow,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Strike at enemies to gain glory.
     if ctx.values.ambition > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Secure resources for the legion.
     if ctx.values.pragmatism > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_hobgoblin(ctx) {
@@ -1337,7 +1436,10 @@ if ctx.entity_nearby {
 }
 
 /// Handle critical needs for hobgoblin
-fn select_critical_response_hobgoblin(need: NeedType, ctx: &HobgoblinSelectionContext) -> Option<Task> {
+fn select_critical_response_hobgoblin(
+    need: NeedType,
+    ctx: &HobgoblinSelectionContext,
+) -> Option<Task> {
     match need {
         NeedType::Safety if ctx.threat_nearby => Some(Task {
             action: ActionId::Flee,
@@ -1438,11 +1540,11 @@ fn address_moderate_need_hobgoblin(ctx: &HobgoblinSelectionContext) -> Option<Ta
 
 /// Select an idle action based on hobgoblin values
 fn select_idle_action_hobgoblin(ctx: &HobgoblinSelectionContext) -> Task {
-if ctx.values.discipline > 0.5 {
+    if ctx.values.discipline > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.honor > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -1476,19 +1578,34 @@ pub fn select_action_ogre(ctx: &OgreSelectionContext) -> Option<Task> {
 
     // Hunt for food, anything edible.
     if ctx.values.hunger > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Smash things that annoy.
     if ctx.values.brutality > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Nap after eating.
     if ctx.values.laziness > 0.8 {
-return Some(Task::new(ActionId::Rest, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::Rest,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_ogre(ctx) {
@@ -1601,11 +1718,11 @@ fn address_moderate_need_ogre(ctx: &OgreSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on ogre values
 fn select_idle_action_ogre(ctx: &OgreSelectionContext) -> Task {
-if ctx.values.laziness > 0.5 {
+    if ctx.values.laziness > 0.5 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.dullness > 0.6 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -1639,21 +1756,36 @@ pub fn select_action_harpy(ctx: &HarpySelectionContext) -> Option<Task> {
 
     // Dive-bomb intruders near the nest.
     if ctx.values.territoriality > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Swoop down to snatch prey.
     if ctx.values.hunger > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Collect shiny objects for the nest.
     if ctx.values.vanity > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::Low, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::Low,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_harpy(ctx) {
@@ -1766,11 +1898,11 @@ fn address_moderate_need_harpy(ctx: &HarpySelectionContext) -> Option<Task> {
 
 /// Select an idle action based on harpy values
 fn select_idle_action_harpy(ctx: &HarpySelectionContext) -> Task {
-if ctx.values.territoriality > 0.5 {
+    if ctx.values.territoriality > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.sisterhood > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -1804,19 +1936,33 @@ pub fn select_action_centaur(ctx: &CentaurSelectionContext) -> Option<Task> {
 
     // Challenge those who insult the herd.
     if ctx.values.honor > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Stand with allies in battle.
     if ctx.values.loyalty > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Follow, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Follow,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Travel to new grazing lands.
     if ctx.values.wanderlust > 0.6 {
-        return Some(Task::new(ActionId::IdleWander, TaskPriority::Normal, ctx.current_tick));
+        return Some(Task::new(
+            ActionId::IdleWander,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
     }
 
     // Address moderate needs
@@ -1930,11 +2076,11 @@ fn address_moderate_need_centaur(ctx: &CentaurSelectionContext) -> Option<Task> 
 
 /// Select an idle action based on centaur values
 fn select_idle_action_centaur(ctx: &CentaurSelectionContext) -> Task {
-if ctx.values.wanderlust > 0.5 {
+    if ctx.values.wanderlust > 0.5 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.pride > 0.4 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -1968,21 +2114,36 @@ pub fn select_action_minotaur(ctx: &MinotaurSelectionContext) -> Option<Task> {
 
     // Charge and gore intruders.
     if ctx.values.rage > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Hunt down trespassers in the maze.
     if ctx.values.territoriality > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Stalk prey through tunnels.
     if ctx.values.hunger > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_minotaur(ctx) {
@@ -1994,7 +2155,10 @@ if ctx.entity_nearby {
 }
 
 /// Handle critical needs for minotaur
-fn select_critical_response_minotaur(need: NeedType, ctx: &MinotaurSelectionContext) -> Option<Task> {
+fn select_critical_response_minotaur(
+    need: NeedType,
+    ctx: &MinotaurSelectionContext,
+) -> Option<Task> {
     match need {
         NeedType::Safety if ctx.threat_nearby => Some(Task {
             action: ActionId::Flee,
@@ -2095,11 +2259,11 @@ fn address_moderate_need_minotaur(ctx: &MinotaurSelectionContext) -> Option<Task
 
 /// Select an idle action based on minotaur values
 fn select_idle_action_minotaur(ctx: &MinotaurSelectionContext) -> Task {
-if ctx.values.isolation > 0.5 {
+    if ctx.values.isolation > 0.5 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.cunning > 0.4 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -2133,17 +2297,32 @@ pub fn select_action_satyr(ctx: &SatyrSelectionContext) -> Option<Task> {
 
     // Run from danger while laughing.
     if ctx.values.cowardice > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Flee,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Indulge in wine and song.
     if ctx.values.hedonism > 0.6 {
-return Some(Task::new(ActionId::Rest, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::Rest,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // Seek targets for pranks.
     if ctx.values.mischief > 0.7 {
-return Some(Task::new(ActionId::IdleWander, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::IdleWander,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_satyr(ctx) {
@@ -2256,11 +2435,11 @@ fn address_moderate_need_satyr(ctx: &SatyrSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on satyr values
 fn select_idle_action_satyr(ctx: &SatyrSelectionContext) -> Task {
-if ctx.values.hedonism > 0.4 {
+    if ctx.values.hedonism > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.nature_bond > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -2294,19 +2473,34 @@ pub fn select_action_dryad(ctx: &DryadSelectionContext) -> Option<Task> {
 
     // Strike down those who harm the forest.
     if ctx.values.protectiveness > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Punish despoilers with nature's fury.
     if ctx.values.wrath > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Commune with the heart-tree.
     if ctx.values.nature_bond > 0.6 {
-return Some(Task::new(ActionId::Rest, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::Rest,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_dryad(ctx) {
@@ -2419,11 +2613,11 @@ fn address_moderate_need_dryad(ctx: &DryadSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on dryad values
 fn select_idle_action_dryad(ctx: &DryadSelectionContext) -> Task {
-if ctx.values.patience > 0.4 {
+    if ctx.values.patience > 0.4 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.nature_bond > 0.5 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -2457,25 +2651,45 @@ pub fn select_action_goblin(ctx: &GoblinSelectionContext) -> Option<Task> {
 
     // Raid a nearby settlement or entity for loot when greed is high.
     if ctx.values.greed > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Gather, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Gather,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Run from a powerful enemy when fear overcomes greed.
     if ctx.values.cowardice > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Flee,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Join allies in a frenzied swarm attack when many are nearby.
     if ctx.values.pack_rage > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Scavenge for food when hungry.
     if ctx.values.hunger > 0.65 {
-return Some(Task::new(ActionId::Eat, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::Eat,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_goblin(ctx) {
@@ -2588,11 +2802,11 @@ fn address_moderate_need_goblin(ctx: &GoblinSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on goblin values
 fn select_idle_action_goblin(ctx: &GoblinSelectionContext) -> Task {
-if ctx.values.sneakiness > 0.6 {
+    if ctx.values.sneakiness > 0.6 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.cowardice > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -2626,25 +2840,45 @@ pub fn select_action_troll(ctx: &TrollSelectionContext) -> Option<Task> {
 
     // Attack any entity that intrudes deep into the troll's territory.
     if ctx.values.territoriality > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Hunt prey to sate growing hunger.
     if ctx.values.hunger > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Enter a furious, reckless charge when severely wounded.
     if ctx.values.rage > 0.85 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Charge,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Stand and fight rather than flee, trusting in regeneration.
     if ctx.values.recklessness > 0.6 {
-return Some(Task::new(ActionId::HoldPosition, TaskPriority::Low, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::HoldPosition,
+            TaskPriority::Low,
+            ctx.current_tick,
+        ));
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_troll(ctx) {
@@ -2757,11 +2991,11 @@ fn address_moderate_need_troll(ctx: &TrollSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on troll values
 fn select_idle_action_troll(ctx: &TrollSelectionContext) -> Task {
-if ctx.values.patience > 0.5 {
+    if ctx.values.patience > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.hunger > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -2795,25 +3029,45 @@ pub fn select_action_abyssal_demons(ctx: &AbyssalDemonsSelectionContext) -> Opti
 
     // Overwhelming hunger drives the demon to assault a target to claim its soul.
     if ctx.values.soul_hunger > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // The demon manifests a structure or altar to spread its corrupting influence in the area.
     if ctx.values.corruptive_urge > 0.8 {
-return Some(Task::new(ActionId::Build, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::Build,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // The demon attempts to parley, offering a deceptive bargain or contract.
     if ctx.values.malicious_cunning > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::TalkTo,
+                TaskPriority::Low,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // A burst of chaotic fury causes the demon to recklessly assault the nearest foe.
     if ctx.values.abyssal_rage > 0.85 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Charge,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_abyssal_demons(ctx) {
@@ -2825,7 +3079,10 @@ if ctx.entity_nearby {
 }
 
 /// Handle critical needs for abyssal_demons
-fn select_critical_response_abyssal_demons(need: NeedType, ctx: &AbyssalDemonsSelectionContext) -> Option<Task> {
+fn select_critical_response_abyssal_demons(
+    need: NeedType,
+    ctx: &AbyssalDemonsSelectionContext,
+) -> Option<Task> {
     match need {
         NeedType::Safety if ctx.threat_nearby => Some(Task {
             action: ActionId::Flee,
@@ -2926,11 +3183,11 @@ fn address_moderate_need_abyssal_demons(ctx: &AbyssalDemonsSelectionContext) -> 
 
 /// Select an idle action based on abyssal_demons values
 fn select_idle_action_abyssal_demons(ctx: &AbyssalDemonsSelectionContext) -> Task {
-if ctx.values.corruptive_urge > 0.6 {
+    if ctx.values.corruptive_urge > 0.6 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.malicious_cunning > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -2964,27 +3221,47 @@ pub fn select_action_elemental(ctx: &ElementalSelectionContext) -> Option<Task> 
 
     // Lash out with raw elemental force at those who have despoiled the land.
     if ctx.values.elemental_rage > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Aggressively drive out intruders from claimed terrain.
     if ctx.values.territorial_instinct > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Charge, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Charge,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // In a moment of clarity, attempt to communicate with another entity.
     if ctx.values.flickering_will > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::TalkTo,
+                TaskPriority::Low,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Seek out terrain of high elemental fitness to manifest more fully.
     if ctx.values.primal_urge > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::MoveTo, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::MoveTo,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_elemental(ctx) {
@@ -2996,7 +3273,10 @@ if ctx.entity_nearby {
 }
 
 /// Handle critical needs for elemental
-fn select_critical_response_elemental(need: NeedType, ctx: &ElementalSelectionContext) -> Option<Task> {
+fn select_critical_response_elemental(
+    need: NeedType,
+    ctx: &ElementalSelectionContext,
+) -> Option<Task> {
     match need {
         NeedType::Safety if ctx.threat_nearby => Some(Task {
             action: ActionId::Flee,
@@ -3097,11 +3377,11 @@ fn address_moderate_need_elemental(ctx: &ElementalSelectionContext) -> Option<Ta
 
 /// Select an idle action based on elemental values
 fn select_idle_action_elemental(ctx: &ElementalSelectionContext) -> Task {
-if ctx.values.primal_urge > 0.4 {
+    if ctx.values.primal_urge > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.flickering_will > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -3135,27 +3415,47 @@ pub fn select_action_fey(ctx: &FeySelectionContext) -> Option<Task> {
 
     // Seeks to engage another entity in conversation, aiming to propose a binding bargain or oath.
     if ctx.values.bargain_hunger > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::TalkTo, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::TalkTo,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Lashes out with cruel magic when malice overcomes whimsy.
     if ctx.values.cruelty > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Retreats from entities perceived to wield or be made of cold iron.
     if ctx.values.fear_of_iron > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Flee,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Defends a claimed site, such as a mushroom ring or ancient tree, from intruders.
     if ctx.values.territoriality > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Defend, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Defend,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_fey(ctx) {
@@ -3268,13 +3568,13 @@ fn address_moderate_need_fey(ctx: &FeySelectionContext) -> Option<Task> {
 
 /// Select an idle action based on fey values
 fn select_idle_action_fey(ctx: &FeySelectionContext) -> Task {
-if ctx.values.whimsy > 0.5 {
+    if ctx.values.whimsy > 0.5 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.whimsy > 0.4 {
         if ctx.entity_nearby {
             return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
         }
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -3308,27 +3608,47 @@ pub fn select_action_stone_giants(ctx: &StoneGiantsSelectionContext) -> Option<T
 
     // Fly into a devastating rage and attack the source of provocation.
     if ctx.values.rage > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Demand tribute or trade from a weaker entity, leveraging size for intimidation.
     if ctx.values.greed > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Trade, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Trade,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Charge at intruders in their territory to drive them off.
     if ctx.values.territoriality > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Charge,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Overcome pride to initiate cautious communication, often gruff and demanding.
     if ctx.values.loneliness > 0.65 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::TalkTo,
+                TaskPriority::Low,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_stone_giants(ctx) {
@@ -3340,7 +3660,10 @@ if ctx.entity_nearby {
 }
 
 /// Handle critical needs for stone_giants
-fn select_critical_response_stone_giants(need: NeedType, ctx: &StoneGiantsSelectionContext) -> Option<Task> {
+fn select_critical_response_stone_giants(
+    need: NeedType,
+    ctx: &StoneGiantsSelectionContext,
+) -> Option<Task> {
     match need {
         NeedType::Safety if ctx.threat_nearby => Some(Task {
             action: ActionId::Flee,
@@ -3441,11 +3764,11 @@ fn address_moderate_need_stone_giants(ctx: &StoneGiantsSelectionContext) -> Opti
 
 /// Select an idle action based on stone_giants values
 fn select_idle_action_stone_giants(ctx: &StoneGiantsSelectionContext) -> Task {
-if ctx.values.pride > 0.6 {
+    if ctx.values.pride > 0.6 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.territoriality > 0.5 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -3479,23 +3802,43 @@ pub fn select_action_golem(ctx: &GolemSelectionContext) -> Option<Task> {
 
     // Stands vigilant at a post, obeying old commands.
     if ctx.values.obedience > 0.75 {
-return Some(Task::new(ActionId::HoldPosition, TaskPriority::High, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::HoldPosition,
+            TaskPriority::High,
+            ctx.current_tick,
+        ));
+    }
 
     // Violently expels intruders from their claimed terrain.
     if ctx.values.territoriality > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Withdraws to a secure location to rest and avoid further damage.
     if ctx.values.weariness > 0.7 {
-return Some(Task::new(ActionId::SeekSafety, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::SeekSafety,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // Attempts cautious communication, a sign of emerging sentience.
     if ctx.values.curiosity > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::TalkTo,
+                TaskPriority::Low,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_golem(ctx) {
@@ -3608,11 +3951,11 @@ fn address_moderate_need_golem(ctx: &GolemSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on golem values
 fn select_idle_action_golem(ctx: &GolemSelectionContext) -> Task {
-if ctx.values.curiosity > 0.4 {
+    if ctx.values.curiosity > 0.4 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.weariness > 0.5 {
         return Task::new(ActionId::Repair, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -3646,21 +3989,36 @@ pub fn select_action_merfolk(ctx: &MerfolkSelectionContext) -> Option<Task> {
 
     // Attack outsiders who encroach on sacred waters.
     if ctx.values.xenophobia > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Initiate trade if the potential profit is high enough.
     if ctx.values.greed > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Trade, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Trade,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Defend the polity's territory against any aggressor.
     if ctx.values.pride > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Defend, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Defend,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_merfolk(ctx) {
@@ -3773,11 +4131,11 @@ fn address_moderate_need_merfolk(ctx: &MerfolkSelectionContext) -> Option<Task> 
 
 /// Select an idle action based on merfolk values
 fn select_idle_action_merfolk(ctx: &MerfolkSelectionContext) -> Task {
-if ctx.values.curiosity > 0.5 {
+    if ctx.values.curiosity > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.pride > 0.3 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -3811,25 +4169,45 @@ pub fn select_action_naga(ctx: &NagaSelectionContext) -> Option<Task> {
 
     // Attack any non-Naga entity that enters a sacred site.
     if ctx.values.territoriality > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Launch a venomous strike against a target that has provoked them.
     if ctx.values.venomous_rage > 0.85 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Charge,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Stand guard at a sacred site or temple entrance.
     if ctx.values.duty > 0.6 {
-return Some(Task::new(ActionId::HoldPosition, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::HoldPosition,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // Attempt to parley with an intelligent trespasser, seeking knowledge or offering a warning.
     if ctx.values.curiosity > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::TalkTo, TaskPriority::Low, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::TalkTo,
+                TaskPriority::Low,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_naga(ctx) {
@@ -3942,11 +4320,11 @@ fn address_moderate_need_naga(ctx: &NagaSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on naga values
 fn select_idle_action_naga(ctx: &NagaSelectionContext) -> Task {
-if ctx.values.curiosity > 0.5 {
+    if ctx.values.curiosity > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.duty > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -3980,25 +4358,45 @@ pub fn select_action_revenant(ctx: &RevenantSelectionContext) -> Option<Task> {
 
     // Overwhelming hunger drives the Revenant to assault the living.
     if ctx.values.hunger_for_life > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Compelled to follow a master or a stronger undead entity.
     if ctx.values.obedience > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Follow, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Follow,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Seeks to expand the borders of its blighted domain.
     if ctx.values.territorial_rot > 0.7 {
-return Some(Task::new(ActionId::MoveTo, TaskPriority::Normal, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::MoveTo,
+            TaskPriority::Normal,
+            ctx.current_tick,
+        ));
+    }
 
     // A burst of fury from a past life fuels a reckless assault.
     if ctx.values.lingering_rage > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Charge,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_revenant(ctx) {
@@ -4010,7 +4408,10 @@ if ctx.entity_nearby {
 }
 
 /// Handle critical needs for revenant
-fn select_critical_response_revenant(need: NeedType, ctx: &RevenantSelectionContext) -> Option<Task> {
+fn select_critical_response_revenant(
+    need: NeedType,
+    ctx: &RevenantSelectionContext,
+) -> Option<Task> {
     match need {
         NeedType::Safety if ctx.threat_nearby => Some(Task {
             action: ActionId::Flee,
@@ -4111,11 +4512,11 @@ fn address_moderate_need_revenant(ctx: &RevenantSelectionContext) -> Option<Task
 
 /// Select an idle action based on revenant values
 fn select_idle_action_revenant(ctx: &RevenantSelectionContext) -> Task {
-if ctx.values.lingering_rage > 0.3 {
+    if ctx.values.lingering_rage > 0.3 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.obedience > 0.4 {
         return Task::new(ActionId::HoldPosition, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -4149,25 +4550,45 @@ pub fn select_action_vampire(ctx: &VampireSelectionContext) -> Option<Task> {
 
     // Overwhelming hunger drives the vampire to feed on the nearest living creature.
     if ctx.values.bloodthirst > 0.8 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // The vampire attempts to charm and enthrall a target, adding them to the thrall network.
     if ctx.values.dominance > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::TalkTo, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::TalkTo,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // When exposed or threatened with discovery, the vampire retreats to a safe, dark location.
     if ctx.values.secrecy > 0.8 {
-return Some(Task::new(ActionId::Flee, TaskPriority::High, ctx.current_tick));    }
+        return Some(Task::new(
+            ActionId::Flee,
+            TaskPriority::High,
+            ctx.current_tick,
+        ));
+    }
 
     // The vampire deigns to negotiate, offering ancient knowledge or artifacts for blood or service.
     if ctx.values.arrogance > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Trade, TaskPriority::Low, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Trade,
+                TaskPriority::Low,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_vampire(ctx) {
@@ -4280,11 +4701,11 @@ fn address_moderate_need_vampire(ctx: &VampireSelectionContext) -> Option<Task> 
 
 /// Select an idle action based on vampire values
 fn select_idle_action_vampire(ctx: &VampireSelectionContext) -> Task {
-if ctx.values.ennui > 0.5 {
+    if ctx.values.ennui > 0.5 {
         return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.dominance > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -4318,27 +4739,47 @@ pub fn select_action_lupine(ctx: &LupineSelectionContext) -> Option<Task> {
 
     // The beast takes over, launching into a furious, infectious attack.
     if ctx.values.bestial_rage > 0.85 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Charge, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Charge,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Leaps to the aid of a threatened packmate.
     if ctx.values.pack_loyalty > 0.75 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Defend, TaskPriority::High, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Defend,
+                TaskPriority::High,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // A flicker of humanity allows for wary parley.
     if ctx.values.human_restraint > 0.6 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::TalkTo, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::TalkTo,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Defends claimed territory from intruders.
     if ctx.values.territorial_hunger > 0.7 {
-if ctx.entity_nearby {
-            return Some(Task::new(ActionId::Attack, TaskPriority::Normal, ctx.current_tick));
-        }    }
+        if ctx.entity_nearby {
+            return Some(Task::new(
+                ActionId::Attack,
+                TaskPriority::Normal,
+                ctx.current_tick,
+            ));
+        }
+    }
 
     // Address moderate needs
     if let Some(task) = address_moderate_need_lupine(ctx) {
@@ -4451,13 +4892,13 @@ fn address_moderate_need_lupine(ctx: &LupineSelectionContext) -> Option<Task> {
 
 /// Select an idle action based on lupine values
 fn select_idle_action_lupine(ctx: &LupineSelectionContext) -> Task {
-if ctx.values.territorial_hunger > 0.4 {
+    if ctx.values.territorial_hunger > 0.4 {
         return Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick);
     } else if ctx.values.pack_loyalty > 0.5 {
         if ctx.entity_nearby {
             return Task::new(ActionId::Follow, TaskPriority::Low, ctx.current_tick);
         }
-    } 
+    }
     // Default idle behavior
     Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
@@ -4466,7 +4907,7 @@ if ctx.values.territorial_hunger > 0.4 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entity::thoughts::{Thought, Valence, CauseType};
+    use crate::entity::thoughts::{CauseType, Thought, Valence};
 
     #[test]
     fn test_critical_safety_need_with_threat() {
@@ -4838,7 +5279,9 @@ mod tests {
         let task = task.unwrap();
         assert_eq!(task.action, ActionId::MoveTo);
         // Check target_position coordinates since Vec2 doesn't implement PartialEq
-        let target = task.target_position.expect("Expected target_position to be set");
+        let target = task
+            .target_position
+            .expect("Expected target_position to be set");
         assert!((target.x - 100.0).abs() < 0.001);
         assert!((target.y - 100.0).abs() < 0.001);
     }

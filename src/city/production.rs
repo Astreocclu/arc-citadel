@@ -132,7 +132,10 @@ mod tests {
         }
 
         // Should have completed exactly 1 cycle
-        assert_eq!(total_cycles, 1, "Should complete exactly 1 production cycle");
+        assert_eq!(
+            total_cycles, 1,
+            "Should complete exactly 1 production cycle"
+        );
 
         // Should have produced food (farm_food outputs 5 food)
         assert_eq!(stockpile.get(ResourceType::Food), 5);
@@ -160,8 +163,15 @@ mod tests {
         }
 
         // With 0 workers, production_rate = 0, so no progress
-        assert_eq!(total_cycles, 0, "Should not complete any cycles with 0 workers");
-        assert_eq!(stockpile.get(ResourceType::Food), 0, "Should not have produced any food");
+        assert_eq!(
+            total_cycles, 0,
+            "Should not complete any cycles with 0 workers"
+        );
+        assert_eq!(
+            stockpile.get(ResourceType::Food),
+            0,
+            "Should not have produced any food"
+        );
     }
 
     #[test]
@@ -189,8 +199,15 @@ mod tests {
         }
 
         // Should not complete because no ore available
-        assert_eq!(total_cycles, 0, "Should not complete cycles without required inputs");
-        assert_eq!(stockpile.get(ResourceType::Iron), 0, "Should not produce iron without ore");
+        assert_eq!(
+            total_cycles, 0,
+            "Should not complete cycles without required inputs"
+        );
+        assert_eq!(
+            stockpile.get(ResourceType::Iron),
+            0,
+            "Should not produce iron without ore"
+        );
     }
 
     #[test]
@@ -222,11 +239,22 @@ mod tests {
         }
 
         // Should complete 2 cycles
-        assert_eq!(total_cycles, 2, "Should complete exactly 2 production cycles");
+        assert_eq!(
+            total_cycles, 2,
+            "Should complete exactly 2 production cycles"
+        );
 
         // Should have consumed all ore (6) and produced 2 iron
-        assert_eq!(stockpile.get(ResourceType::Ore), 0, "Should have consumed all ore");
-        assert_eq!(stockpile.get(ResourceType::Iron), 2, "Should have produced 2 iron");
+        assert_eq!(
+            stockpile.get(ResourceType::Ore),
+            0,
+            "Should have consumed all ore"
+        );
+        assert_eq!(
+            stockpile.get(ResourceType::Iron),
+            2,
+            "Should have produced 2 iron"
+        );
     }
 
     #[test]
@@ -275,14 +303,28 @@ mod tests {
         }
 
         // Farm: ~2 cycles (210/100 with floating point)
-        assert!(farm_cycles >= 2, "Farm should complete at least 2 cycles, got {}", farm_cycles);
+        assert!(
+            farm_cycles >= 2,
+            "Farm should complete at least 2 cycles, got {}",
+            farm_cycles
+        );
 
         // Cloth: ~5 cycles (210/40 = 5.25, limited by 20 wood / 2 = 10 possible)
-        assert!(cloth_cycles >= 4, "Workshop should complete at least 4 cloth cycles, got {}", cloth_cycles);
+        assert!(
+            cloth_cycles >= 4,
+            "Workshop should complete at least 4 cloth cycles, got {}",
+            cloth_cycles
+        );
 
         // Check outputs
-        assert!(stockpile.get(ResourceType::Food) >= 10, "Should have at least 10 food");
-        assert!(stockpile.get(ResourceType::Cloth) >= 4, "Should have at least 4 cloth");
+        assert!(
+            stockpile.get(ResourceType::Food) >= 10,
+            "Should have at least 10 food"
+        );
+        assert!(
+            stockpile.get(ResourceType::Cloth) >= 4,
+            "Should have at least 4 cloth"
+        );
     }
 
     #[test]
@@ -333,7 +375,10 @@ mod tests {
         }
 
         // iter_producing filters out non-complete buildings
-        assert_eq!(total_cycles, 0, "Under-construction buildings should not produce");
+        assert_eq!(
+            total_cycles, 0,
+            "Under-construction buildings should not produce"
+        );
     }
 
     #[test]
@@ -363,7 +408,10 @@ mod tests {
 
         // With bonus rate (1.2), should complete more than with base rate (1.0)
         // 50 * (1.2/50) = 1.2 progress, so 1 cycle complete
-        assert_eq!(total_cycles, 1, "Should complete 1 cycle with bonus workers in 50 ticks");
+        assert_eq!(
+            total_cycles, 1,
+            "Should complete 1 cycle with bonus workers in 50 ticks"
+        );
     }
 
     #[test]
@@ -385,7 +433,10 @@ mod tests {
         tick_production(&mut buildings, &recipes, &mut stockpile);
 
         // Progress should have reset to near 0 (might have small progress from current tick)
-        assert!(buildings.production_progress[0] < 0.02,
-            "Progress should reset after completion, got {}", buildings.production_progress[0]);
+        assert!(
+            buildings.production_progress[0] < 0.02,
+            "Progress should reset after completion, got {}",
+            buildings.production_progress[0]
+        );
     }
 }

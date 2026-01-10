@@ -1,12 +1,12 @@
 //! Kobold entity archetype and values
 
-use serde::{Deserialize, Serialize};
 use crate::core::types::{EntityId, Vec2};
-use crate::entity::needs::Needs;
-use crate::entity::thoughts::ThoughtBuffer;
-use crate::entity::tasks::TaskQueue;
 use crate::entity::body::BodyState;
+use crate::entity::needs::Needs;
 use crate::entity::social::SocialMemory;
+use crate::entity::tasks::TaskQueue;
+use crate::entity::thoughts::ThoughtBuffer;
+use serde::{Deserialize, Serialize};
 
 /// Kobold-specific value vocabulary
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -53,17 +53,38 @@ impl crate::entity::species::value_access::ValueAccessor for KoboldValues {
 
     fn set_value(&mut self, field_name: &str, value: f32) -> bool {
         match field_name {
-            "cunning" => { self.cunning = value; true }
-            "cowardice" => { self.cowardice = value; true }
-            "industriousness" => { self.industriousness = value; true }
-            "pack_loyalty" => { self.pack_loyalty = value; true }
-            "spite" => { self.spite = value; true }
+            "cunning" => {
+                self.cunning = value;
+                true
+            }
+            "cowardice" => {
+                self.cowardice = value;
+                true
+            }
+            "industriousness" => {
+                self.industriousness = value;
+                true
+            }
+            "pack_loyalty" => {
+                self.pack_loyalty = value;
+                true
+            }
+            "spite" => {
+                self.spite = value;
+                true
+            }
             _ => false,
         }
     }
 
     fn field_names() -> &'static [&'static str] {
-        &["cunning", "cowardice", "industriousness", "pack_loyalty", "spite"]
+        &[
+            "cunning",
+            "cowardice",
+            "industriousness",
+            "pack_loyalty",
+            "spite",
+        ]
     }
 }
 

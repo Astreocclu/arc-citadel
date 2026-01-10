@@ -1,8 +1,8 @@
 //! Stockpile - settlement-level resource storage
 
+use crate::simulation::resource_zone::ResourceType;
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
-use crate::simulation::resource_zone::ResourceType;
 
 /// A stockpile holding resources for a settlement
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -29,7 +29,10 @@ impl Stockpile {
 
     /// Get capacity for a resource
     pub fn capacity(&self, resource: ResourceType) -> u32 {
-        self.resources.get(&resource).map(|(_, cap)| *cap).unwrap_or(0)
+        self.resources
+            .get(&resource)
+            .map(|(_, cap)| *cap)
+            .unwrap_or(0)
     }
 
     /// Try to add resources, returns amount actually added
@@ -54,7 +57,9 @@ impl Stockpile {
 
     /// Check if stockpile has enough of all required materials
     pub fn has_materials(&self, requirements: &[(ResourceType, u32)]) -> bool {
-        requirements.iter().all(|(res, amount)| self.get(*res) >= *amount)
+        requirements
+            .iter()
+            .all(|(res, amount)| self.get(*res) >= *amount)
     }
 
     /// Consume materials for construction, returns true if successful
@@ -96,15 +101,10 @@ mod tests {
         stockpile.add(ResourceType::Wood, 50);
         stockpile.add(ResourceType::Stone, 30);
 
-        let requirements = vec![
-            (ResourceType::Wood, 20),
-            (ResourceType::Stone, 10),
-        ];
+        let requirements = vec![(ResourceType::Wood, 20), (ResourceType::Stone, 10)];
         assert!(stockpile.has_materials(&requirements));
 
-        let too_much = vec![
-            (ResourceType::Wood, 100),
-        ];
+        let too_much = vec![(ResourceType::Wood, 100)];
         assert!(!stockpile.has_materials(&too_much));
     }
 
@@ -114,10 +114,7 @@ mod tests {
         stockpile.add(ResourceType::Wood, 50);
         stockpile.add(ResourceType::Stone, 30);
 
-        let requirements = vec![
-            (ResourceType::Wood, 20),
-            (ResourceType::Stone, 10),
-        ];
+        let requirements = vec![(ResourceType::Wood, 20), (ResourceType::Stone, 10)];
 
         assert!(stockpile.consume_materials(&requirements));
         assert_eq!(stockpile.get(ResourceType::Wood), 30);

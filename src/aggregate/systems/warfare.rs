@@ -2,9 +2,9 @@
 
 use rand::Rng;
 
-use crate::aggregate::world::{AggregateWorld, War, WarState, WarCause};
+use crate::aggregate::events::{EventType, HistoryLog};
 use crate::aggregate::polity::{Polity, SpeciesState};
-use crate::aggregate::events::{HistoryLog, EventType};
+use crate::aggregate::world::{AggregateWorld, War, WarCause, WarState};
 use crate::core::types::Species;
 
 /// Update a polity's war exhaustion and morale after combat
@@ -54,7 +54,11 @@ pub fn resolve_active_wars(world: &mut AggregateWorld, history: &mut HistoryLog,
             WarYearOutcome::RegionChanged { region, from, to } => {
                 transfer_region(world, region, from, to);
                 history.add_event(
-                    EventType::RegionLost { loser: from, winner: to, region },
+                    EventType::RegionLost {
+                        loser: from,
+                        winner: to,
+                        region,
+                    },
                     year,
                     vec![from, to],
                     Some(region),
@@ -84,7 +88,11 @@ pub fn resolve_active_wars(world: &mut AggregateWorld, history: &mut HistoryLog,
 
                 // Update war exhaustion and morale based on outcome
                 if let Some(winner_id) = victor {
-                    let loser_id = if winner_id == aggressor { defender } else { aggressor };
+                    let loser_id = if winner_id == aggressor {
+                        defender
+                    } else {
+                        aggressor
+                    };
                     if let Some(winner) = world.get_polity_mut(winner_id) {
                         update_war_state(winner, true, 0.5);
                     }
@@ -104,7 +112,9 @@ pub fn resolve_active_wars(world: &mut AggregateWorld, history: &mut HistoryLog,
     }
 
     // Remove concluded wars
-    world.active_wars.retain(|w| !matches!(w.state, WarState::Concluded { .. }));
+    world
+        .active_wars
+        .retain(|w| !matches!(w.state, WarState::Concluded { .. }));
 }
 
 enum WarYearOutcome {
@@ -116,12 +126,20 @@ enum WarYearOutcome {
 fn resolve_war_year(war: &War, world: &AggregateWorld, _year: u32) -> WarYearOutcome {
     let aggressor = match world.get_polity(war.aggressor) {
         Some(p) if p.alive => p,
-        _ => return WarYearOutcome::Ended { victor: Some(war.defender) },
+        _ => {
+            return WarYearOutcome::Ended {
+                victor: Some(war.defender),
+            }
+        }
     };
 
     let defender = match world.get_polity(war.defender) {
         Some(p) if p.alive => p,
-        _ => return WarYearOutcome::Ended { victor: Some(war.aggressor) },
+        _ => {
+            return WarYearOutcome::Ended {
+                victor: Some(war.aggressor),
+            }
+        }
     };
 
     // Calculate relative strength
@@ -159,15 +177,19 @@ fn resolve_war_year(war: &War, world: &AggregateWorld, _year: u32) -> WarYearOut
     let defender_exhausted = is_war_exhausted(defender, world);
 
     // Dwarves never accept exhaustion for grudge wars
-    let aggressor_gives_up = aggressor_exhausted &&
-        !(aggressor.species == Species::Dwarf && matches!(war.cause, WarCause::Grudge(_)));
+    let aggressor_gives_up = aggressor_exhausted
+        && !(aggressor.species == Species::Dwarf && matches!(war.cause, WarCause::Grudge(_)));
 
     if aggressor_gives_up {
-        return WarYearOutcome::Ended { victor: Some(war.defender) };
+        return WarYearOutcome::Ended {
+            victor: Some(war.defender),
+        };
     }
 
     if defender_exhausted {
-        return WarYearOutcome::Ended { victor: Some(war.aggressor) };
+        return WarYearOutcome::Ended {
+            victor: Some(war.aggressor),
+        };
     }
 
     WarYearOutcome::Continues
@@ -177,28 +199,34 @@ fn calculate_war_strength(polity: &Polity, _war: &War, world: &AggregateWorld) -
     let base = polity.military_strength;
 
     // Get regions controlled by this polity (territory now tracked via region.controller)
-    let our_regions: Vec<&crate::aggregate::region::Region> = world.regions.iter()
+    let our_regions: Vec<&crate::aggregate::region::Region> = world
+        .regions
+        .iter()
         .filter(|r| r.controller == Some(polity.id.0))
         .collect();
 
     let region_count = our_regions.len().max(1);
 
     // Terrain bonus if defending
-    let terrain_bonus: f32 = our_regions.iter()
+    let terrain_bonus: f32 = our_regions
+        .iter()
         .map(|r| match r.terrain {
             crate::aggregate::region::Terrain::Mountain => 0.3,
             crate::aggregate::region::Terrain::Hills => 0.15,
             crate::aggregate::region::Terrain::Forest => 0.1,
             _ => 0.0,
         })
-        .sum::<f32>() / region_count as f32;
+        .sum::<f32>()
+        / region_count as f32;
 
     base * (1.0 + terrain_bonus)
 }
 
 fn is_war_exhausted(polity: &Polity, world: &AggregateWorld) -> bool {
     // Count regions controlled by this polity (territory now tracked via region.controller)
-    let region_count = world.regions.iter()
+    let region_count = world
+        .regions
+        .iter()
         .filter(|r| r.controller == Some(polity.id.0))
         .count();
 

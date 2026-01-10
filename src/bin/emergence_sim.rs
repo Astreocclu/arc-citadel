@@ -1,12 +1,12 @@
 //! 10-minute emergence simulation
 //! Observes what patterns emerge from 10,000 autonomous entities
 
-use std::time::{Duration, Instant};
-use std::collections::HashMap;
-use arc_citadel::ecs::world::{World, Abundance};
-use arc_citadel::core::types::Vec2;
-use arc_citadel::simulation::tick::run_simulation_tick;
 use arc_citadel::actions::catalog::ActionId;
+use arc_citadel::core::types::Vec2;
+use arc_citadel::ecs::world::{Abundance, World};
+use arc_citadel::simulation::tick::run_simulation_tick;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 fn main() {
     let duration = Duration::from_secs(10 * 60); // 10 minutes
@@ -14,14 +14,20 @@ fn main() {
 
     println!("╔══════════════════════════════════════════════════════════════╗");
     println!("║          ARC CITADEL: 10-MINUTE EMERGENCE SIMULATION         ║");
-    println!("║                    {} entities                             ║", count);
+    println!(
+        "║                    {} entities                             ║",
+        count
+    );
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 
     let mut world = World::new();
     let mut rng_seed = 42u64;
 
     // Spawn entities with varied personalities
-    println!("Spawning {} entities with diverse personalities...\n", count);
+    println!(
+        "Spawning {} entities with diverse personalities...\n",
+        count
+    );
     for i in 0..count {
         world.spawn_human(generate_name(i, &mut rng_seed));
 
@@ -65,14 +71,20 @@ fn main() {
             world.add_food_zone(
                 Vec2::new(x as f32, y as f32),
                 50.0,
-                Abundance::Scarce { current: 500.0, max: 500.0, regen: 5.0 },
+                Abundance::Scarce {
+                    current: 500.0,
+                    max: 500.0,
+                    regen: 5.0,
+                },
             );
         }
     }
 
-    println!("Created {} food zones (4 abundant corners, {} scarce center)\n",
+    println!(
+        "Created {} food zones (4 abundant corners, {} scarce center)\n",
         world.food_zones.len(),
-        world.food_zones.len() - 4);
+        world.food_zones.len() - 4
+    );
 
     // Track emergence
     let mut tracker = EmergenceTracker::new();
@@ -106,7 +118,8 @@ fn main() {
                 events.join(", ")
             };
 
-            println!("{:>4}:{:02} | {:>7} | {:>7.1} | {}",
+            println!(
+                "{:>4}:{:02} | {:>7} | {:>7.1} | {}",
                 elapsed.as_secs() / 60,
                 elapsed.as_secs() % 60,
                 tick_count,
@@ -194,8 +207,10 @@ impl EmergenceTracker {
         for (action, count) in &action_counts {
             let pct = *count as f64 / total as f64 * 100.0;
             if pct > 30.0 && !matches!(action, ActionId::IdleWander | ActionId::IdleObserve) {
-                self.recent_events.push(format!("{:.0}% doing {:?}", pct, action));
-                self.all_events.push((tick, format!("{:.0}% doing {:?}", pct, action)));
+                self.recent_events
+                    .push(format!("{:.0}% doing {:?}", pct, action));
+                self.all_events
+                    .push((tick, format!("{:.0}% doing {:?}", pct, action)));
             }
         }
 
@@ -236,7 +251,8 @@ impl EmergenceTracker {
         if critical > world.humans.ids.len() / 4 {
             let pct = critical as f64 / world.humans.ids.len() as f64 * 100.0;
             self.recent_events.push(format!("{:.0}% in crisis", pct));
-            self.all_events.push((tick, format!("{:.0}% in crisis", pct)));
+            self.all_events
+                .push((tick, format!("{:.0}% in crisis", pct)));
         }
 
         self.need_snapshots.push(snapshot);
@@ -264,9 +280,25 @@ impl EmergenceTracker {
                     let end = last.get(action).unwrap_or(&0);
                     if *start > 0 || *end > 0 {
                         let delta = *end as i64 - *start as i64;
-                        let symbol = if delta > 100 { "↑" } else if delta < -100 { "↓" } else { "→" };
-                        println!("    {:?}: {} {} {} {}", action, start, symbol, end,
-                            if delta.abs() > 100 { format!("({:+})", delta) } else { String::new() });
+                        let symbol = if delta > 100 {
+                            "↑"
+                        } else if delta < -100 {
+                            "↓"
+                        } else {
+                            "→"
+                        };
+                        println!(
+                            "    {:?}: {} {} {} {}",
+                            action,
+                            start,
+                            symbol,
+                            end,
+                            if delta.abs() > 100 {
+                                format!("({:+})", delta)
+                            } else {
+                                String::new()
+                            }
+                        );
                     }
                 }
             }
@@ -275,13 +307,42 @@ impl EmergenceTracker {
 
         // 2. Need trends
         println!("Need Evolution:");
-        if let (Some(first), Some(last)) = (self.need_snapshots.first(), self.need_snapshots.last()) {
-            println!("  Food:    {:.2} → {:.2} {}", first.avg_food, last.avg_food, trend(first.avg_food, last.avg_food));
-            println!("  Rest:    {:.2} → {:.2} {}", first.avg_rest, last.avg_rest, trend(first.avg_rest, last.avg_rest));
-            println!("  Safety:  {:.2} → {:.2} {}", first.avg_safety, last.avg_safety, trend(first.avg_safety, last.avg_safety));
-            println!("  Social:  {:.2} → {:.2} {}", first.avg_social, last.avg_social, trend(first.avg_social, last.avg_social));
-            println!("  Purpose: {:.2} → {:.2} {}", first.avg_purpose, last.avg_purpose, trend(first.avg_purpose, last.avg_purpose));
-            println!("  Crisis:  {} → {} entities", first.critical_count, last.critical_count);
+        if let (Some(first), Some(last)) = (self.need_snapshots.first(), self.need_snapshots.last())
+        {
+            println!(
+                "  Food:    {:.2} → {:.2} {}",
+                first.avg_food,
+                last.avg_food,
+                trend(first.avg_food, last.avg_food)
+            );
+            println!(
+                "  Rest:    {:.2} → {:.2} {}",
+                first.avg_rest,
+                last.avg_rest,
+                trend(first.avg_rest, last.avg_rest)
+            );
+            println!(
+                "  Safety:  {:.2} → {:.2} {}",
+                first.avg_safety,
+                last.avg_safety,
+                trend(first.avg_safety, last.avg_safety)
+            );
+            println!(
+                "  Social:  {:.2} → {:.2} {}",
+                first.avg_social,
+                last.avg_social,
+                trend(first.avg_social, last.avg_social)
+            );
+            println!(
+                "  Purpose: {:.2} → {:.2} {}",
+                first.avg_purpose,
+                last.avg_purpose,
+                trend(first.avg_purpose, last.avg_purpose)
+            );
+            println!(
+                "  Crisis:  {} → {} entities",
+                first.critical_count, last.critical_count
+            );
         }
         println!();
 
@@ -316,7 +377,10 @@ impl EmergenceTracker {
         for (ptype, actions) in behavior_by_type.iter().take(4) {
             let mut sorted: Vec<_> = actions.iter().collect();
             sorted.sort_by(|a, b| b.1.cmp(a.1));
-            let top_action = sorted.first().map(|(a, _)| format!("{:?}", a)).unwrap_or("none".to_string());
+            let top_action = sorted
+                .first()
+                .map(|(a, _)| format!("{:?}", a))
+                .unwrap_or("none".to_string());
             println!("  {} → mostly {:?}", ptype, top_action);
         }
         println!();
@@ -356,7 +420,9 @@ impl EmergenceTracker {
         // 7. Summary
         println!("=== EMERGENCE SUMMARY ===");
         let stable = self.all_events.len() < 5;
-        let balanced = self.need_snapshots.last()
+        let balanced = self
+            .need_snapshots
+            .last()
             .map(|s| s.critical_count < world.humans.ids.len() / 10)
             .unwrap_or(true);
 
@@ -381,11 +447,15 @@ fn pseudo_random(seed: &mut u64, min: f32, max: f32) -> f32 {
     min + t * (max - min)
 }
 
-fn generate_name(i: usize, seed: &mut u64) -> String {
-    let first_names = ["Ada", "Bjorn", "Cira", "Dag", "Eira", "Finn", "Greta", "Hans",
-                       "Ingrid", "Jorn", "Kira", "Lars", "Mira", "Nils", "Olga", "Per"];
-    let last_names = ["Stone", "River", "Hill", "Wood", "Field", "Brook", "Dale", "Marsh",
-                      "Glen", "Vale", "Cliff", "Shore", "Moor", "Heath", "Fen", "Wold"];
+fn generate_name(_i: usize, seed: &mut u64) -> String {
+    let first_names = [
+        "Ada", "Bjorn", "Cira", "Dag", "Eira", "Finn", "Greta", "Hans", "Ingrid", "Jorn", "Kira",
+        "Lars", "Mira", "Nils", "Olga", "Per",
+    ];
+    let last_names = [
+        "Stone", "River", "Hill", "Wood", "Field", "Brook", "Dale", "Marsh", "Glen", "Vale",
+        "Cliff", "Shore", "Moor", "Heath", "Fen", "Wold",
+    ];
 
     let fi = (pseudo_random(seed, 0.0, 16.0) as usize) % 16;
     let li = (pseudo_random(seed, 0.0, 16.0) as usize) % 16;
@@ -394,12 +464,19 @@ fn generate_name(i: usize, seed: &mut u64) -> String {
 
 fn trend(start: f32, end: f32) -> &'static str {
     let delta = end - start;
-    if delta > 0.1 { "↑ (increasing)" }
-    else if delta < -0.1 { "↓ (decreasing)" }
-    else { "→ (stable)" }
+    if delta > 0.1 {
+        "↑ (increasing)"
+    } else if delta < -0.1 {
+        "↓ (decreasing)"
+    } else {
+        "→ (stable)"
+    }
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max { s.to_string() }
-    else { format!("{}...", &s[..max-3]) }
+    if s.len() <= max {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max - 3])
+    }
 }

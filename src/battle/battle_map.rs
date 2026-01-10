@@ -13,7 +13,7 @@ use crate::core::types::EntityId;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum VisibilityState {
     #[default]
-    Unknown,    // Never seen
+    Unknown, // Never seen
     Remembered, // Seen before, not currently observed
     Observed,   // Currently visible
 }
@@ -44,7 +44,11 @@ impl BattleHex {
     /// Total movement cost including features
     pub fn total_movement_cost(&self) -> f32 {
         let base = self.terrain.movement_cost();
-        let feature_cost: f32 = self.features.iter().map(|f| f.movement_cost_modifier()).sum();
+        let feature_cost: f32 = self
+            .features
+            .iter()
+            .map(|f| f.movement_cost_modifier())
+            .sum();
         base + feature_cost
     }
 
@@ -114,10 +118,7 @@ impl BattleMap {
 
     /// Check if coordinate is within map bounds
     pub fn in_bounds(&self, coord: BattleHexCoord) -> bool {
-        coord.q >= 0
-            && coord.r >= 0
-            && coord.q < self.width as i32
-            && coord.r < self.height as i32
+        coord.q >= 0 && coord.r >= 0 && coord.q < self.width as i32 && coord.r < self.height as i32
     }
 
     /// Check line of sight between two hexes

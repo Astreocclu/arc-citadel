@@ -3,8 +3,8 @@
 //! ResourceZone represents a location where entities can gather resources.
 //! Resources deplete when gathered and slowly regenerate over time.
 
-use serde::{Deserialize, Serialize};
 use crate::core::types::Vec2;
+use serde::{Deserialize, Serialize};
 
 /// Type of resource available in a zone
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -12,9 +12,9 @@ pub enum ResourceType {
     Wood,
     Stone,
     Ore,
-    Iron,   // Processed from Ore
-    Cloth,  // From workshops
-    Food,   // Explicit food resource
+    Iron,  // Processed from Ore
+    Cloth, // From workshops
+    Food,  // Explicit food resource
 }
 
 impl ResourceType {
@@ -86,11 +86,7 @@ mod tests {
 
     #[test]
     fn test_resource_zone_depletion() {
-        let mut zone = ResourceZone::new(
-            Vec2::new(0.0, 0.0),
-            ResourceType::Stone,
-            5.0,
-        );
+        let mut zone = ResourceZone::new(Vec2::new(0.0, 0.0), ResourceType::Stone, 5.0);
 
         let gathered = zone.gather(0.3);
         assert!((gathered - 0.3).abs() < 0.01);
@@ -104,11 +100,7 @@ mod tests {
 
     #[test]
     fn test_resource_zone_regeneration() {
-        let mut zone = ResourceZone::new(
-            Vec2::new(0.0, 0.0),
-            ResourceType::Ore,
-            5.0,
-        );
+        let mut zone = ResourceZone::new(Vec2::new(0.0, 0.0), ResourceType::Ore, 5.0);
 
         // Deplete the zone
         zone.gather(1.0);
@@ -128,11 +120,7 @@ mod tests {
 
     #[test]
     fn test_resource_zone_contains_boundary() {
-        let zone = ResourceZone::new(
-            Vec2::new(0.0, 0.0),
-            ResourceType::Wood,
-            5.0,
-        );
+        let zone = ResourceZone::new(Vec2::new(0.0, 0.0), ResourceType::Wood, 5.0);
 
         // Exactly on the boundary should be contained
         assert!(zone.contains(Vec2::new(5.0, 0.0)));

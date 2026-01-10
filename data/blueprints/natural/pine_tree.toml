@@ -1,0 +1,55 @@
+# Pine Tree Blueprint
+# An evergreen coniferous tree
+
+[meta]
+id = "pine_tree"
+name = "Pine Tree"
+category = "tree"
+origin = "natural"
+description = "A tall evergreen pine tree"
+
+[parameters]
+height = { type = "float", min = 10.0, max = 35.0, default = 20.0 }
+trunk_radius = { type = "float", min = 0.2, max = 1.0, default = 0.4 }
+
+[geometry]
+width = "trunk_radius * 2"
+depth = "trunk_radius * 2"
+height = "height"
+shape = "circle"
+
+[stats.military]
+max_hp = "height * 15"
+hardness = "1"
+cover_value = "0.4"
+blocks_movement = "1"
+blocks_los = "0"
+movement_cost = "2"
+flammable = "1"
+elevation = "0"
+
+[stats.civilian]
+pedestrian_capacity = "0"
+cart_accessible = "0"
+worker_capacity = "0"
+storage_capacity = "0"
+prestige_modifier = "0.05"
+
+[[damage_states]]
+name = "healthy"
+threshold = 0.75
+visual_overlay = ""
+tags = ["living", "harvestable"]
+creates_breach = false
+produces_rubble = false
+
+[[damage_states]]
+name = "fallen"
+threshold = 0.0
+visual_overlay = "fallen"
+tags = ["fallen", "obstacle"]
+creates_breach = false
+produces_rubble = true
+[damage_states.overrides]
+cover_value = 0.5
+blocks_movement = false

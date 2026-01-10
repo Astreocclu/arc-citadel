@@ -8,14 +8,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum BattleTerrain {
     #[default]
-    Open,           // No movement penalty, no cover
-    Rough,          // Slight penalty, light cover
-    Forest,         // Heavy penalty, heavy cover, blocks LOS
-    ShallowWater,   // Moderate penalty, fordable
-    DeepWater,      // Impassable for infantry
-    Cliff,          // Impassable, high ground advantage
-    Road,           // Movement bonus
-    Building,       // Cover, can be occupied
+    Open, // No movement penalty, no cover
+    Rough,        // Slight penalty, light cover
+    Forest,       // Heavy penalty, heavy cover, blocks LOS
+    ShallowWater, // Moderate penalty, fordable
+    DeepWater,    // Impassable for infantry
+    Cliff,        // Impassable, high ground advantage
+    Road,         // Movement bonus
+    Building,     // Cover, can be occupied
 }
 
 impl BattleTerrain {
@@ -77,14 +77,14 @@ impl BattleTerrain {
 /// Terrain features that can exist on a hex (in addition to base terrain)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TerrainFeature {
-    Hill,       // Elevation, vision bonus
-    Ridge,      // Blocks LOS from one side
-    Stream,     // Minor obstacle
-    Bridge,     // Chokepoint
-    Wall,       // Defensive, can be breached
-    Gate,       // Chokepoint, can be closed
-    Tower,      // High ground, archer platform
-    Treeline,   // Concealment at forest edge
+    Hill,     // Elevation, vision bonus
+    Ridge,    // Blocks LOS from one side
+    Stream,   // Minor obstacle
+    Bridge,   // Chokepoint
+    Wall,     // Defensive, can be breached
+    Gate,     // Chokepoint, can be closed
+    Tower,    // High ground, archer platform
+    Treeline, // Concealment at forest edge
 }
 
 impl TerrainFeature {
@@ -95,9 +95,9 @@ impl TerrainFeature {
             TerrainFeature::Ridge => 0.2,
             TerrainFeature::Stream => 0.5,
             TerrainFeature::Bridge => 0.0,
-            TerrainFeature::Wall => 1.0,   // Must climb
-            TerrainFeature::Gate => 0.0,   // If open
-            TerrainFeature::Tower => 0.0,  // Enter from ground
+            TerrainFeature::Wall => 1.0,  // Must climb
+            TerrainFeature::Gate => 0.0,  // If open
+            TerrainFeature::Tower => 0.0, // Enter from ground
             TerrainFeature::Treeline => 0.2,
         }
     }

@@ -1,20 +1,24 @@
-pub mod perception;
-pub mod thought_gen;
-pub mod action_select;
 pub mod action_execute;
-pub mod tick;
-pub mod resource_zone;
-pub mod expectation_formation;
-pub mod violation_detection;
-pub mod rule_eval;
-pub mod value_dynamics;
-pub mod housing;
+pub mod action_select;
 pub mod consumption;
+pub mod expectation_formation;
+pub mod housing;
+pub mod perception;
 pub mod population;
+pub mod resource_zone;
+pub mod rule_eval;
+pub mod thought_gen;
+pub mod tick;
+pub mod value_dynamics;
+pub mod violation_detection;
 
-pub use resource_zone::{ResourceZone, ResourceType};
-pub use expectation_formation::{record_observation, process_observations, infer_patterns_from_action};
-pub use violation_detection::{check_violations, process_violations, ViolationType, check_pattern_violation};
-pub use rule_eval::{evaluate_action_rules, select_idle_behavior};
 pub use action_select::select_action_with_rules;
-pub use value_dynamics::{apply_tick_dynamics, apply_event};
+pub use expectation_formation::{
+    infer_patterns_from_action, process_observations, record_observation,
+};
+pub use resource_zone::{ResourceType, ResourceZone};
+pub use rule_eval::{evaluate_action_rules, select_idle_behavior};
+pub use value_dynamics::{apply_event, apply_tick_dynamics};
+pub use violation_detection::{
+    check_pattern_violation, check_violations, process_violations, ViolationType,
+};

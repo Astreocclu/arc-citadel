@@ -2,9 +2,9 @@
 //!
 //! This module provides the core enums and constants for the astronomical system.
 
+use crate::core::calendar::TimePeriod;
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
-use crate::core::calendar::TimePeriod;
 
 // ============================================================================
 // Constants
@@ -833,15 +833,30 @@ impl FoundingModifiers {
             Season::Winter => "in the harshest season",
         };
 
-        let event_desc = if events.iter().any(|e| matches!(e, CelestialEvent::PerfectDoubleFull)) {
+        let event_desc = if events
+            .iter()
+            .any(|e| matches!(e, CelestialEvent::PerfectDoubleFull))
+        {
             "under the radiant double full moons"
-        } else if events.iter().any(|e| matches!(e, CelestialEvent::PerfectDoubleNew)) {
+        } else if events
+            .iter()
+            .any(|e| matches!(e, CelestialEvent::PerfectDoubleNew))
+        {
             "under lightless skies"
-        } else if events.iter().any(|e| matches!(e, CelestialEvent::DoubleEclipse)) {
+        } else if events
+            .iter()
+            .any(|e| matches!(e, CelestialEvent::DoubleEclipse))
+        {
             "as both moons devoured the sun"
-        } else if events.iter().any(|e| matches!(e, CelestialEvent::BloodEclipse)) {
+        } else if events
+            .iter()
+            .any(|e| matches!(e, CelestialEvent::BloodEclipse))
+        {
             "beneath the blood-darkened sun"
-        } else if events.iter().any(|e| matches!(e, CelestialEvent::SilverEclipse)) {
+        } else if events
+            .iter()
+            .any(|e| matches!(e, CelestialEvent::SilverEclipse))
+        {
             "as silver shadows crossed the sun"
         } else {
             ""
@@ -852,6 +867,58 @@ impl FoundingModifiers {
         } else {
             format!("Founded {} {}", season_desc, event_desc)
         };
+    }
+
+    /// Export as JSON for Python worldgen integration
+    ///
+    /// Produces a JSON object compatible with the Python FoundingContext schema.
+    /// This is used to pass founding conditions from the Rust simulation to
+    /// the Python hex generation pipeline.
+    ///
+    /// # Returns
+    /// A JSON string that can be parsed by Python's `FoundingContext.model_validate_json()`
+    pub fn to_founding_context_json(
+        &self,
+        season: Season,
+        event: Option<CelestialEvent>,
+    ) -> String {
+        // Build season string
+        let season_str = match season {
+            Season::Spring => "spring",
+            Season::Summer => "summer",
+            Season::Autumn => "autumn",
+            Season::Winter => "winter",
+        };
+
+        // Build event string
+        let event_str = event.map(|e| match e {
+            CelestialEvent::FullArgent => "full_argent",
+            CelestialEvent::NewArgent => "new_argent",
+            CelestialEvent::FullSanguine => "full_sanguine",
+            CelestialEvent::NewSanguine => "new_sanguine",
+            CelestialEvent::NearDoubleFull => "near_double_full",
+            CelestialEvent::NearDoubleNew => "near_double_new",
+            CelestialEvent::SilverEclipse => "silver_eclipse",
+            CelestialEvent::BloodEclipse => "blood_eclipse",
+            CelestialEvent::PerfectDoubleFull => "the_radiance",
+            CelestialEvent::PerfectDoubleNew => "the_dark",
+            CelestialEvent::DoubleEclipse => "double_eclipse",
+        });
+
+        // Use serde_json for proper escaping
+        serde_json::json!({
+            "season": season_str,
+            "astronomical_event": event_str,
+            "bias_tags": self.bias_tags,
+            "bias_against": self.bias_against,
+            "flavor": self.flavor_text,
+            "defensive_weight": self.defensive_weight,
+            "underground_preference": self.underground_preference,
+            "martial_culture": self.martial_culture,
+            "secrecy_trait": self.secrecy_trait,
+            "siege_mentality": self.siege_mentality
+        })
+        .to_string()
     }
 }
 
@@ -896,7 +963,10 @@ mod tests {
         assert_eq!(TimePeriod::from(SolarPhase::Dawn), TimePeriod::Morning);
         assert_eq!(TimePeriod::from(SolarPhase::Morning), TimePeriod::Morning);
         assert_eq!(TimePeriod::from(SolarPhase::Midday), TimePeriod::Afternoon);
-        assert_eq!(TimePeriod::from(SolarPhase::Afternoon), TimePeriod::Afternoon);
+        assert_eq!(
+            TimePeriod::from(SolarPhase::Afternoon),
+            TimePeriod::Afternoon
+        );
         assert_eq!(TimePeriod::from(SolarPhase::Dusk), TimePeriod::Evening);
         assert_eq!(TimePeriod::from(SolarPhase::Evening), TimePeriod::Evening);
         assert_eq!(TimePeriod::from(SolarPhase::Night), TimePeriod::Night);
@@ -996,7 +1066,8 @@ mod tests {
         assert!((longitude - 0.0).abs() < 0.01);
 
         // Halfway through precession: node at 180 degrees
-        let longitude = calculate_node_longitude(ARGENT_NODE_PRECESSION / 2, ARGENT_NODE_PRECESSION);
+        let longitude =
+            calculate_node_longitude(ARGENT_NODE_PRECESSION / 2, ARGENT_NODE_PRECESSION);
         assert!((longitude - 180.0).abs() < 0.1);
 
         // Full precession: back to 0 degrees
@@ -1020,10 +1091,16 @@ mod tests {
 
     #[test]
     fn test_moon_state_is_full() {
-        let full_moon = MoonState { phase: 0.5, node_longitude: 0.0 };
+        let full_moon = MoonState {
+            phase: 0.5,
+            node_longitude: 0.0,
+        };
         assert!(full_moon.is_full());
 
-        let new_moon = MoonState { phase: 0.0, node_longitude: 0.0 };
+        let new_moon = MoonState {
+            phase: 0.0,
+            node_longitude: 0.0,
+        };
         assert!(!new_moon.is_full());
         assert!(new_moon.is_new());
     }
@@ -1031,53 +1108,86 @@ mod tests {
     #[test]
     fn test_moon_state_is_new() {
         // Test phase near 0.0
-        let new_moon = MoonState { phase: 0.0, node_longitude: 0.0 };
+        let new_moon = MoonState {
+            phase: 0.0,
+            node_longitude: 0.0,
+        };
         assert!(new_moon.is_new());
 
         // Test phase near 1.0
-        let new_moon = MoonState { phase: 0.98, node_longitude: 0.0 };
+        let new_moon = MoonState {
+            phase: 0.98,
+            node_longitude: 0.0,
+        };
         assert!(new_moon.is_new());
 
         // Test phase at boundary
-        let almost_new = MoonState { phase: 0.04, node_longitude: 0.0 };
+        let almost_new = MoonState {
+            phase: 0.04,
+            node_longitude: 0.0,
+        };
         assert!(almost_new.is_new());
 
         // Test phase just outside boundary
-        let not_new = MoonState { phase: 0.1, node_longitude: 0.0 };
+        let not_new = MoonState {
+            phase: 0.1,
+            node_longitude: 0.0,
+        };
         assert!(!not_new.is_new());
     }
 
     #[test]
     fn test_lunar_light_contribution() {
         // Full moon provides maximum light
-        let full_moon = MoonState { phase: 0.5, node_longitude: 0.0 };
+        let full_moon = MoonState {
+            phase: 0.5,
+            node_longitude: 0.0,
+        };
         assert!((full_moon.light_contribution() - 0.15).abs() < 0.01);
 
         // New moon provides no light
-        let new_moon = MoonState { phase: 0.0, node_longitude: 0.0 };
+        let new_moon = MoonState {
+            phase: 0.0,
+            node_longitude: 0.0,
+        };
         assert!(new_moon.light_contribution() < 0.01);
 
         // Half moon (waxing) provides intermediate light
-        let half_moon = MoonState { phase: 0.25, node_longitude: 0.0 };
+        let half_moon = MoonState {
+            phase: 0.25,
+            node_longitude: 0.0,
+        };
         assert!(half_moon.light_contribution() > 0.0);
         assert!(half_moon.light_contribution() < 0.15);
 
         // Half moon (waning) provides same intermediate light
-        let waning_half = MoonState { phase: 0.75, node_longitude: 0.0 };
-        let waxing_half = MoonState { phase: 0.25, node_longitude: 0.0 };
+        let waning_half = MoonState {
+            phase: 0.75,
+            node_longitude: 0.0,
+        };
+        let waxing_half = MoonState {
+            phase: 0.25,
+            node_longitude: 0.0,
+        };
         assert!((waning_half.light_contribution() - waxing_half.light_contribution()).abs() < 0.01);
     }
 
     #[test]
     fn test_eclipse_possible() {
         // Eclipse possible when node is aligned with sun
-        let moon = MoonState { phase: 0.0, node_longitude: 0.0 };
+        let moon = MoonState {
+            phase: 0.0,
+            node_longitude: 0.0,
+        };
         assert!(moon.eclipse_possible(0.0)); // Aligned
         assert!(moon.eclipse_possible(10.0)); // Within 15 degrees
         assert!(!moon.eclipse_possible(30.0)); // Too far
 
         // Test wraparound near 360 degrees
-        let moon = MoonState { phase: 0.0, node_longitude: 355.0 };
+        let moon = MoonState {
+            phase: 0.0,
+            node_longitude: 355.0,
+        };
         assert!(moon.eclipse_possible(5.0)); // Within 15 degrees across 0
         assert!(moon.eclipse_possible(350.0)); // Within 15 degrees on same side
     }
@@ -1213,7 +1323,7 @@ mod tests {
         let state = AstronomicalState::new(TICKS_PER_DAY);
 
         // At day 0, both moons should be in their initial phase
-        assert!(state.argent.is_new());  // Argent starts at new moon
+        assert!(state.argent.is_new()); // Argent starts at new moon
         assert!(state.sanguine.is_new()); // Sanguine starts at new moon
     }
 
@@ -1433,7 +1543,10 @@ mod tests {
 
         // Step 4: Verify the pattern works correctly
         match &pattern {
-            PatternType::LocationDuring { location_id: loc, time_period: tp } => {
+            PatternType::LocationDuring {
+                location_id: loc,
+                time_period: tp,
+            } => {
                 assert_eq!(*loc, location_id);
                 assert_eq!(*tp, time_period);
             }
@@ -1462,11 +1575,18 @@ mod tests {
         // Verify the patterns are different (demonstrating time-based expectations)
         match (&pattern, &afternoon_pattern) {
             (
-                PatternType::LocationDuring { time_period: tp1, .. },
-                PatternType::LocationDuring { time_period: tp2, .. },
+                PatternType::LocationDuring {
+                    time_period: tp1, ..
+                },
+                PatternType::LocationDuring {
+                    time_period: tp2, ..
+                },
             ) => {
                 // Initial was Night (hour 0), now it's Afternoon (hour 12)
-                assert_ne!(*tp1, *tp2, "Time periods should be different after advancing time");
+                assert_ne!(
+                    *tp1, *tp2,
+                    "Time periods should be different after advancing time"
+                );
             }
             _ => panic!("Expected LocationDuring patterns"),
         }
@@ -1488,7 +1608,10 @@ mod tests {
 
         // Afternoon phases -> Afternoon
         assert_eq!(TimePeriod::from(SolarPhase::Midday), TimePeriod::Afternoon);
-        assert_eq!(TimePeriod::from(SolarPhase::Afternoon), TimePeriod::Afternoon);
+        assert_eq!(
+            TimePeriod::from(SolarPhase::Afternoon),
+            TimePeriod::Afternoon
+        );
 
         // Evening phases -> Evening
         assert_eq!(TimePeriod::from(SolarPhase::Dusk), TimePeriod::Evening);
@@ -1692,7 +1815,10 @@ mod tests {
 
         // Day 200 is outside precomputed range
         let events = state.events_on_day(200);
-        assert!(events.is_empty(), "Day outside range should return empty slice");
+        assert!(
+            events.is_empty(),
+            "Day outside range should return empty slice"
+        );
     }
 
     #[test]
@@ -1727,5 +1853,44 @@ mod tests {
             second_count <= first_count || second_count > 0,
             "Calendar should be recomputed on each call"
         );
+    }
+
+    // ========================================================================
+    // JSON Export Tests
+    // ========================================================================
+
+    #[test]
+    fn test_founding_modifiers_to_founding_context_json() {
+        let modifiers = FoundingModifiers::calculate(
+            340, // Deep winter
+            Season::Winter,
+            &[CelestialEvent::PerfectDoubleNew],
+        );
+
+        let json = modifiers
+            .to_founding_context_json(Season::Winter, Some(CelestialEvent::PerfectDoubleNew));
+
+        // Parse the JSON
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("should be valid JSON");
+
+        // Verify required fields
+        assert_eq!(parsed["season"], "winter");
+        assert_eq!(parsed["astronomical_event"], "the_dark");
+        assert!(parsed["bias_tags"].is_array());
+        assert!(parsed["bias_against"].is_array());
+        assert!(parsed["flavor"].is_string());
+        assert!(parsed["defensive_weight"].is_number());
+        assert!(parsed["siege_mentality"].is_boolean());
+    }
+
+    #[test]
+    fn test_founding_modifiers_json_no_event() {
+        let modifiers = FoundingModifiers::calculate(100, Season::Summer, &[]);
+
+        let json = modifiers.to_founding_context_json(Season::Summer, None);
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("should be valid JSON");
+
+        assert_eq!(parsed["season"], "summer");
+        assert!(parsed["astronomical_event"].is_null());
     }
 }

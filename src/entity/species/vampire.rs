@@ -1,12 +1,12 @@
 //! Vampire entity archetype and values
 
-use serde::{Deserialize, Serialize};
 use crate::core::types::{EntityId, Vec2};
-use crate::entity::needs::Needs;
-use crate::entity::thoughts::ThoughtBuffer;
-use crate::entity::tasks::TaskQueue;
 use crate::entity::body::BodyState;
+use crate::entity::needs::Needs;
 use crate::entity::social::SocialMemory;
+use crate::entity::tasks::TaskQueue;
+use crate::entity::thoughts::ThoughtBuffer;
+use serde::{Deserialize, Serialize};
 
 /// Vampire-specific value vocabulary
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -53,11 +53,26 @@ impl crate::entity::species::value_access::ValueAccessor for VampireValues {
 
     fn set_value(&mut self, field_name: &str, value: f32) -> bool {
         match field_name {
-            "bloodthirst" => { self.bloodthirst = value; true }
-            "arrogance" => { self.arrogance = value; true }
-            "secrecy" => { self.secrecy = value; true }
-            "dominance" => { self.dominance = value; true }
-            "ennui" => { self.ennui = value; true }
+            "bloodthirst" => {
+                self.bloodthirst = value;
+                true
+            }
+            "arrogance" => {
+                self.arrogance = value;
+                true
+            }
+            "secrecy" => {
+                self.secrecy = value;
+                true
+            }
+            "dominance" => {
+                self.dominance = value;
+                true
+            }
+            "ennui" => {
+                self.ennui = value;
+                true
+            }
             _ => false,
         }
     }

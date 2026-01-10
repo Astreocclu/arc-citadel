@@ -3,12 +3,12 @@
 //! BehaviorPattern represents what an entity expects from another entity's behavior.
 //! PatternType categorizes the different kinds of behavioral expectations.
 
-use serde::{Deserialize, Serialize};
-use crate::core::types::EntityId;
-use crate::core::calendar::TimePeriod;
-use crate::actions::catalog::ActionCategory;
 use super::event_types::EventType;
 use super::service_types::{ServiceType, TraitIndicator};
+use crate::actions::catalog::ActionCategory;
+use crate::core::calendar::TimePeriod;
+use crate::core::types::EntityId;
+use serde::{Deserialize, Serialize};
 
 // Constants
 pub const PRIOR_WEIGHT: f32 = 2.0;
@@ -29,10 +29,16 @@ pub enum PatternType {
     BehavesWithTrait { trait_indicator: TraitIndicator },
 
     /// "They're at this location during this time"
-    LocationDuring { location_id: EntityId, time_period: TimePeriod },
+    LocationDuring {
+        location_id: EntityId,
+        time_period: TimePeriod,
+    },
 
     /// "They respond to this event with this action type"
-    RespondsToEvent { event_type: EventType, typical_response: ActionCategory },
+    RespondsToEvent {
+        event_type: EventType,
+        typical_response: ActionCategory,
+    },
 }
 
 /// A behavioral expectation about an entity
@@ -100,7 +106,9 @@ mod tests {
     #[test]
     fn test_pattern_creation() {
         let pattern = BehaviorPattern::new(
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting,
+            },
             100,
         );
         assert_eq!(pattern.observation_count, 1);
@@ -112,7 +120,9 @@ mod tests {
     #[test]
     fn test_confidence_calculation() {
         let mut pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Reliable,
+            },
             0,
         );
 
@@ -131,7 +141,9 @@ mod tests {
     #[test]
     fn test_violation_reduces_confidence() {
         let mut pattern = BehaviorPattern::new(
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Trading },
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Trading,
+            },
             0,
         );
 
@@ -152,7 +164,9 @@ mod tests {
     #[test]
     fn test_salience_boost_on_observation() {
         let mut pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Generous,
+            },
             0,
         );
 
@@ -166,7 +180,9 @@ mod tests {
     #[test]
     fn test_salience_capped_at_one() {
         let mut pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Peaceful },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Peaceful,
+            },
             0,
         );
 
@@ -181,7 +197,9 @@ mod tests {
     #[test]
     fn test_apply_decay() {
         let mut pattern = BehaviorPattern::new(
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Helping },
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Helping,
+            },
             0,
         );
 
@@ -194,7 +212,9 @@ mod tests {
     #[test]
     fn test_is_stale() {
         let mut pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Reliable,
+            },
             0,
         );
 
@@ -221,7 +241,10 @@ mod tests {
         );
 
         match &pattern.pattern_type {
-            PatternType::LocationDuring { location_id: loc, time_period } => {
+            PatternType::LocationDuring {
+                location_id: loc,
+                time_period,
+            } => {
                 assert_eq!(*loc, location_id);
                 assert_eq!(*time_period, TimePeriod::Morning);
             }
@@ -240,7 +263,10 @@ mod tests {
         );
 
         match &pattern.pattern_type {
-            PatternType::RespondsToEvent { event_type, typical_response } => {
+            PatternType::RespondsToEvent {
+                event_type,
+                typical_response,
+            } => {
                 assert_eq!(*event_type, EventType::HarmReceived);
                 assert_eq!(*typical_response, ActionCategory::Combat);
             }
@@ -255,7 +281,9 @@ mod tests {
 
         // 1 observation, 0 violations: 1 / (1 + 0 + 2) = 1/3 = 0.333...
         let pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Reliable,
+            },
             0,
         );
         assert!((pattern.confidence - (1.0 / 3.0)).abs() < 0.001);
@@ -270,7 +298,9 @@ mod tests {
     #[test]
     fn test_last_violated_updates() {
         let mut pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Aggressive },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Aggressive,
+            },
             0,
         );
 
@@ -286,7 +316,9 @@ mod tests {
     #[test]
     fn test_last_confirmed_updates() {
         let mut pattern = BehaviorPattern::new(
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Labor },
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Labor,
+            },
             100,
         );
 

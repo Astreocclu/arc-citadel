@@ -39,16 +39,23 @@ impl Needs {
             (NeedType::Social, self.social),
             (NeedType::Purpose, self.purpose),
         ];
-        needs.into_iter()
+        needs
+            .into_iter()
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
             .unwrap()
     }
 
     /// Check if any need is critical (> 0.8)
     pub fn has_critical(&self) -> Option<NeedType> {
-        if self.safety > 0.8 { return Some(NeedType::Safety); }
-        if self.food > 0.8 { return Some(NeedType::Food); }
-        if self.rest > 0.8 { return Some(NeedType::Rest); }
+        if self.safety > 0.8 {
+            return Some(NeedType::Safety);
+        }
+        if self.food > 0.8 {
+            return Some(NeedType::Food);
+        }
+        if self.rest > 0.8 {
+            return Some(NeedType::Rest);
+        }
         None
     }
 
@@ -67,10 +74,10 @@ impl Needs {
         let activity_mult = if is_active { 1.5 } else { 1.0 };
 
         // Needs INCREASE over time (0.0 = satisfied, 1.0 = desperate)
-        self.rest += 0.001 * dt * activity_mult;  // Fastest when active
-        self.food += 0.0005 * dt;                  // Half of rest rate
-        self.social += 0.0003 * dt;                // Slow social pressure
-        self.purpose += 0.0002 * dt;               // Slowest - aimlessness builds gradually
+        self.rest += 0.001 * dt * activity_mult; // Fastest when active
+        self.food += 0.0005 * dt; // Half of rest rate
+        self.social += 0.0003 * dt; // Slow social pressure
+        self.purpose += 0.0002 * dt; // Slowest - aimlessness builds gradually
 
         // Safety DECREASES when no threats (opposite of other needs)
         // This prevents entities from being permanently scared

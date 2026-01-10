@@ -80,14 +80,14 @@ impl Element {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum UnitStance {
     #[default]
-    Formed,     // In formation, ready
-    Moving,     // Moving to position
-    Engaged,    // In combat
-    Shaken,     // Morale damaged
-    Routing,    // Fleeing
-    Rallying,   // Reforming after rout
-    Patrol,     // Scouting stance
-    Alert,      // High awareness
+    Formed, // In formation, ready
+    Moving,   // Moving to position
+    Engaged,  // In combat
+    Shaken,   // Morale damaged
+    Routing,  // Fleeing
+    Rallying, // Reforming after rout
+    Patrol,   // Scouting stance
+    Alert,    // High awareness
 }
 
 /// Formation shape for units
@@ -121,9 +121,12 @@ pub struct BattleUnit {
     // State
     pub stance: UnitStance,
     pub formation_shape: FormationShape,
-    pub cohesion: f32,   // 0.0 (scattered) to 1.0 (tight)
-    pub fatigue: f32,    // 0.0 (fresh) to 1.0 (exhausted)
-    pub stress: f32,     // Accumulated stress
+    pub cohesion: f32, // 0.0 (scattered) to 1.0 (tight)
+    pub fatigue: f32,  // 0.0 (fresh) to 1.0 (exhausted)
+    pub stress: f32,   // Accumulated stress
+
+    // Rally tracking
+    pub rallying_since: Option<u64>, // Tick when unit started rallying
 
     // Casualties
     pub casualties: u32,
@@ -143,6 +146,7 @@ impl BattleUnit {
             cohesion: 1.0,
             fatigue: 0.0,
             stress: 0.0,
+            rallying_since: None,
             casualties: 0,
         }
     }
@@ -372,7 +376,9 @@ mod tests {
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
 
         for _ in 0..10 {
-            formation.units.push(BattleUnit::new(UnitId::new(), UnitType::Infantry));
+            formation
+                .units
+                .push(BattleUnit::new(UnitId::new(), UnitType::Infantry));
         }
 
         // Break 4 units (40%) - not broken

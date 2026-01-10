@@ -2,9 +2,9 @@
 //!
 //! NO PERCENTAGE MODIFIERS. Categorical comparison only.
 
-use serde::{Deserialize, Serialize};
-use crate::combat::weapons::Edge;
 use crate::combat::armor::Rigidity;
+use crate::combat::weapons::Edge;
+use serde::{Deserialize, Serialize};
 
 /// Result of edge vs rigidity comparison
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -32,10 +32,14 @@ pub enum PenetrationResult {
 ///
 /// # Returns
 /// Categorical penetration result (no percentages)
-pub fn resolve_penetration(edge: Edge, rigidity: Rigidity, has_piercing: bool) -> PenetrationResult {
+pub fn resolve_penetration(
+    edge: Edge,
+    rigidity: Rigidity,
+    has_piercing: bool,
+) -> PenetrationResult {
     use Edge::*;
-    use Rigidity::*;
     use PenetrationResult::*;
+    use Rigidity::*;
 
     // Base lookup table (NO MULTIPLICATION)
     let base_result = match (edge, rigidity) {
@@ -107,7 +111,12 @@ mod tests {
     fn test_all_edge_rigidity_combinations() {
         // Verify all combinations produce valid results (no panics)
         for edge in [Edge::Razor, Edge::Sharp, Edge::Blunt] {
-            for rigidity in [Rigidity::Cloth, Rigidity::Leather, Rigidity::Mail, Rigidity::Plate] {
+            for rigidity in [
+                Rigidity::Cloth,
+                Rigidity::Leather,
+                Rigidity::Mail,
+                Rigidity::Plate,
+            ] {
                 for piercing in [false, true] {
                     let _ = resolve_penetration(edge, rigidity, piercing);
                 }

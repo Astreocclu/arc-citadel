@@ -2,30 +2,32 @@
 //!
 //! Unit properties emerge from equipment aggregation.
 
+use crate::combat::{
+    ArmorProperties, Coverage, Edge, Mass, Padding, Reach, Rigidity, WeaponProperties,
+};
 use serde::{Deserialize, Serialize};
-use crate::combat::{WeaponProperties, ArmorProperties, Edge, Mass, Reach, Rigidity, Padding, Coverage};
 
 /// Type of military unit
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UnitType {
     // Infantry
-    Levy,           // Cheap, unreliable
-    Infantry,       // Standard foot soldiers
-    HeavyInfantry,  // Armored, slow, tough
-    Spearmen,       // Anti-cavalry, defensive
-    Archers,        // Ranged, vulnerable in melee
-    Crossbowmen,    // Slower, more punch
+    Levy,          // Cheap, unreliable
+    Infantry,      // Standard foot soldiers
+    HeavyInfantry, // Armored, slow, tough
+    Spearmen,      // Anti-cavalry, defensive
+    Archers,       // Ranged, vulnerable in melee
+    Crossbowmen,   // Slower, more punch
 
     // Cavalry
-    LightCavalry,   // Fast, scout, skirmish
-    Cavalry,        // Standard mounted
-    HeavyCavalry,   // Shock, armored, expensive
-    HorseArchers,   // Mobile ranged
+    LightCavalry, // Fast, scout, skirmish
+    Cavalry,      // Standard mounted
+    HeavyCavalry, // Shock, armored, expensive
+    HorseArchers, // Mobile ranged
 
     // Special
-    Engineers,      // Siege, construction
-    Scouts,         // Reconnaissance
-    Command,        // Officers, messengers
+    Engineers, // Siege, construction
+    Scouts,    // Reconnaissance
+    Command,   // Officers, messengers
 }
 
 /// Default properties for a unit type
@@ -33,8 +35,8 @@ pub enum UnitType {
 pub struct UnitProperties {
     pub avg_weapon: WeaponProperties,
     pub avg_armor: ArmorProperties,
-    pub movement_speed: f32,       // Relative to baseline
-    pub vision_range: u32,         // In hexes
+    pub movement_speed: f32, // Relative to baseline
+    pub vision_range: u32,   // In hexes
     pub base_stress_threshold: f32,
     pub can_charge: bool,
     pub can_skirmish: bool,
@@ -76,8 +78,8 @@ impl UnitType {
             UnitType::HeavyInfantry => UnitProperties {
                 avg_weapon: WeaponProperties::sword(),
                 avg_armor: ArmorProperties::plate(),
-                movement_speed: 0.7,  // Slow
-                vision_range: 5,      // Helmet limits vision
+                movement_speed: 0.7,        // Slow
+                vision_range: 5,            // Helmet limits vision
                 base_stress_threshold: 1.2, // Harder to break
                 can_charge: false,
                 can_skirmish: false,
@@ -102,7 +104,7 @@ impl UnitType {
                 },
                 avg_armor: ArmorProperties::leather(),
                 movement_speed: 1.0,
-                vision_range: 10, // Good eyes
+                vision_range: 10,           // Good eyes
                 base_stress_threshold: 0.8, // Vulnerable
                 can_charge: false,
                 can_skirmish: true,

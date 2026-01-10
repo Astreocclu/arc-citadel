@@ -1,0 +1,85 @@
+[metadata]
+name = "Elemental"
+module_name = "elemental"
+
+[entity_values]
+primal_urge = { type = "f32", default = 0.3, description = "The drive to manifest and expand one's elemental nature." }
+elemental_rage = { type = "f32", default = 0.1, description = "Fury at the corruption or suppression of one's element." }
+territorial_instinct = { type = "f32", default = 0.5, description = "The desire to claim and dominate terrain aligned with one's element." }
+flickering_will = { type = "f32", default = 0.7, description = "The unstable sentience that allows for brief moments of reason and communication." }
+
+[polity_state]
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+claimed_terrain = { type = "Vec<String>", default = "Vec::new()" }
+elemental_storm = { type = "f32", default = 0.0, description = "Collective intensity of the primal forces, fueling expansion and aggression." }
+
+[terrain_fitness]
+mountain = 0.8
+hills = 0.6
+forest = 0.3
+plains = 0.5
+marsh = 0.2
+coast = 0.7
+desert = 0.9
+river = 0.4
+
+[growth]
+rate = 1.04
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Ember", "Stone", "Tide", "Gale", "Cinder", "Slate", "Torrent", "Zephyr", "Magma", "Frost"]
+suffixes = ["Heart", "Fury", "Spire", "Crash", "Brand", "Crag", "Surge", "Howl", "Flow", "Core"]
+
+[polity_types]
+small = "Clan"
+medium = "Court"
+large = "Horde"
+
+[[action_rules]]
+trigger_value = "elemental_rage"
+threshold = 0.8
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Lash out with raw elemental force at those who have despoiled the land."
+
+[[action_rules]]
+trigger_value = "territorial_instinct"
+threshold = 0.75
+action = "Charge"
+priority = "Normal"
+requires_target = true
+description = "Aggressively drive out intruders from claimed terrain."
+
+[[action_rules]]
+trigger_value = "flickering_will"
+threshold = 0.6
+action = "TalkTo"
+priority = "Low"
+requires_target = true
+description = "In a moment of clarity, attempt to communicate with another entity."
+
+[[action_rules]]
+trigger_value = "primal_urge"
+threshold = 0.7
+action = "MoveTo"
+priority = "Normal"
+requires_target = true
+description = "Seek out terrain of high elemental fitness to manifest more fully."
+
+[[idle_behaviors]]
+value = "primal_urge"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "Drift slowly through the environment, drawn by elemental resonance."
+
+[[idle_behaviors]]
+value = "flickering_will"
+threshold = 0.5
+action = "IdleObserve"
+requires_target = false
+description = "Watch the world with unstable sentience, gathering impressions."

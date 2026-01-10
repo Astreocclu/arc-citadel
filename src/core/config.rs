@@ -10,7 +10,6 @@
 #[derive(Debug, Clone)]
 pub struct SimulationConfig {
     // === SPATIAL SYSTEM ===
-
     /// Size of each cell in the spatial hash grid (world units)
     ///
     /// Should be approximately 1/5 of perception_range for optimal performance.
@@ -27,7 +26,6 @@ pub struct SimulationConfig {
     pub perception_range: f32,
 
     // === NEED SYSTEM ===
-
     /// Rate at which rest need increases per tick when active
     ///
     /// At default rate (0.001), an entity reaches critical rest need (~0.8)
@@ -78,7 +76,6 @@ pub struct SimulationConfig {
     pub moderate_need_threshold: f32,
 
     // === THOUGHT SYSTEM ===
-
     /// Rate at which thought intensity decreases per tick
     ///
     /// At default rate (0.01), a thought at intensity 1.0 fades to
@@ -98,7 +95,6 @@ pub struct SimulationConfig {
     pub impulse_intensity_threshold: f32,
 
     // === TASK SYSTEM ===
-
     /// Progress rate for continuous/instant actions (duration = 0)
     ///
     /// At 0.1 per tick, continuous actions complete in 10 ticks.
@@ -126,7 +122,6 @@ pub struct SimulationConfig {
     pub satisfaction_multiplier: f32,
 
     // === PARALLELIZATION ===
-
     /// Minimum entity count before using parallel processing
     ///
     /// Below this threshold, thread overhead exceeds benefits.

@@ -1,8 +1,8 @@
-pub mod identity;
 pub mod body;
+pub mod identity;
 pub mod needs;
-pub mod thoughts;
 pub mod relationships;
-pub mod tasks;
-pub mod species;
 pub mod social;
+pub mod species;
+pub mod tasks;
+pub mod thoughts;

@@ -1,0 +1,82 @@
+# Shrine Blueprint
+# A small sacred structure
+
+[meta]
+id = "shrine"
+name = "Shrine"
+category = "building"
+origin = "constructed"
+description = "A small shrine dedicated to worship"
+
+[parameters]
+size = { type = "float", min = 2.0, max = 6.0, default = 3.0 }
+height = { type = "float", min = 2.0, max = 5.0, default = 3.0 }
+
+[geometry]
+width = "size"
+depth = "size"
+height = "height"
+shape = "rectangle"
+
+[stats.military]
+max_hp = "size * size * 30"
+hardness = "3"
+cover_value = "0.5"
+blocks_movement = "1"
+blocks_los = "0"
+movement_cost = "999"
+flammable = "0"
+elevation = "0"
+
+[stats.civilian]
+pedestrian_capacity = "2"
+cart_accessible = "0"
+worker_capacity = "1"
+storage_capacity = "size * 2"
+prestige_modifier = "1.0"
+
+[construction]
+base_time = "size * size * 50"
+labor_cap = "3"
+
+[construction.cost]
+stone = "size * size * 10"
+marble = "size * 5"
+
+[[construction.stages]]
+id = "foundation"
+progress_threshold = 0.0
+height_multiplier = 0.3
+visual_state = "foundation"
+
+[[construction.stages]]
+id = "complete"
+progress_threshold = 1.0
+height_multiplier = 1.0
+visual_state = "complete"
+
+[[damage_states]]
+name = "pristine"
+threshold = 0.9
+visual_overlay = ""
+tags = ["sacred"]
+creates_breach = false
+produces_rubble = false
+
+[[damage_states]]
+name = "worn"
+threshold = 0.5
+visual_overlay = "weathered"
+tags = ["sacred"]
+creates_breach = false
+produces_rubble = false
+
+[[damage_states]]
+name = "desecrated"
+threshold = 0.0
+visual_overlay = "ruined"
+tags = ["desecrated"]
+creates_breach = false
+produces_rubble = true
+[damage_states.overrides]
+prestige_modifier = -0.5

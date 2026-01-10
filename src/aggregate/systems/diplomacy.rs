@@ -5,7 +5,9 @@ use crate::aggregate::world::AggregateWorld;
 /// Decay relations over time
 pub fn decay_relations(world: &mut AggregateWorld) {
     for polity in &mut world.polities {
-        if !polity.alive { continue; }
+        if !polity.alive {
+            continue;
+        }
 
         for relation in polity.relations.values_mut() {
             // Opinion decays toward neutral

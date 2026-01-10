@@ -1,0 +1,85 @@
+[metadata]
+name = "Revenant"
+module_name = "revenant"
+
+[entity_values]
+hunger_for_life = { type = "f32", default = 0.3, description = "Craving for the warmth and essence of the living." }
+obedience = { type = "f32", default = 0.7, description = "Compulsion to follow the will of a master or residual purpose." }
+lingering_rage = { type = "f32", default = 0.5, description = "Anger and resentment carried over from death." }
+territorial_rot = { type = "f32", default = 0.4, description = "Desire to spread the blight of undeath to new lands." }
+
+[polity_state]
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+hoard_of_souls = { type = "u32", default = "0" }
+war_exhaustion = { type = "f32", default = "0.0" }
+
+[terrain_fitness]
+mountain = 0.3
+hills = 0.5
+forest = 0.7
+plains = 0.6
+marsh = 0.9
+coast = 0.4
+desert = 0.2
+river = 0.1
+
+[growth]
+rate = 1.04
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Bone", "Rot", "Grim", "Ash", "Dust", "Shade", "Wight", "Crypt", "Grave", "Carrion"]
+suffixes = ["Bane", "Claw", "Walker", "Shambler", "Wraith", "Reaper", "Husk", "Blight", "Howler", "Keeper"]
+
+[polity_types]
+small = "Clan"
+medium = "Warband"
+large = "Horde"
+
+[[action_rules]]
+trigger_value = "hunger_for_life"
+threshold = 0.8
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Overwhelming hunger drives the Revenant to assault the living."
+
+[[action_rules]]
+trigger_value = "obedience"
+threshold = 0.75
+action = "Follow"
+priority = "Normal"
+requires_target = true
+description = "Compelled to follow a master or a stronger undead entity."
+
+[[action_rules]]
+trigger_value = "territorial_rot"
+threshold = 0.7
+action = "MoveTo"
+priority = "Normal"
+requires_target = false
+description = "Seeks to expand the borders of its blighted domain."
+
+[[action_rules]]
+trigger_value = "lingering_rage"
+threshold = 0.6
+action = "Charge"
+priority = "High"
+requires_target = true
+description = "A burst of fury from a past life fuels a reckless assault."
+
+[[idle_behaviors]]
+value = "lingering_rage"
+threshold = 0.3
+action = "IdleWander"
+requires_target = false
+description = "Paces restlessly, driven by unresolved anger."
+
+[[idle_behaviors]]
+value = "obedience"
+threshold = 0.4
+action = "HoldPosition"
+requires_target = false
+description = "Stands vigilant, awaiting orders or a threat."

@@ -1,7 +1,7 @@
 //! Sparse hash grid for efficient spatial queries
 
-use ahash::AHashMap;
 use crate::core::types::{EntityId, Vec2};
+use ahash::AHashMap;
 
 /// Sparse hash grid for O(1) neighbor queries
 pub struct SparseHashGrid {
@@ -47,7 +47,8 @@ impl SparseHashGrid {
 
         (-1..=1).flat_map(move |dx| {
             (-1..=1).flat_map(move |dy| {
-                self.cells.get(&(cx + dx, cy + dy))
+                self.cells
+                    .get(&(cx + dx, cy + dy))
                     .into_iter()
                     .flatten()
                     .copied()
@@ -76,7 +77,8 @@ impl SparseHashGrid {
         self.query_neighbors(center)
             .filter(|&entity| {
                 // Look up the correct index for this entity
-                id_to_idx.get(&entity)
+                id_to_idx
+                    .get(&entity)
                     .and_then(|&idx| positions.get(idx))
                     .map(|pos| center.distance(pos) <= radius)
                     .unwrap_or(false)

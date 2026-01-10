@@ -229,7 +229,9 @@ fn test_complete_production_workflow() {
 
     // Start production
     assert!(
-        world.buildings.start_production(farm_idx, "farm_food".into()),
+        world
+            .buildings
+            .start_production(farm_idx, "farm_food".into()),
         "Should be able to start production on completed building"
     );
 
@@ -242,7 +244,11 @@ fn test_complete_production_workflow() {
     stockpile.set_capacity(ResourceType::Food, 1000);
 
     // Verify initial state
-    assert_eq!(stockpile.get(ResourceType::Food), 0, "Should start with 0 food");
+    assert_eq!(
+        stockpile.get(ResourceType::Food),
+        0,
+        "Should start with 0 food"
+    );
 
     // Run production ticks
     // farm_food: work_required=100, workers_needed=2
@@ -440,7 +446,9 @@ fn test_full_city_workflow_build_then_produce() {
 
     // Start production on the completed farm
     assert!(
-        world.buildings.start_production(farm_idx, "farm_food".into()),
+        world
+            .buildings
+            .start_production(farm_idx, "farm_food".into()),
         "Should be able to start production on completed farm"
     );
     world.buildings.production_workers[farm_idx] = 2;
@@ -581,7 +589,9 @@ fn test_cannot_produce_while_under_construction() {
     );
 
     // Try to start production - should fail
-    let result = world.buildings.start_production(farm_idx, "farm_food".into());
+    let result = world
+        .buildings
+        .start_production(farm_idx, "farm_food".into());
     assert!(
         !result,
         "Should not be able to start production on under-construction building"

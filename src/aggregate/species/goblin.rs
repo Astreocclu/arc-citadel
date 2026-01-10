@@ -1,8 +1,8 @@
 //! Goblin-specific polity behavior
 
+use crate::aggregate::events::EventType;
 use crate::aggregate::polity::Polity;
 use crate::aggregate::world::AggregateWorld;
-use crate::aggregate::events::EventType;
 
 /// Generate Goblin-specific events for a polity
 pub fn tick(polity: &Polity, _world: &AggregateWorld, _year: u32) -> Vec<EventType> {
@@ -21,7 +21,7 @@ pub fn tick(polity: &Polity, _world: &AggregateWorld, _year: u32) -> Vec<EventTy
 mod tests {
     use super::*;
     use crate::aggregate::polity::*;
-    use crate::core::types::{PolityId, Species, PolityTier, GovernmentType};
+    use crate::core::types::{GovernmentType, PolityId, PolityTier, Species};
     use std::collections::HashMap;
 
     fn create_test_polity() -> Polity {
@@ -39,6 +39,7 @@ mod tests {
             capital: 0,
             military_strength: 100.0,
             economic_strength: 100.0,
+            founding_conditions: FoundingConditions::default(),
             cultural_drift: CulturalDrift::default(),
             relations: HashMap::new(),
             species_state: SpeciesState::Goblin(GoblinState::default()),

@@ -176,7 +176,9 @@ mod tests {
         // Apply exactly enough work
         let result = apply_construction_work(&mut buildings, 0, 60.0, 150);
 
-        assert!(matches!(result, ContributionResult::Completed { contributed } if (contributed - 60.0).abs() < 0.01));
+        assert!(
+            matches!(result, ContributionResult::Completed { contributed } if (contributed - 60.0).abs() < 0.01)
+        );
         assert_eq!(buildings.states[0], BuildingState::Complete);
         assert_eq!(buildings.completed_ticks[0], 150);
         assert!((buildings.construction_progress[0] - 60.0).abs() < 0.01);

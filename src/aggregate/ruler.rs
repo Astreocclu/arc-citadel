@@ -4,31 +4,31 @@
 //! They have personalities, skills, opinions, and family relationships.
 //! Opinions of other polities belong to rulers, not to polities.
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::core::types::{PolityId, RulerId, Species};
 
 /// Personality traits that affect ruler behavior
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PersonalityTrait {
-    Ambitious,    // More likely to expand, claim titles
-    Cautious,     // Less likely to declare war
-    Charismatic,  // Better diplomacy
-    Deceitful,    // More likely to break agreements
-    Honorable,    // Keeps alliances, less likely to betray
-    Warlike,      // More likely to declare war
-    Greedy,       // Focus on economy
-    Zealous,      // Religious/ideological focus
+    Ambitious,   // More likely to expand, claim titles
+    Cautious,    // Less likely to declare war
+    Charismatic, // Better diplomacy
+    Deceitful,   // More likely to break agreements
+    Honorable,   // Keeps alliances, less likely to betray
+    Warlike,     // More likely to declare war
+    Greedy,      // Focus on economy
+    Zealous,     // Religious/ideological focus
 }
 
 /// Ruler skills affecting governance and war
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Skills {
-    pub diplomacy: i8,    // -10 to +10: affects opinion formation, alliance success
-    pub martial: i8,      // -10 to +10: affects military effectiveness
-    pub stewardship: i8,  // -10 to +10: affects economic growth
-    pub intrigue: i8,     // -10 to +10: affects espionage, plot success
+    pub diplomacy: i8,   // -10 to +10: affects opinion formation, alliance success
+    pub martial: i8,     // -10 to +10: affects military effectiveness
+    pub stewardship: i8, // -10 to +10: affects economic growth
+    pub intrigue: i8,    // -10 to +10: affects espionage, plot success
 }
 
 impl Skills {
@@ -76,16 +76,16 @@ impl PersonalityTrait {
 /// Opinion of a ruler toward another polity
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Opinion {
-    pub base_value: i16,                  // -100 to +100
-    pub trust: i8,                        // -10 to +10 (separate from liking)
-    pub modifiers: Vec<OpinionModifier>,  // Temporary modifiers
+    pub base_value: i16,                 // -100 to +100
+    pub trust: i8,                       // -10 to +10 (separate from liking)
+    pub modifiers: Vec<OpinionModifier>, // Temporary modifiers
 }
 
 /// Temporary modifier to opinion
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpinionModifier {
     pub reason: String,
-    pub value: i8,           // -50 to +50
+    pub value: i8, // -50 to +50
     pub turns_remaining: u8,
 }
 
@@ -129,7 +129,7 @@ pub struct Family {
     pub mother: Option<RulerId>,
     pub spouse: Option<RulerId>,
     pub children: Vec<RulerId>,
-    pub dynasty_id: u32,  // For dynasty-wide mechanics
+    pub dynasty_id: u32, // For dynasty-wide mechanics
 }
 
 impl Family {
@@ -173,10 +173,10 @@ pub struct Ruler {
     pub name: String,
     pub species: Species,
     pub age: u8,
-    pub health: i8,                           // -10 (dying) to +10 (excellent)
-    pub personality: Vec<PersonalityTrait>,   // Usually 2-3 traits
+    pub health: i8,                         // -10 (dying) to +10 (excellent)
+    pub personality: Vec<PersonalityTrait>, // Usually 2-3 traits
     pub skills: Skills,
-    pub claims: Vec<PolityId>,                // Polities this ruler claims to rule
+    pub claims: Vec<PolityId>, // Polities this ruler claims to rule
     pub family: Family,
     pub opinions: HashMap<PolityId, Opinion>, // Sparse - only known polities
     pub alive: bool,
@@ -229,7 +229,11 @@ impl Ruler {
 
     /// Calculate total diplomacy modifier from personality and skills
     pub fn diplomacy_modifier(&self) -> i8 {
-        let personality: i8 = self.personality.iter().map(|t| t.diplomacy_modifier()).sum();
+        let personality: i8 = self
+            .personality
+            .iter()
+            .map(|t| t.diplomacy_modifier())
+            .sum();
         personality.saturating_add(self.skills.diplomacy)
     }
 

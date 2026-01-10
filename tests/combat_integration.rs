@@ -4,25 +4,41 @@
 //! testing the spec examples and ensuring NO percentage-based APIs exist.
 
 use arc_citadel::combat::{
-    // Properties
-    Edge, Mass, Reach, WeaponProperties,
-    Rigidity, Padding, Coverage, ArmorProperties,
-    BodyZone, WoundSeverity,
-    // Resolution
-    PenetrationResult, TraumaResult,
-    resolve_penetration, resolve_trauma, combine_results,
+    combine_results,
+    resolve_exchange,
+    resolve_penetration,
+    resolve_trauma,
+    ArmorProperties,
+    BodyZone,
+    BreakResult,
     // Stance
-    CombatStance, TransitionTrigger, StanceTransitions,
-    // Skill
-    SkillLevel,
-    // Morale
-    StressSource, MoraleState, BreakResult,
-    // Exchange
-    Combatant, resolve_exchange,
-    // Formation
-    FormationState, PressureCategory,
+    CombatStance,
     // State
     CombatState,
+    // Exchange
+    Combatant,
+    Coverage,
+    // Properties
+    Edge,
+    // Formation
+    FormationState,
+    Mass,
+    MoraleState,
+    Padding,
+    // Resolution
+    PenetrationResult,
+    PressureCategory,
+    Reach,
+    Rigidity,
+    // Skill
+    SkillLevel,
+    StanceTransitions,
+    // Morale
+    StressSource,
+    TransitionTrigger,
+    TraumaResult,
+    WeaponProperties,
+    WoundSeverity,
 };
 
 /// Test the spec example: Sword vs Plate armor
@@ -258,9 +274,9 @@ fn test_combat_state_component() {
 #[test]
 fn test_agincourt_longbow_vs_plate() {
     let longbow = WeaponProperties {
-        edge: Edge::Sharp,      // Broadhead arrows are sharp
-        mass: Mass::Light,      // Arrows are light
-        reach: Reach::Pike,     // Outranges everything
+        edge: Edge::Sharp,  // Broadhead arrows are sharp
+        mass: Mass::Light,  // Arrows are light
+        reach: Reach::Pike, // Outranges everything
         special: vec![],
     };
     let plate = ArmorProperties::plate();
@@ -302,8 +318,8 @@ fn test_agincourt_longbow_vs_plate() {
 fn test_zweihander_vs_pike_formation() {
     let zweihander = WeaponProperties {
         edge: Edge::Sharp,
-        mass: Mass::Heavy,      // 3-4kg of steel
-        reach: Reach::Long,     // Can parry pikes
+        mass: Mass::Heavy,  // 3-4kg of steel
+        reach: Reach::Long, // Can parry pikes
         special: vec![],
     };
 
@@ -321,7 +337,7 @@ fn test_zweihander_vs_pike_formation() {
     // The pikeman is cut AND knocked down - not fatal, but out of the fight
     let wound = combine_results(pen, trauma, BodyZone::Torso);
     assert_eq!(wound.severity, WoundSeverity::Serious);
-    assert!(wound.bleeding);       // Cut causes bleeding
+    assert!(wound.bleeding); // Cut causes bleeding
     assert!(wound.mobility_impact); // Knockdown affects mobility
 }
 
@@ -335,9 +351,9 @@ fn test_mordhau_murder_stroke() {
     // Sword held by blade, pommel/guard used as bludgeon
     // The concentrated mass hitting a small point = effective heavy weapon
     let mordhau = WeaponProperties {
-        edge: Edge::Blunt,      // Using the guard, not the edge
-        mass: Mass::Heavy,      // Concentrated impact = effectively heavy
-        reach: Reach::Short,    // Half-sword grip = shorter reach
+        edge: Edge::Blunt,   // Using the guard, not the edge
+        mass: Mass::Heavy,   // Concentrated impact = effectively heavy
+        reach: Reach::Short, // Half-sword grip = shorter reach
         special: vec![],
     };
     let plate = ArmorProperties::plate();
@@ -362,9 +378,9 @@ fn test_mordhau_murder_stroke() {
 #[test]
 fn test_stiletto_vs_mail() {
     let stiletto = WeaponProperties {
-        edge: Edge::Razor,      // Needle-sharp point
-        mass: Mass::Light,      // Dagger weight
-        reach: Reach::Grapple,  // Grappling range
+        edge: Edge::Razor,                                           // Needle-sharp point
+        mass: Mass::Light,                                           // Dagger weight
+        reach: Reach::Grapple,                                       // Grappling range
         special: vec![arc_citadel::combat::WeaponSpecial::Piercing], // Finds gaps!
     };
     let mail = ArmorProperties::mail();
@@ -375,8 +391,11 @@ fn test_stiletto_vs_mail() {
 
     // WITH piercing: finds the gaps between rings
     // Piercing upgrades Snag → ShallowCut (one category better)
-    let pen_pierce = resolve_penetration(stiletto.edge, mail.rigidity,
-        stiletto.has_special(arc_citadel::combat::WeaponSpecial::Piercing));
+    let pen_pierce = resolve_penetration(
+        stiletto.edge,
+        mail.rigidity,
+        stiletto.has_special(arc_citadel::combat::WeaponSpecial::Piercing),
+    );
     assert_eq!(pen_pierce, PenetrationResult::ShallowCut);
 
     // A stiletto to the armpit (gap in armor) causes a wound
@@ -391,9 +410,9 @@ fn test_stiletto_vs_mail() {
 #[test]
 fn test_cavalry_charge_impact() {
     let lance_charge = WeaponProperties {
-        edge: Edge::Sharp,      // Lance point
-        mass: Mass::Massive,    // Horse + rider + momentum
-        reach: Reach::Pike,     // Couched lance
+        edge: Edge::Sharp,   // Lance point
+        mass: Mass::Massive, // Horse + rider + momentum
+        reach: Reach::Pike,  // Couched lance
         special: vec![],
     };
 

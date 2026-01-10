@@ -3,11 +3,11 @@
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use crate::aggregate::world::AggregateWorld;
 use crate::aggregate::events::HistoryLog;
 use crate::aggregate::output::SimulationOutput;
-use crate::aggregate::systems;
 use crate::aggregate::species;
+use crate::aggregate::systems;
+use crate::aggregate::world::AggregateWorld;
 
 /// Configuration for the simulation
 #[derive(Clone, Debug)]
@@ -66,8 +66,15 @@ pub fn simulate(config: SimulationConfig) -> SimulationOutput {
     let rng = ChaCha8Rng::seed_from_u64(config.map.seed);
 
     // Generate world
-    let regions = systems::generate_map(&config.map, rng.clone());
-    let polities = systems::generate_polities(&regions, &config.polities, rng.clone());
+    let mut regions = systems::generate_map(&config.map, rng.clone());
+    let (polities, territory_assignments) =
+        systems::generate_polities(&regions, &config.polities, rng.clone());
+
+    // Apply territory assignments to regions
+    for (region_id, polity_id) in territory_assignments {
+        regions[region_id as usize].controller = Some(polity_id);
+    }
+
     let mut world = AggregateWorld::new(regions, polities, rng);
 
     // Initialize relations between polities

@@ -42,7 +42,11 @@ pub fn check_morale_break(unit: &BattleUnit) -> MoraleCheckResult {
 }
 
 /// Check if a routing unit can rally
-pub fn check_rally(unit: &BattleUnit, is_near_enemy: bool, is_near_leader: bool) -> MoraleCheckResult {
+pub fn check_rally(
+    unit: &BattleUnit,
+    is_near_enemy: bool,
+    is_near_leader: bool,
+) -> MoraleCheckResult {
     let mut result = MoraleCheckResult::default();
 
     // Only routing units can rally

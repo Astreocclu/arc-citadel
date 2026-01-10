@@ -1,0 +1,86 @@
+[metadata]
+name = "StoneGiants"
+module_name = "stone_giants"
+
+[entity_values]
+pride = { type = "f32", default = 0.5, description = "Sense of superiority and desire for recognition from lesser beings." }
+greed = { type = "f32", default = 0.3, description = "Desire for tribute, shiny objects, and material wealth." }
+rage = { type = "f32", default = 0.2, description = "Wrath when challenged, insulted, or when territory is violated." }
+territoriality = { type = "f32", default = 0.7, description = "Drive to control and defend mountainous domains." }
+loneliness = { type = "f32", default = 0.4, description = "A deep-seated, often unacknowledged, desire for connection, conflicting with pride." }
+
+[polity_state]
+grudge_list = { type = "Vec<String>", default = "Vec::new()" }
+hoard_value = { type = "f32", default = "0.0" }
+tribute_demands = { type = "Vec<u32>", default = "Vec::new()" }
+
+[terrain_fitness]
+mountain = 0.9
+hills = 0.8
+forest = 0.3
+plains = 0.2
+marsh = 0.1
+coast = 0.4
+desert = 0.1
+river = 0.5
+
+[growth]
+rate = 1.03
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Stone", "Iron", "Granite", "Thunder", "Crag", "Boulder", "Mountain", "Deep", "High", "Grim"]
+suffixes = ["breaker", "hewer", "fist", "back", "heart", "roar", "hold", "fall", "crusher", "lord"]
+
+[polity_types]
+small = "Clan"
+medium = "Hold"
+large = "Kingdom"
+
+[[action_rules]]
+trigger_value = "rage"
+threshold = 0.8
+action = "Attack"
+priority = "High"
+requires_target = true
+description = "Fly into a devastating rage and attack the source of provocation."
+
+[[action_rules]]
+trigger_value = "greed"
+threshold = 0.75
+action = "Trade"
+priority = "Normal"
+requires_target = true
+description = "Demand tribute or trade from a weaker entity, leveraging size for intimidation."
+
+[[action_rules]]
+trigger_value = "territoriality"
+threshold = 0.7
+action = "Charge"
+priority = "High"
+requires_target = true
+description = "Charge at intruders in their territory to drive them off."
+
+[[action_rules]]
+trigger_value = "loneliness"
+threshold = 0.65
+action = "TalkTo"
+priority = "Low"
+requires_target = true
+description = "Overcome pride to initiate cautious communication, often gruff and demanding."
+
+[[idle_behaviors]]
+value = "pride"
+threshold = 0.6
+action = "IdleObserve"
+requires_target = false
+description = "Stand watchfully on high ground, surveying their domain with silent superiority."
+
+[[idle_behaviors]]
+value = "territoriality"
+threshold = 0.5
+action = "IdleWander"
+requires_target = false
+description = "Patrol the borders of their claimed mountains and hills."

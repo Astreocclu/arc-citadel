@@ -1,0 +1,109 @@
+# Watchtower Blueprint
+# A tall defensive structure for observation
+
+[meta]
+id = "watchtower"
+name = "Watchtower"
+category = "tower"
+origin = "constructed"
+description = "A stone watchtower providing elevated observation"
+
+[parameters]
+base_width = { type = "float", min = 3.0, max = 8.0, default = 4.0 }
+height = { type = "float", min = 8.0, max = 20.0, default = 12.0 }
+
+[geometry]
+width = "base_width"
+depth = "base_width"
+height = "height"
+shape = "circle"
+
+[stats.military]
+max_hp = "base_width * base_width * height * 20"
+hardness = "6"
+cover_value = "1.0"
+blocks_movement = "1"
+blocks_los = "1"
+movement_cost = "999"
+flammable = "0"
+elevation = "height"
+
+[stats.civilian]
+pedestrian_capacity = "4"
+cart_accessible = "0"
+worker_capacity = "2"
+storage_capacity = "base_width * 5"
+prestige_modifier = "0.5"
+
+[construction]
+base_time = "base_width * base_width * height * 40"
+labor_cap = "6"
+
+[construction.cost]
+stone = "base_width * base_width * height * 15"
+wood = "base_width * height * 5"
+iron = "height * 10"
+
+[[construction.stages]]
+id = "foundation"
+progress_threshold = 0.0
+height_multiplier = 0.2
+visual_state = "foundation"
+
+[[construction.stages]]
+id = "base"
+progress_threshold = 0.3
+height_multiplier = 0.4
+visual_state = "base"
+
+[[construction.stages]]
+id = "tower"
+progress_threshold = 0.6
+height_multiplier = 0.8
+visual_state = "tower"
+
+[[construction.stages]]
+id = "complete"
+progress_threshold = 1.0
+height_multiplier = 1.0
+visual_state = "complete"
+
+[[anchors]]
+name = "entrance"
+position = ["0", "base_width / 2", "0"]
+direction = "south"
+tags = ["entrance", "door"]
+
+[[anchors]]
+name = "top"
+position = ["0", "0", "height"]
+direction = "up"
+tags = ["observation", "signal"]
+
+[[damage_states]]
+name = "intact"
+threshold = 0.75
+visual_overlay = ""
+tags = []
+creates_breach = false
+produces_rubble = false
+
+[[damage_states]]
+name = "damaged"
+threshold = 0.4
+visual_overlay = "cracked"
+tags = ["damaged"]
+creates_breach = false
+produces_rubble = false
+
+[[damage_states]]
+name = "collapsed"
+threshold = 0.0
+visual_overlay = "rubble"
+tags = ["destroyed"]
+creates_breach = true
+produces_rubble = true
+[damage_states.overrides]
+cover_value = 0.4
+blocks_movement = false
+elevation = 0

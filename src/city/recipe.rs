@@ -3,9 +3,9 @@
 //! Recipes specify input resources, output resources, work required,
 //! and which building type can execute them.
 
-use serde::{Deserialize, Serialize};
-use crate::simulation::resource_zone::ResourceType;
 use crate::city::building::BuildingType;
+use crate::simulation::resource_zone::ResourceType;
+use serde::{Deserialize, Serialize};
 
 /// A production recipe
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,7 +100,9 @@ impl RecipeCatalog {
 
     /// Get all recipes for a specific building type
     pub fn for_building(&self, building_type: BuildingType) -> impl Iterator<Item = &Recipe> {
-        self.recipes.iter().filter(move |r| r.building_type == building_type)
+        self.recipes
+            .iter()
+            .filter(move |r| r.building_type == building_type)
     }
 
     /// Get all recipes
@@ -110,15 +112,15 @@ impl RecipeCatalog {
 
     /// Load recipes from a TOML file
     pub fn load_from_toml(path: &std::path::Path) -> Result<Self, RecipeLoadError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| RecipeLoadError::IoError(e.to_string()))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| RecipeLoadError::IoError(e.to_string()))?;
         Self::parse_toml(&content)
     }
 
     /// Parse recipes from TOML string
     pub fn parse_toml(content: &str) -> Result<Self, RecipeLoadError> {
-        let toml_data: TomlRecipes = toml::from_str(content)
-            .map_err(|e| RecipeLoadError::ParseError(e.to_string()))?;
+        let toml_data: TomlRecipes =
+            toml::from_str(content).map_err(|e| RecipeLoadError::ParseError(e.to_string()))?;
 
         let mut catalog = Self::new();
         for recipe in toml_data.recipes {
@@ -188,12 +190,14 @@ impl TomlRecipe {
             _ => return Err(RecipeLoadError::InvalidBuildingType(self.building_type)),
         };
 
-        let inputs = self.inputs
+        let inputs = self
+            .inputs
             .into_iter()
             .map(|ra| ra.into_resource_amount())
             .collect::<Result<Vec<_>, _>>()?;
 
-        let outputs = self.outputs
+        let outputs = self
+            .outputs
             .into_iter()
             .map(|ra| ra.into_resource_amount())
             .collect::<Result<Vec<_>, _>>()?;
@@ -365,7 +369,9 @@ amount = 10
         let catalog = RecipeCatalog::parse_toml(toml_content).expect("Failed to parse TOML");
 
         // Check iron smelting recipe
-        let iron = catalog.get("iron_smelting").expect("Should have iron_smelting");
+        let iron = catalog
+            .get("iron_smelting")
+            .expect("Should have iron_smelting");
         assert_eq!(iron.building_type, BuildingType::Workshop);
         assert_eq!(iron.work_required, 60);
         assert_eq!(iron.workers_needed, 2);
@@ -375,7 +381,9 @@ amount = 10
         assert_eq!(iron.outputs[0], (ResourceType::Iron, 2));
 
         // Check grain farming recipe
-        let grain = catalog.get("grain_farming").expect("Should have grain_farming");
+        let grain = catalog
+            .get("grain_farming")
+            .expect("Should have grain_farming");
         assert_eq!(grain.building_type, BuildingType::Farm);
         assert!(grain.inputs.is_empty());
         assert_eq!(grain.outputs[0], (ResourceType::Food, 10));
@@ -462,11 +470,26 @@ amount = 1
             .expect("Should load recipes from data/recipes.toml");
 
         // Verify expected recipes exist
-        assert!(catalog.get("farm_food").is_some(), "Should have farm_food recipe");
-        assert!(catalog.get("smelt_iron").is_some(), "Should have smelt_iron recipe");
-        assert!(catalog.get("weave_cloth").is_some(), "Should have weave_cloth recipe");
-        assert!(catalog.get("preserve_food").is_some(), "Should have preserve_food recipe");
-        assert!(catalog.get("forge_tools").is_some(), "Should have forge_tools recipe");
+        assert!(
+            catalog.get("farm_food").is_some(),
+            "Should have farm_food recipe"
+        );
+        assert!(
+            catalog.get("smelt_iron").is_some(),
+            "Should have smelt_iron recipe"
+        );
+        assert!(
+            catalog.get("weave_cloth").is_some(),
+            "Should have weave_cloth recipe"
+        );
+        assert!(
+            catalog.get("preserve_food").is_some(),
+            "Should have preserve_food recipe"
+        );
+        assert!(
+            catalog.get("forge_tools").is_some(),
+            "Should have forge_tools recipe"
+        );
 
         // Verify recipe counts by building type
         let farm_recipes: Vec<_> = catalog.for_building(BuildingType::Farm).collect();

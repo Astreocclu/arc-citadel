@@ -1,0 +1,85 @@
+[metadata]
+name = "Lupine"
+module_name = "lupine"
+
+[entity_values]
+bestial_rage = { type = "f32", default = 0.3, description = "The primal fury of the wolf, rising under the moon." }
+human_restraint = { type = "f32", default = 0.7, description = "The fading grip of human conscience and reason." }
+pack_loyalty = { type = "f32", default = 0.8, description = "The drive to protect and hunt with the pack." }
+territorial_hunger = { type = "f32", default = 0.5, description = "The need to claim and defend hunting grounds." }
+
+[polity_state]
+grudge_list = { type = "Vec<u32>", default = "Vec::new()" }
+hoard_of_bones = { type = "u32", default = "0" }
+moon_phase_tracker = { type = "f32", default = "0.0" }
+
+[terrain_fitness]
+mountain = 0.8
+hills = 0.9
+forest = 0.9
+plains = 0.6
+marsh = 0.2
+coast = 0.3
+desert = 0.1
+river = 0.7
+
+[growth]
+rate = 1.04
+
+[expansion]
+threshold = 0.3
+
+[naming]
+prefixes = ["Grey", "Blood", "Moon", "Night", "Iron", "Stone", "Fang", "Shadow", "Winter", "Howling"]
+suffixes = ["maw", "hide", "claw", "runner", "stalker", "bane", "heart", "caller", "pelt", "hunter"]
+
+[polity_types]
+small = "Warband"
+medium = "Clan"
+large = "Horde"
+
+[[action_rules]]
+trigger_value = "bestial_rage"
+threshold = 0.85
+action = "Charge"
+priority = "High"
+requires_target = true
+description = "The beast takes over, launching into a furious, infectious attack."
+
+[[action_rules]]
+trigger_value = "pack_loyalty"
+threshold = 0.75
+action = "Defend"
+priority = "High"
+requires_target = true
+description = "Leaps to the aid of a threatened packmate."
+
+[[action_rules]]
+trigger_value = "human_restraint"
+threshold = 0.6
+action = "TalkTo"
+priority = "Normal"
+requires_target = true
+description = "A flicker of humanity allows for wary parley."
+
+[[action_rules]]
+trigger_value = "territorial_hunger"
+threshold = 0.7
+action = "Attack"
+priority = "Normal"
+requires_target = true
+description = "Defends claimed territory from intruders."
+
+[[idle_behaviors]]
+value = "territorial_hunger"
+threshold = 0.4
+action = "IdleWander"
+requires_target = false
+description = "Prowls the edges of the pack's territory."
+
+[[idle_behaviors]]
+value = "pack_loyalty"
+threshold = 0.5
+action = "Follow"
+requires_target = true
+description = "Stays close to the alpha or a strong packmate."

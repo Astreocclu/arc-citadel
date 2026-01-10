@@ -1,0 +1,102 @@
+# Hex Tag Taxonomy v1.0
+# Tags replace terrain enums as source of truth for hex composition
+
+[meta]
+version = "1.0"
+scale = "100m"
+description = "Every hex is 100m across - roughly what a party explores in 10-15 minutes"
+
+[categories.TERRAIN]
+description = "Physical environment - MUTUALLY EXCLUSIVE"
+exclusive = true
+values = ["underground", "surface", "underwater", "aerial"]
+
+[categories.CULTURE]
+description = "Dominant cultural influence"
+exclusive = false
+values = ["dwarf", "elf", "human", "wild", "ancient", "corrupted"]
+
+[categories.FUNCTION]
+description = "Primary purpose of location"
+exclusive = false
+values = ["residential", "military", "sacred", "industrial", "commercial", "passage"]
+
+[categories.EDGES]
+description = "Edge connection capabilities"
+exclusive = false
+values = ["connects_road", "connects_tunnel", "connects_water", "connects_wilderness", "entrance", "dead_end"]
+
+[categories.ELEVATION_BAND]
+description = "Vertical positioning - MUTUALLY EXCLUSIVE"
+exclusive = true
+values = ["deep", "shallow_under", "surface", "elevated", "peak"]
+
+# Hard constraints - violations block placement
+[constraints.hard]
+# TERRAIN adjacency rules
+incompatible_terrain = [
+    ["underground", "aerial"],
+    ["underwater", "aerial"],
+    ["underwater", "peak"],
+]
+
+# EDGE matching rules
+edge_must_match = [
+    "connects_tunnel",
+    "connects_road",
+    "connects_water",
+]
+
+# Required pairings
+requires = [
+    {tag = "underground", requires_one_of = ["connects_tunnel", "entrance", "dead_end"]},
+    {tag = "underwater", requires_one_of = ["connects_water", "dead_end"]},
+    {tag = "deep", requires = "underground"},
+    {tag = "shallow_under", requires = "underground"},
+    {tag = "peak", requires_one_of = ["surface", "aerial"]},
+]
+
+# Soft constraints - generate warnings but allow
+[constraints.soft]
+# Culture adjacency warnings
+culture_tensions = [
+    ["dwarf", "elf"],
+    ["corrupted", "sacred"],
+]
+
+# Function adjacency warnings
+function_clashes = [
+    ["industrial", "sacred"],
+    ["military", "commercial"],
+]
+
+# Terrain transition rules for filler generation
+# Each terrain tag lists compatible adjacent terrains
+[transitions]
+# Surface terrains
+surface = ["surface", "underground", "elevated", "underwater"]
+underground = ["underground", "surface"]
+underwater = ["underwater", "surface"]
+aerial = ["aerial", "surface", "elevated", "peak"]
+
+# Elevation bands
+deep = ["deep", "shallow_under"]
+shallow_under = ["shallow_under", "deep", "surface"]
+elevated = ["elevated", "surface", "peak"]
+peak = ["peak", "elevated", "aerial"]
+
+[transitions.weights]
+# Probability weights for filler generation (0.0-1.0)
+# Higher = more likely to propagate this terrain
+"surface.surface" = 0.8
+"surface.underground" = 0.1
+"surface.elevated" = 0.3
+"underground.underground" = 0.9
+"underground.deep" = 0.4
+"elevated.peak" = 0.3
+"peak.peak" = 0.7
+
+[transitions.features]
+# Terrain pairs that require specific features
+underground_surface = ["entrance"]
+elevated_surface = ["cliff", "slope"]

@@ -1,8 +1,8 @@
 //! Territory expansion system
 
-use crate::aggregate::world::AggregateWorld;
 use crate::aggregate::polity::Polity;
 use crate::aggregate::region::Terrain;
+use crate::aggregate::world::AggregateWorld;
 use crate::core::types::Species;
 
 /// Targets for expansion
@@ -18,7 +18,9 @@ pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> Expans
     let mut weak_neighbors = Vec::new();
 
     // Find all regions controlled by this polity
-    let our_regions: Vec<u32> = world.regions.iter()
+    let our_regions: Vec<u32> = world
+        .regions
+        .iter()
         .filter(|r| r.controller == Some(polity.id.0))
         .map(|r| r.id)
         .collect();
@@ -37,8 +39,12 @@ pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> Expans
                     let fitness = neighbor.fitness.get(&polity.species).unwrap_or(&0.0);
 
                     let is_valid_terrain = match polity.species {
-                        Species::Dwarf => matches!(neighbor.terrain, Terrain::Mountain | Terrain::Hills),
-                        Species::Elf => matches!(neighbor.terrain, Terrain::Forest) && *fitness > 0.8,
+                        Species::Dwarf => {
+                            matches!(neighbor.terrain, Terrain::Mountain | Terrain::Hills)
+                        }
+                        Species::Elf => {
+                            matches!(neighbor.terrain, Terrain::Forest) && *fitness > 0.8
+                        }
                         Species::Human => *fitness > 0.3,
                         Species::Orc => *fitness > 0.2, // Orcs can survive almost anywhere
                         Species::Kobold => *fitness > 0.4,
@@ -53,6 +59,16 @@ pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> Expans
                         Species::Dryad => *fitness > 0.7,
                         Species::Goblin => *fitness > 0.3,
                         Species::Troll => *fitness > 0.25,
+                        Species::AbyssalDemons => *fitness > 0.3,
+                        Species::Elemental => *fitness > 0.3,
+                        Species::Fey => *fitness > 0.3,
+                        Species::StoneGiants => *fitness > 0.3,
+                        Species::Golem => *fitness > 0.3,
+                        Species::Merfolk => *fitness > 0.3,
+                        Species::Naga => *fitness > 0.35,
+                        Species::Revenant => *fitness > 0.3,
+                        Species::Vampire => *fitness > 0.3,
+                        Species::Lupine => *fitness > 0.3,
                         // CODEGEN: species_expansion_terrain
                     };
 
@@ -77,28 +93,36 @@ pub fn find_expansion_targets(polity: &Polity, world: &AggregateWorld) -> Expans
 
     // Sort unclaimed by fitness
     unclaimed.sort_by(|a, b| {
-        let fa = world.get_region(*a)
+        let fa = world
+            .get_region(*a)
             .and_then(|r| r.fitness.get(&polity.species))
             .unwrap_or(&0.0);
-        let fb = world.get_region(*b)
+        let fb = world
+            .get_region(*b)
             .and_then(|r| r.fitness.get(&polity.species))
             .unwrap_or(&0.0);
         fb.partial_cmp(fa).unwrap()
     });
 
-    ExpansionTargets { unclaimed, weak_neighbors }
+    ExpansionTargets {
+        unclaimed,
+        weak_neighbors,
+    }
 }
 
 /// Calculate expansion pressure for humans
 /// Territory is now tracked via region.controller, not polity.territory
 pub fn calculate_human_expansion_pressure(polity: &Polity, world: &AggregateWorld) -> f32 {
-    let base = polity.human_state()
+    let base = polity
+        .human_state()
         .map(|s| s.expansion_pressure)
         .unwrap_or(0.0);
 
     // Pressure increases with population density
     // Find total capacity of all regions we control
-    let total_capacity: u32 = world.regions.iter()
+    let total_capacity: u32 = world
+        .regions
+        .iter()
         .filter(|r| r.controller == Some(polity.id.0))
         .map(|r| r.max_population)
         .sum();

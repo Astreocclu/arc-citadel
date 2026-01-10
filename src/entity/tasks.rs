@@ -98,7 +98,9 @@ impl TaskQueue {
     }
 
     pub fn push(&mut self, task: Task) {
-        let pos = self.queued.iter()
+        let pos = self
+            .queued
+            .iter()
             .position(|t| task.priority as u8 > t.priority as u8)
             .unwrap_or(self.queued.len());
         self.queued.insert(pos, task);
@@ -135,8 +137,7 @@ mod tests {
     #[test]
     fn test_task_with_building_target() {
         let building_id = BuildingId::new();
-        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
-            .with_building(building_id);
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0).with_building(building_id);
 
         assert_eq!(task.action, ActionId::Build);
         assert_eq!(task.target_building, Some(building_id));
@@ -151,8 +152,7 @@ mod tests {
     #[test]
     fn test_construct_task_pattern_match() {
         let building_id = BuildingId::new();
-        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
-            .with_building(building_id);
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0).with_building(building_id);
 
         // Pattern matching on the target_building field
         match task.target_building {

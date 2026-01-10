@@ -1,11 +1,11 @@
 //! AggregateWorld - the main world state container
 
-use std::collections::HashMap;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use crate::aggregate::region::Region;
 use crate::aggregate::polity::Polity;
+use crate::aggregate::region::Region;
 use crate::aggregate::ruler::Ruler;
 use crate::core::types::{PolityId, RulerId};
 
@@ -60,10 +60,7 @@ pub enum WarState {
 
 impl AggregateWorld {
     pub fn new(regions: Vec<Region>, polities: Vec<Polity>, rng: ChaCha8Rng) -> Self {
-        let next_polity_id = polities.iter()
-            .map(|p| p.id.0)
-            .max()
-            .unwrap_or(0) + 1;
+        let next_polity_id = polities.iter().map(|p| p.id.0).max().unwrap_or(0) + 1;
 
         Self {
             regions,
@@ -131,7 +128,9 @@ impl AggregateWorld {
         use std::collections::HashSet;
 
         // Find all regions controlled by this polity
-        let my_regions: HashSet<u32> = self.regions.iter()
+        let my_regions: HashSet<u32> = self
+            .regions
+            .iter()
             .filter(|r| r.controller == Some(polity_id.0))
             .map(|r| r.id)
             .collect();
@@ -141,14 +140,16 @@ impl AggregateWorld {
         }
 
         // Find all neighboring region IDs
-        let neighbor_region_ids: HashSet<u32> = my_regions.iter()
+        let neighbor_region_ids: HashSet<u32> = my_regions
+            .iter()
             .filter_map(|&region_id| self.get_region(region_id))
             .flat_map(|r| r.neighbors.iter().copied())
             .filter(|id| !my_regions.contains(id))
             .collect();
 
         // Find polities that control those neighboring regions
-        let neighbor_polities: HashSet<PolityId> = neighbor_region_ids.iter()
+        let neighbor_polities: HashSet<PolityId> = neighbor_region_ids
+            .iter()
             .filter_map(|&region_id| self.get_region(region_id))
             .filter_map(|r| r.controller.map(PolityId))
             .filter(|&pid| pid != polity_id)

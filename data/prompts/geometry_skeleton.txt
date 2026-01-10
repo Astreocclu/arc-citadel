@@ -1,0 +1,50 @@
+# Geometry Skeleton Generation (Stage 1 - Reasoner)
+
+Generate a SKELETON for tactical game geometry. Output component descriptions with placeholder geometry.
+DO NOT generate actual coordinates - just describe what each component should be.
+
+## OUTPUT FORMAT
+
+```json
+{
+  "wall_segments": [
+    {
+      "variant_id": "stone_wall_001",
+      "display_name": "Standard Stone Wall",
+      "description": "Basic defensive wall, 3m long, 2m high, rectangular footprint",
+      "intended_purpose": "Basic cover for infantry",
+      "geometry_placeholder": "FILL_RECTANGLE_3x0.5"
+    }
+  ],
+  "archer_towers": [
+    {
+      "variant_id": "watchtower_001",
+      "display_name": "Corner Watchtower",
+      "description": "Square tower, 6m base, 12m height, 360-degree firing arc",
+      "intended_purpose": "Full coverage observation point",
+      "geometry_placeholder": "FILL_SQUARE_6x6"
+    }
+  ],
+  "trenches": [...],
+  "gates": [...],
+  "street_segments": [...]
+}
+```
+
+## REQUIREMENTS
+
+Generate exactly:
+- 10 wall_segment variants (mix of lengths 2-10m, heights 1.5-5m)
+- 10 archer_tower variants (mix of shapes, heights 8-15m, various firing arcs)
+- 10 trench_segment variants (depths 1-3m, widths 1-4m)
+- 10 gate variants (widths 3-8m for different unit types)
+- 10 street_segment variants (widths 2-10m for foot/cart/cavalry)
+
+For each component include:
+- variant_id: unique snake_case identifier
+- display_name: human readable name
+- description: physical description with key dimensions
+- intended_purpose: tactical/gameplay purpose
+- geometry_placeholder: hint for Stage 2 (FILL_SHAPE_dimensions)
+
+DO NOT include actual vertex coordinates. Stage 2 will generate those.

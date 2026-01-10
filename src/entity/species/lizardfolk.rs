@@ -1,12 +1,12 @@
 //! Lizardfolk entity archetype and values
 
-use serde::{Deserialize, Serialize};
 use crate::core::types::{EntityId, Vec2};
-use crate::entity::needs::Needs;
-use crate::entity::thoughts::ThoughtBuffer;
-use crate::entity::tasks::TaskQueue;
 use crate::entity::body::BodyState;
+use crate::entity::needs::Needs;
 use crate::entity::social::SocialMemory;
+use crate::entity::tasks::TaskQueue;
+use crate::entity::thoughts::ThoughtBuffer;
+use serde::{Deserialize, Serialize};
 
 /// Lizardfolk-specific value vocabulary
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

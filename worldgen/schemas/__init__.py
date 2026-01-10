@@ -32,6 +32,7 @@ from .connector import (
 from .minor import MinorCategory, MinorAnchor
 from .seed import ClusterPlacement, ConnectorAssignment, LayoutHint, WorldSeed
 from .world import WorldHex, HexMap, AssembledWorld
+from .tagged import EdgeType, FoundingContext, TaggedHex, HexCluster, ScaleValidation
 
 __all__ = [
     # base
@@ -75,4 +76,10 @@ __all__ = [
     "WorldHex",
     "HexMap",
     "AssembledWorld",
+    # tagged (100m scale composition)
+    "EdgeType",
+    "FoundingContext",
+    "TaggedHex",
+    "HexCluster",
+    "ScaleValidation",
 ]

@@ -38,6 +38,9 @@ pub const CONTAGION_STRESS: f32 = 0.10;
 pub const OFFICER_DEATH_STRESS: f32 = 0.30;
 pub const FLANK_STRESS: f32 = 0.20;
 
+// Rally - ticks required to transition from Rallying to Formed
+pub const RALLY_TICKS_REQUIRED: u64 = 30;
+
 // Courier
 pub const COURIER_INTERCEPTION_RANGE: u32 = 2;
 pub const COURIER_INTERCEPTION_CHANCE_PATROL: f32 = 0.5;

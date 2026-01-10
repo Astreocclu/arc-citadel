@@ -14,12 +14,12 @@
 //! - **Lifecycle**: `alive: Vec<bool>` duplicates pattern from HumanArchetype. Consider
 //!   whether lifecycle state should be centralized in World or a DeathSystem.
 
-use crate::core::types::{EntityId, Vec2, Tick};
+use crate::core::types::{EntityId, Tick, Vec2};
 use crate::entity::body::BodyState;
 use crate::entity::needs::Needs;
-use crate::entity::thoughts::ThoughtBuffer;
-use crate::entity::tasks::TaskQueue;
 use crate::entity::social::SocialMemory;
+use crate::entity::tasks::TaskQueue;
+use crate::entity::thoughts::ThoughtBuffer;
 
 /// Orc-specific value vocabulary
 ///
@@ -47,7 +47,8 @@ impl OrcValues {
             ("territory", self.territory),
             ("combat_prowess", self.combat_prowess),
         ];
-        values.into_iter()
+        values
+            .into_iter()
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
             .unwrap()
     }
@@ -111,7 +112,8 @@ impl OrcArchetype {
     }
 
     pub fn iter_living(&self) -> impl Iterator<Item = usize> + '_ {
-        self.alive.iter()
+        self.alive
+            .iter()
             .enumerate()
             .filter(|(_, &alive)| alive)
             .map(|(i, _)| i)

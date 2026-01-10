@@ -95,9 +95,7 @@ impl Wounds {
             return 1.0;
         }
 
-        let total_severity: f32 = self.wounds.iter()
-            .map(|w| w.severity)
-            .sum();
+        let total_severity: f32 = self.wounds.iter().map(|w| w.severity).sum();
 
         (1.0 - total_severity).max(0.0)
     }
@@ -105,8 +103,7 @@ impl Wounds {
     /// Check if any limb prevents movement
     pub fn can_walk(&self) -> bool {
         !self.wounds.iter().any(|w| {
-            matches!(w.body_part, BodyPart::LeftLeg | BodyPart::RightLeg)
-                && w.severity > 0.5
+            matches!(w.body_part, BodyPart::LeftLeg | BodyPart::RightLeg) && w.severity > 0.5
         })
     }
 }

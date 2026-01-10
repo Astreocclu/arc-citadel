@@ -49,6 +49,16 @@ pub enum Species {
     Dryad,
     Goblin,
     Troll,
+    AbyssalDemons,
+    Elemental,
+    Fey,
+    StoneGiants,
+    Golem,
+    Merfolk,
+    Naga,
+    Revenant,
+    Vampire,
+    Lupine,
     // CODEGEN: species_enum_variants
 }
 
@@ -77,7 +87,10 @@ impl Vec2 {
     pub fn normalize(&self) -> Self {
         let len = self.length();
         if len > 0.0001 {
-            Self { x: self.x / len, y: self.y / len }
+            Self {
+                x: self.x / len,
+                y: self.y / len,
+            }
         } else {
             Self::default()
         }
@@ -87,21 +100,30 @@ impl Vec2 {
 impl std::ops::Add for Vec2 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        Self { x: self.x + rhs.x, y: self.y + rhs.y }
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
     }
 }
 
 impl std::ops::Sub for Vec2 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
-        Self { x: self.x - rhs.x, y: self.y - rhs.y }
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
     }
 }
 
 impl std::ops::Mul<f32> for Vec2 {
     type Output = Self;
     fn mul(self, rhs: f32) -> Self {
-        Self { x: self.x * rhs, y: self.y * rhs }
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
     }
 }
 
@@ -147,8 +169,8 @@ impl PolityTier {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum GovernmentType {
     #[default]
-    Autocracy,  // Single ruler makes decisions
-    Council,    // Multiple rulers vote on decisions
+    Autocracy, // Single ruler makes decisions
+    Council, // Multiple rulers vote on decisions
 }
 
 #[cfg(test)]

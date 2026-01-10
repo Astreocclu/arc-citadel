@@ -18,7 +18,7 @@ DATABASE_PATH = LIBRARIES_DIR / "assets.db"
 # DeepSeek API
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-reasoner"  # R1 reasoning model for quality
+DEEPSEEK_MODEL = "deepseek-chat"  # V3 model (reasoner returns empty)
 
 # Generation
 DEFAULT_TARGET_SCORE = 9.0

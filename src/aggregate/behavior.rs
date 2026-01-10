@@ -1,8 +1,8 @@
 //! Polity behavior framework
 
+use crate::aggregate::events::EventType;
 use crate::aggregate::polity::Polity;
 use crate::aggregate::world::AggregateWorld;
-use crate::aggregate::events::EventType;
 use crate::core::types::Species;
 
 /// Trait for species-specific polity behavior
@@ -42,17 +42,13 @@ mod tests {
     #[test]
     fn test_default_behavior_returns_empty() {
         let behavior = DefaultBehavior;
-        let events = behavior.tick(
-            &create_test_polity(),
-            &create_test_world(),
-            1,
-        );
+        let events = behavior.tick(&create_test_polity(), &create_test_world(), 1);
         assert!(events.is_empty());
     }
 
     fn create_test_polity() -> Polity {
         use crate::aggregate::polity::*;
-        use crate::core::types::{PolityId, PolityTier, GovernmentType};
+        use crate::core::types::{GovernmentType, PolityId, PolityTier};
         use std::collections::HashMap;
 
         Polity {
@@ -69,6 +65,7 @@ mod tests {
             capital: 0,
             military_strength: 100.0,
             economic_strength: 100.0,
+            founding_conditions: FoundingConditions::default(),
             cultural_drift: CulturalDrift::default(),
             relations: HashMap::new(),
             species_state: SpeciesState::Human(HumanState::default()),
@@ -77,8 +74,8 @@ mod tests {
     }
 
     fn create_test_world() -> AggregateWorld {
-        use rand_chacha::ChaCha8Rng;
         use rand_chacha::rand_core::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
 
         AggregateWorld::new(vec![], vec![], ChaCha8Rng::seed_from_u64(42))
     }

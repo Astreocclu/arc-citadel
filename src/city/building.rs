@@ -64,29 +64,16 @@ impl BuildingType {
     /// Materials required to construct this building
     pub fn required_materials(&self) -> Vec<(ResourceType, u32)> {
         match self {
-            BuildingType::House => vec![
-                (ResourceType::Wood, 20),
-                (ResourceType::Stone, 10),
-            ],
-            BuildingType::Farm => vec![
-                (ResourceType::Wood, 30),
-            ],
+            BuildingType::House => vec![(ResourceType::Wood, 20), (ResourceType::Stone, 10)],
+            BuildingType::Farm => vec![(ResourceType::Wood, 30)],
             BuildingType::Workshop => vec![
                 (ResourceType::Wood, 40),
                 (ResourceType::Stone, 20),
                 (ResourceType::Iron, 5),
             ],
-            BuildingType::Granary => vec![
-                (ResourceType::Wood, 50),
-                (ResourceType::Stone, 30),
-            ],
-            BuildingType::Wall => vec![
-                (ResourceType::Stone, 25),
-            ],
-            BuildingType::Gate => vec![
-                (ResourceType::Wood, 15),
-                (ResourceType::Iron, 10),
-            ],
+            BuildingType::Granary => vec![(ResourceType::Wood, 50), (ResourceType::Stone, 30)],
+            BuildingType::Wall => vec![(ResourceType::Stone, 25)],
+            BuildingType::Gate => vec![(ResourceType::Wood, 15), (ResourceType::Iron, 10)],
         }
     }
 }
@@ -328,8 +315,18 @@ mod tests {
     #[test]
     fn test_building_archetype_iter_under_construction() {
         let mut arch = BuildingArchetype::new();
-        arch.spawn(BuildingId::new(), BuildingType::House, Vec2::new(0.0, 0.0), 0);
-        arch.spawn(BuildingId::new(), BuildingType::Farm, Vec2::new(10.0, 0.0), 0);
+        arch.spawn(
+            BuildingId::new(),
+            BuildingType::House,
+            Vec2::new(0.0, 0.0),
+            0,
+        );
+        arch.spawn(
+            BuildingId::new(),
+            BuildingType::Farm,
+            Vec2::new(10.0, 0.0),
+            0,
+        );
 
         // Both are under construction
         let under_construction: Vec<_> = arch.iter_under_construction().collect();
@@ -463,9 +460,24 @@ mod tests {
     #[test]
     fn test_building_iter_producing() {
         let mut arch = BuildingArchetype::new();
-        arch.spawn(BuildingId::new(), BuildingType::Farm, Vec2::new(0.0, 0.0), 0);
-        arch.spawn(BuildingId::new(), BuildingType::Workshop, Vec2::new(10.0, 0.0), 0);
-        arch.spawn(BuildingId::new(), BuildingType::House, Vec2::new(20.0, 0.0), 0);
+        arch.spawn(
+            BuildingId::new(),
+            BuildingType::Farm,
+            Vec2::new(0.0, 0.0),
+            0,
+        );
+        arch.spawn(
+            BuildingId::new(),
+            BuildingType::Workshop,
+            Vec2::new(10.0, 0.0),
+            0,
+        );
+        arch.spawn(
+            BuildingId::new(),
+            BuildingType::House,
+            Vec2::new(20.0, 0.0),
+            0,
+        );
 
         // Complete first two
         arch.states[0] = BuildingState::Complete;
@@ -488,7 +500,12 @@ mod tests {
     #[test]
     fn test_building_iter_producing_filters_incomplete() {
         let mut arch = BuildingArchetype::new();
-        arch.spawn(BuildingId::new(), BuildingType::Farm, Vec2::new(0.0, 0.0), 0);
+        arch.spawn(
+            BuildingId::new(),
+            BuildingType::Farm,
+            Vec2::new(0.0, 0.0),
+            0,
+        );
 
         // Building under construction with recipe set (shouldn't be possible normally, but test the filter)
         arch.active_recipes[0] = Some("farm_food".into());

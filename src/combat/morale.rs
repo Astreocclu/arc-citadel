@@ -3,8 +3,8 @@
 //! Stress accumulates. When stress exceeds threshold, entity breaks.
 //! What you do to enemies = what they can do to you (symmetric).
 
-use serde::{Deserialize, Serialize};
 use crate::combat::constants::{BASE_STRESS_THRESHOLD, SHAKEN_THRESHOLD_RATIO};
+use serde::{Deserialize, Serialize};
 
 /// Sources of combat stress (symmetric - applies to both sides)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -157,7 +157,9 @@ mod tests {
 
     #[test]
     fn test_shock_stress_higher_than_sustained() {
-        assert!(StressSource::OfficerKilled.base_stress() > StressSource::ProlongedCombat.base_stress());
+        assert!(
+            StressSource::OfficerKilled.base_stress() > StressSource::ProlongedCombat.base_stress()
+        );
         assert!(StressSource::AmbushSprung.base_stress() > StressSource::Outnumbered.base_stress());
     }
 

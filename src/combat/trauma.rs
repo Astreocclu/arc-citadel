@@ -2,9 +2,9 @@
 //!
 //! NO PERCENTAGE MODIFIERS. Categorical comparison only.
 
-use serde::{Deserialize, Serialize};
-use crate::combat::weapons::Mass;
 use crate::combat::armor::Padding;
+use crate::combat::weapons::Mass;
+use serde::{Deserialize, Serialize};
 
 /// Result of mass vs padding comparison
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -68,15 +68,30 @@ mod tests {
 
     #[test]
     fn test_light_always_negligible() {
-        assert_eq!(resolve_trauma(Mass::Light, Padding::None), TraumaResult::Negligible);
-        assert_eq!(resolve_trauma(Mass::Light, Padding::Light), TraumaResult::Negligible);
-        assert_eq!(resolve_trauma(Mass::Light, Padding::Heavy), TraumaResult::Negligible);
+        assert_eq!(
+            resolve_trauma(Mass::Light, Padding::None),
+            TraumaResult::Negligible
+        );
+        assert_eq!(
+            resolve_trauma(Mass::Light, Padding::Light),
+            TraumaResult::Negligible
+        );
+        assert_eq!(
+            resolve_trauma(Mass::Light, Padding::Heavy),
+            TraumaResult::Negligible
+        );
     }
 
     #[test]
     fn test_massive_overwhelms() {
-        assert_eq!(resolve_trauma(Mass::Massive, Padding::None), TraumaResult::KnockdownCrush);
-        assert_eq!(resolve_trauma(Mass::Massive, Padding::Heavy), TraumaResult::Stagger);
+        assert_eq!(
+            resolve_trauma(Mass::Massive, Padding::None),
+            TraumaResult::KnockdownCrush
+        );
+        assert_eq!(
+            resolve_trauma(Mass::Massive, Padding::Heavy),
+            TraumaResult::Stagger
+        );
     }
 
     #[test]

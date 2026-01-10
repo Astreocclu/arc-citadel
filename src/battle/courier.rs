@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::battle::hex::BattleHexCoord;
-use crate::battle::units::{UnitId, FormationId, FormationShape};
 use crate::battle::planning::{EngagementRule, GoCodeId};
+use crate::battle::units::{FormationId, FormationShape, UnitId};
 use crate::core::types::{EntityId, Tick};
 
 /// Unique identifier for couriers
@@ -32,7 +32,7 @@ pub enum OrderType {
     MoveTo(BattleHexCoord),
     Attack(UnitId),
     Defend(BattleHexCoord),
-    Retreat(Vec<BattleHexCoord>),    // Retreat route
+    Retreat(Vec<BattleHexCoord>), // Retreat route
     ChangeFormation(FormationShape),
     ChangeEngagement(EngagementRule),
     ExecuteGoCode(GoCodeId),
@@ -107,8 +107,8 @@ pub enum CourierStatus {
     #[default]
     EnRoute,
     Arrived,
-    Intercepted,    // Caught by enemy
-    Lost,           // Courier killed
+    Intercepted, // Caught by enemy
+    Lost,        // Courier killed
 }
 
 /// A courier carrying an order
@@ -122,7 +122,7 @@ pub struct CourierInFlight {
     pub destination: BattleHexCoord,
     pub current_position: BattleHexCoord,
 
-    pub progress: f32,          // Progress to next hex (0.0 to 1.0)
+    pub progress: f32, // Progress to next hex (0.0 to 1.0)
     pub path: Vec<BattleHexCoord>,
 
     pub status: CourierStatus,

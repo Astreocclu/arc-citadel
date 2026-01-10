@@ -1,20 +1,20 @@
-use serde::{Deserialize, Serialize};
-use crate::core::types::EntityId;
-use super::memory::RelationshipMemory;
 use super::event_types::{EventType, Valence};
 use super::expectations::{BehaviorPattern, PatternType, MAX_PATTERNS_PER_SLOT, SALIENCE_FLOOR};
+use super::memory::RelationshipMemory;
 use super::service_types::{ServiceType, TraitIndicator};
 use crate::core::calendar::TimePeriod;
+use crate::core::types::EntityId;
+use serde::{Deserialize, Serialize};
 
 /// How an entity feels about another based on memories
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Disposition {
-    Hostile,     // net < -0.5
-    Suspicious,  // -0.5 <= net < -0.1
-    Neutral,     // -0.1 <= net <= 0.1
-    Friendly,    // 0.1 < net <= 0.5
-    Favorable,   // net > 0.5
-    Unknown,     // No memories
+    Hostile,    // net < -0.5
+    Suspicious, // -0.5 <= net < -0.1
+    Neutral,    // -0.1 <= net <= 0.1
+    Friendly,   // 0.1 < net <= 0.5
+    Favorable,  // net > 0.5
+    Unknown,    // No memories
 }
 
 /// A known entity with bounded memory buffer
@@ -86,12 +86,16 @@ impl RelationshipSlot {
             return Disposition::Unknown;
         }
 
-        let positive: f32 = self.memories.iter()
+        let positive: f32 = self
+            .memories
+            .iter()
             .filter(|m| m.valence == Valence::Positive)
             .map(|m| m.weighted_importance())
             .sum();
 
-        let negative: f32 = self.memories.iter()
+        let negative: f32 = self
+            .memories
+            .iter()
             .filter(|m| m.valence == Valence::Negative)
             .map(|m| m.weighted_importance())
             .sum();
@@ -110,18 +114,22 @@ impl RelationshipSlot {
     /// Calculate relationship strength for eviction decisions
     pub fn strength(&self, current_tick: u64, params: &SocialMemoryParams) -> f32 {
         let ticks_per_day = 1000;
-        let days_since = (current_tick.saturating_sub(self.last_contact)) as f32 / ticks_per_day as f32;
+        let days_since =
+            (current_tick.saturating_sub(self.last_contact)) as f32 / ticks_per_day as f32;
         let recency_score = 1.0 / (1.0 + days_since * 0.1);
 
-        let intensity_score: f32 = self.memories.iter()
+        let intensity_score: f32 = self
+            .memories
+            .iter()
             .map(|m| m.weighted_importance())
-            .sum::<f32>() / Self::MAX_MEMORIES as f32;
+            .sum::<f32>()
+            / Self::MAX_MEMORIES as f32;
 
         let depth_score = (self.interaction_count as f32 / 20.0).min(1.0);
 
-        recency_score * params.recency_weight +
-        intensity_score * params.intensity_weight +
-        depth_score * params.interaction_count_weight
+        recency_score * params.recency_weight
+            + intensity_score * params.intensity_weight
+            + depth_score * params.interaction_count_weight
     }
 
     // ===== Expectation Methods =====
@@ -136,7 +144,8 @@ impl RelationshipSlot {
 
         // Evict lowest salience if at capacity
         if self.expectations.len() >= MAX_PATTERNS_PER_SLOT {
-            if let Some(min_idx) = self.expectations
+            if let Some(min_idx) = self
+                .expectations
                 .iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| a.salience.partial_cmp(&b.salience).unwrap())
@@ -151,12 +160,19 @@ impl RelationshipSlot {
 
     /// Find an expectation by pattern type
     pub fn find_expectation(&self, pattern_type: &PatternType) -> Option<&BehaviorPattern> {
-        self.expectations.iter().find(|p| Self::pattern_matches(&p.pattern_type, pattern_type))
+        self.expectations
+            .iter()
+            .find(|p| Self::pattern_matches(&p.pattern_type, pattern_type))
     }
 
     /// Find an expectation by pattern type (mutable)
-    pub fn find_expectation_mut(&mut self, pattern_type: &PatternType) -> Option<&mut BehaviorPattern> {
-        self.expectations.iter_mut().find(|p| Self::pattern_matches(&p.pattern_type, pattern_type))
+    pub fn find_expectation_mut(
+        &mut self,
+        pattern_type: &PatternType,
+    ) -> Option<&mut BehaviorPattern> {
+        self.expectations
+            .iter_mut()
+            .find(|p| Self::pattern_matches(&p.pattern_type, pattern_type))
     }
 
     /// Compare PatternType variants, matching on key fields (not all fields)
@@ -167,14 +183,32 @@ impl RelationshipSlot {
     /// - RespondsToEvent: matches if event_type matches (response can differ)
     pub fn pattern_matches(a: &PatternType, b: &PatternType) -> bool {
         match (a, b) {
-            (PatternType::ProvidesWhenAsked { service_type: s1 },
-             PatternType::ProvidesWhenAsked { service_type: s2 }) => s1 == s2,
-            (PatternType::BehavesWithTrait { trait_indicator: t1 },
-             PatternType::BehavesWithTrait { trait_indicator: t2 }) => t1 == t2,
-            (PatternType::LocationDuring { location_id: l1, time_period: tp1 },
-             PatternType::LocationDuring { location_id: l2, time_period: tp2 }) => l1 == l2 && tp1 == tp2,
-            (PatternType::RespondsToEvent { event_type: e1, .. },
-             PatternType::RespondsToEvent { event_type: e2, .. }) => e1 == e2,
+            (
+                PatternType::ProvidesWhenAsked { service_type: s1 },
+                PatternType::ProvidesWhenAsked { service_type: s2 },
+            ) => s1 == s2,
+            (
+                PatternType::BehavesWithTrait {
+                    trait_indicator: t1,
+                },
+                PatternType::BehavesWithTrait {
+                    trait_indicator: t2,
+                },
+            ) => t1 == t2,
+            (
+                PatternType::LocationDuring {
+                    location_id: l1,
+                    time_period: tp1,
+                },
+                PatternType::LocationDuring {
+                    location_id: l2,
+                    time_period: tp2,
+                },
+            ) => l1 == l2 && tp1 == tp2,
+            (
+                PatternType::RespondsToEvent { event_type: e1, .. },
+                PatternType::RespondsToEvent { event_type: e2, .. },
+            ) => e1 == e2,
             _ => false,
         }
     }
@@ -318,7 +352,9 @@ impl SocialMemory {
         }
 
         // Update or create pending encounter
-        if let Some(encounter) = self.encounter_buffer.iter_mut()
+        if let Some(encounter) = self
+            .encounter_buffer
+            .iter_mut()
             .find(|e| e.target_id == target)
         {
             encounter.add_encounter(event_type, intensity, current_tick);
@@ -340,7 +376,9 @@ impl SocialMemory {
                 // Add to buffer (evict oldest if full)
                 if self.encounter_buffer.len() >= self.params.encounter_buffer_size {
                     // Remove oldest by most_recent_tick
-                    if let Some(oldest_idx) = self.encounter_buffer.iter()
+                    if let Some(oldest_idx) = self
+                        .encounter_buffer
+                        .iter()
                         .enumerate()
                         .min_by_key(|(_, e)| e.most_recent_tick)
                         .map(|(i, _)| i)
@@ -381,7 +419,9 @@ impl SocialMemory {
     /// Promote encounter to relationship slot
     pub fn promote_encounter(&mut self, target: EntityId, current_tick: u64) {
         // Find and remove from buffer
-        let encounter = self.encounter_buffer.iter()
+        let encounter = self
+            .encounter_buffer
+            .iter()
             .position(|e| e.target_id == target)
             .map(|i| self.encounter_buffer.remove(i));
 
@@ -415,7 +455,9 @@ impl SocialMemory {
             return;
         }
 
-        let weakest_idx = self.slots.iter()
+        let weakest_idx = self
+            .slots
+            .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| {
                 a.strength(current_tick, &self.params)
@@ -440,7 +482,8 @@ impl SocialMemory {
         }
 
         // Remove near-zero encounters
-        self.encounter_buffer.retain(|e| e.accumulated_salience > 0.01);
+        self.encounter_buffer
+            .retain(|e| e.accumulated_salience > 0.01);
     }
 }
 
@@ -474,7 +517,9 @@ mod tests {
         assert_eq!(slot.memories.len(), 5);
 
         // Lowest intensity (0.1) should have been evicted
-        let min_intensity = slot.memories.iter()
+        let min_intensity = slot
+            .memories
+            .iter()
             .map(|m| m.intensity)
             .fold(f32::MAX, f32::min);
         assert!(min_intensity > 0.15); // 0.1 was evicted
@@ -486,12 +531,14 @@ mod tests {
         let mut slot = RelationshipSlot::new(target, 0);
 
         // Add positive memories
-        slot.add_memory(RelationshipMemory::new(
-            EventType::AidReceived, Valence::Positive, 0.8, 0
-        ), 0);
-        slot.add_memory(RelationshipMemory::new(
-            EventType::GiftReceived, Valence::Positive, 0.6, 10
-        ), 10);
+        slot.add_memory(
+            RelationshipMemory::new(EventType::AidReceived, Valence::Positive, 0.8, 0),
+            0,
+        );
+        slot.add_memory(
+            RelationshipMemory::new(EventType::GiftReceived, Valence::Positive, 0.6, 10),
+            10,
+        );
 
         let disposition = slot.get_disposition();
         assert_eq!(disposition, Disposition::Favorable);
@@ -503,12 +550,14 @@ mod tests {
         let mut slot = RelationshipSlot::new(target, 0);
 
         // Add negative memories
-        slot.add_memory(RelationshipMemory::new(
-            EventType::HarmReceived, Valence::Negative, 0.8, 0
-        ), 0);
-        slot.add_memory(RelationshipMemory::new(
-            EventType::Betrayal, Valence::Negative, 0.9, 10
-        ), 10);
+        slot.add_memory(
+            RelationshipMemory::new(EventType::HarmReceived, Valence::Negative, 0.8, 0),
+            0,
+        );
+        slot.add_memory(
+            RelationshipMemory::new(EventType::Betrayal, Valence::Negative, 0.9, 10),
+            10,
+        );
 
         let disposition = slot.get_disposition();
         assert_eq!(disposition, Disposition::Hostile);
@@ -520,12 +569,14 @@ mod tests {
         let mut slot = RelationshipSlot::new(target, 0);
 
         // Add balanced positive and negative memories
-        slot.add_memory(RelationshipMemory::new(
-            EventType::AidReceived, Valence::Positive, 0.5, 0
-        ), 0);
-        slot.add_memory(RelationshipMemory::new(
-            EventType::HarmReceived, Valence::Negative, 0.5, 10
-        ), 10);
+        slot.add_memory(
+            RelationshipMemory::new(EventType::AidReceived, Valence::Positive, 0.5, 0),
+            0,
+        );
+        slot.add_memory(
+            RelationshipMemory::new(EventType::HarmReceived, Valence::Negative, 0.5, 10),
+            10,
+        );
 
         let disposition = slot.get_disposition();
         assert_eq!(disposition, Disposition::Neutral);
@@ -639,9 +690,10 @@ mod tests {
         let params = SocialMemoryParams::default();
 
         // Add some memories
-        slot.add_memory(RelationshipMemory::new(
-            EventType::AidReceived, Valence::Positive, 0.8, 0
-        ), 0);
+        slot.add_memory(
+            RelationshipMemory::new(EventType::AidReceived, Valence::Positive, 0.8, 0),
+            0,
+        );
 
         // Strength should be positive
         let strength = slot.strength(0, &params);
@@ -692,7 +744,7 @@ mod tests {
 #[cfg(test)]
 mod critical_edge_case_tests {
     use super::*;
-    
+
     /// Test that decay is recalculated from tick_created (not cumulative)
     /// This verifies the decay model semantics
     #[test]
@@ -703,82 +755,105 @@ mod critical_edge_case_tests {
             0.8,
             0, // created at tick 0
         );
-        
+
         // Decay at tick 2000
         memory.apply_decay(2000, 0.02);
         let salience_at_2k = memory.salience;
-        
+
         // Decay again at tick 1000 (earlier tick!)
         memory.apply_decay(1000, 0.02);
         let salience_at_1k = memory.salience;
-        
+
         // Since decay is age-based, calling with earlier tick should give HIGHER salience
         // This is the current behavior - verify it's intentional
-        assert!(salience_at_1k > salience_at_2k, 
+        assert!(
+            salience_at_1k > salience_at_2k,
             "Age-based decay: 1k ticks ({:.4}) should be higher than 2k ticks ({:.4})",
-            salience_at_1k, salience_at_2k);
+            salience_at_1k,
+            salience_at_2k
+        );
     }
-    
+
     /// Test exact threshold boundaries
     #[test]
     fn test_threshold_boundary_at_exactly_floor() {
         let mut memory = SocialMemory::new();
         let target = EntityId::new();
-        
+
         // importance_floor is 0.2
         // At exactly 0.2 should be stored (not < 0.2)
         memory.record_encounter(target, EventType::Observation, 0.2, 0);
-        
-        let stored = memory.encounter_buffer.iter().any(|e| e.target_id == target)
-                     || memory.find_slot(target).is_some();
+
+        let stored = memory
+            .encounter_buffer
+            .iter()
+            .any(|e| e.target_id == target)
+            || memory.find_slot(target).is_some();
         assert!(stored, "Encounter at exactly floor (0.2) should be stored");
     }
-    
+
     /// Test that slot promotion at exactly threshold works
     #[test]
     fn test_slot_promotion_at_exactly_threshold() {
         let mut memory = SocialMemory::new();
         let target = EntityId::new();
-        
+
         // slot_allocation_threshold is 0.3
         // Single encounter at 0.3 should create slot immediately
         memory.record_encounter(target, EventType::AidReceived, 0.3, 0);
-        
-        assert!(memory.find_slot(target).is_some(), 
-            "Encounter at exactly threshold (0.3) should create slot");
-        assert!(memory.encounter_buffer.is_empty(),
-            "Should not be in buffer if promoted to slot");
+
+        assert!(
+            memory.find_slot(target).is_some(),
+            "Encounter at exactly threshold (0.3) should create slot"
+        );
+        assert!(
+            memory.encounter_buffer.is_empty(),
+            "Should not be in buffer if promoted to slot"
+        );
     }
-    
+
     /// Test that slot just below threshold goes to buffer
     #[test]
     fn test_slot_buffer_just_below_threshold() {
         let mut memory = SocialMemory::new();
         let target = EntityId::new();
-        
+
         // Just below threshold
         memory.record_encounter(target, EventType::Transaction, 0.29, 0);
-        
-        assert!(memory.find_slot(target).is_none(), 
-            "0.29 should not create slot");
-        assert!(memory.encounter_buffer.iter().any(|e| e.target_id == target),
-            "0.29 should be in buffer");
+
+        assert!(
+            memory.find_slot(target).is_none(),
+            "0.29 should not create slot"
+        );
+        assert!(
+            memory
+                .encounter_buffer
+                .iter()
+                .any(|e| e.target_id == target),
+            "0.29 should be in buffer"
+        );
     }
-    
+
     /// Test memory reordering after decay
     #[test]
     fn test_memory_reordering_after_decay() {
         let target = EntityId::new();
         let mut slot = RelationshipSlot::new(target, 0);
-        
+
         // Add two memories: one old high-intensity, one recent lower-intensity
         let old_memory = RelationshipMemory::new(
-            EventType::Betrayal, Valence::Negative, 0.9, 0  // old, high
+            EventType::Betrayal,
+            Valence::Negative,
+            0.9,
+            0, // old, high
         );
         let recent_memory = RelationshipMemory::new(
-            EventType::Transaction, Valence::Positive, 0.4, 5000  // recent, low
+            EventType::Transaction,
+            Valence::Positive,
+            0.4,
+            5000, // recent, low
         );
-        
+
         slot.memories.push(old_memory);
         slot.memories.push(recent_memory);
         slot.memories.sort_by(|a, b| {
@@ -786,47 +861,53 @@ mod critical_edge_case_tests {
                 .partial_cmp(&a.weighted_importance())
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        
+
         // Before decay, old high-intensity should be first
-        assert!(slot.memories[0].intensity > 0.8, "High intensity should be first before decay");
-        
+        assert!(
+            slot.memories[0].intensity > 0.8,
+            "High intensity should be first before decay"
+        );
+
         // Apply decay at tick 10000 (10 days later)
         slot.apply_decay(10000, 0.02);
-        
+
         // After decay, the old memory has decayed more, recent memory decayed less
         // Recent memory might now be higher weighted_importance
         let first_importance = slot.memories[0].weighted_importance();
         let second_importance = slot.memories[1].weighted_importance();
-        
-        assert!(first_importance >= second_importance, 
-            "Memories should be sorted by weighted_importance after decay");
+
+        assert!(
+            first_importance >= second_importance,
+            "Memories should be sorted by weighted_importance after decay"
+        );
     }
-    
+
     /// Test disposition with all memories at salience floor
     #[test]
     fn test_disposition_with_floor_salience_memories() {
         let target = EntityId::new();
         let mut slot = RelationshipSlot::new(target, 0);
-        
+
         // Add a positive memory
-        let mut memory = RelationshipMemory::new(
-            EventType::AidReceived, Valence::Positive, 0.8, 0
-        );
-        
+        let mut memory = RelationshipMemory::new(EventType::AidReceived, Valence::Positive, 0.8, 0);
+
         // Decay to floor (salience = 0.01)
         memory.apply_decay(1000000, 0.5); // Massive decay
         assert!((memory.salience - 0.01).abs() < 0.001, "Should be at floor");
-        
+
         slot.memories.push(memory);
-        
+
         let disposition = slot.get_disposition();
-        
+
         // weighted_importance = 0.8 * 0.01 = 0.008
         // This is very low, should be Neutral
-        assert!(disposition == Disposition::Neutral || disposition == Disposition::Friendly,
-            "Floor-salience memories should give low disposition: {:?}", disposition);
+        assert!(
+            disposition == Disposition::Neutral || disposition == Disposition::Friendly,
+            "Floor-salience memories should give low disposition: {:?}",
+            disposition
+        );
     }
-    
+
     /// Test encounter buffer eviction (oldest removed)
     #[test]
     fn test_encounter_buffer_evicts_oldest() {
@@ -836,26 +917,30 @@ mod critical_edge_case_tests {
             memory_importance_floor: 0.1,
             ..Default::default()
         });
-        
+
         let t1 = EntityId::new();
         let t2 = EntityId::new();
         let t3 = EntityId::new();
         let t4 = EntityId::new();
-        
-        memory.record_encounter(t1, EventType::Transaction, 0.2, 100);  // oldest
+
+        memory.record_encounter(t1, EventType::Transaction, 0.2, 100); // oldest
         memory.record_encounter(t2, EventType::Transaction, 0.2, 200);
         memory.record_encounter(t3, EventType::Transaction, 0.2, 300);
-        
+
         assert_eq!(memory.encounter_buffer.len(), 3);
-        
+
         // Add 4th, should evict oldest (t1)
         memory.record_encounter(t4, EventType::Transaction, 0.2, 400);
-        
+
         assert_eq!(memory.encounter_buffer.len(), 3);
-        assert!(!memory.encounter_buffer.iter().any(|e| e.target_id == t1),
-            "Oldest encounter (t1) should be evicted");
-        assert!(memory.encounter_buffer.iter().any(|e| e.target_id == t4),
-            "Newest encounter (t4) should be present");
+        assert!(
+            !memory.encounter_buffer.iter().any(|e| e.target_id == t1),
+            "Oldest encounter (t1) should be evicted"
+        );
+        assert!(
+            memory.encounter_buffer.iter().any(|e| e.target_id == t4),
+            "Newest encounter (t4) should be present"
+        );
     }
 }
 
@@ -872,7 +957,9 @@ mod expectation_tests {
 
         // Add expectation
         let pattern = BehaviorPattern::new(
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting,
+            },
             100,
         );
         slot.add_expectation(pattern);
@@ -881,7 +968,7 @@ mod expectation_tests {
 
         // Find expectation
         let found = slot.find_expectation(&PatternType::ProvidesWhenAsked {
-            service_type: ServiceType::Crafting
+            service_type: ServiceType::Crafting,
         });
         assert!(found.is_some());
     }
@@ -894,7 +981,9 @@ mod expectation_tests {
         // Add more than MAX_PATTERNS_PER_SLOT
         for i in 0..12 {
             let pattern = BehaviorPattern::new(
-                PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+                PatternType::BehavesWithTrait {
+                    trait_indicator: TraitIndicator::Reliable,
+                },
                 i as u64 * 100,
             );
             slot.add_expectation(pattern);
@@ -911,7 +1000,9 @@ mod expectation_tests {
 
         // Add initial expectation
         let pattern1 = BehaviorPattern::new(
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting,
+            },
             100,
         );
         slot.add_expectation(pattern1);
@@ -921,7 +1012,9 @@ mod expectation_tests {
 
         // Add same type again - should strengthen, not add new
         let pattern2 = BehaviorPattern::new(
-            PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
+            PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting,
+            },
             200,
         );
         slot.add_expectation(pattern2);
@@ -940,14 +1033,16 @@ mod expectation_tests {
         let mut slot = RelationshipSlot::new(target, 0);
 
         let pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Generous,
+            },
             100,
         );
         slot.add_expectation(pattern);
 
         // Find and modify
         let found = slot.find_expectation_mut(&PatternType::BehavesWithTrait {
-            trait_indicator: TraitIndicator::Generous
+            trait_indicator: TraitIndicator::Generous,
         });
         assert!(found.is_some());
 
@@ -955,9 +1050,11 @@ mod expectation_tests {
         pattern_mut.record_violation(200);
 
         // Verify the change persisted
-        let found_again = slot.find_expectation(&PatternType::BehavesWithTrait {
-            trait_indicator: TraitIndicator::Generous
-        }).unwrap();
+        let found_again = slot
+            .find_expectation(&PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Generous,
+            })
+            .unwrap();
         assert_eq!(found_again.violation_count, 1);
     }
 
@@ -965,14 +1062,22 @@ mod expectation_tests {
     fn test_pattern_matches_provides_when_asked() {
         // Same service type should match
         assert!(RelationshipSlot::pattern_matches(
-            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
-            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting }
+            &PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting
+            },
+            &PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting
+            }
         ));
 
         // Different service type should not match
         assert!(!RelationshipSlot::pattern_matches(
-            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
-            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Trading }
+            &PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting
+            },
+            &PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Trading
+            }
         ));
     }
 
@@ -980,14 +1085,22 @@ mod expectation_tests {
     fn test_pattern_matches_behaves_with_trait() {
         // Same trait should match
         assert!(RelationshipSlot::pattern_matches(
-            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous },
-            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous }
+            &PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Generous
+            },
+            &PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Generous
+            }
         ));
 
         // Different trait should not match
         assert!(!RelationshipSlot::pattern_matches(
-            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Generous },
-            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Aggressive }
+            &PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Generous
+            },
+            &PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Aggressive
+            }
         ));
     }
 
@@ -998,20 +1111,38 @@ mod expectation_tests {
 
         // Same location and time should match
         assert!(RelationshipSlot::pattern_matches(
-            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Morning },
-            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Morning }
+            &PatternType::LocationDuring {
+                location_id: loc1,
+                time_period: TimePeriod::Morning
+            },
+            &PatternType::LocationDuring {
+                location_id: loc1,
+                time_period: TimePeriod::Morning
+            }
         ));
 
         // Different location should not match
         assert!(!RelationshipSlot::pattern_matches(
-            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Morning },
-            &PatternType::LocationDuring { location_id: loc2, time_period: TimePeriod::Morning }
+            &PatternType::LocationDuring {
+                location_id: loc1,
+                time_period: TimePeriod::Morning
+            },
+            &PatternType::LocationDuring {
+                location_id: loc2,
+                time_period: TimePeriod::Morning
+            }
         ));
 
         // Different time period should not match
         assert!(!RelationshipSlot::pattern_matches(
-            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Morning },
-            &PatternType::LocationDuring { location_id: loc1, time_period: TimePeriod::Evening }
+            &PatternType::LocationDuring {
+                location_id: loc1,
+                time_period: TimePeriod::Morning
+            },
+            &PatternType::LocationDuring {
+                location_id: loc1,
+                time_period: TimePeriod::Evening
+            }
         ));
     }
 
@@ -1048,8 +1179,12 @@ mod expectation_tests {
     fn test_pattern_matches_different_variants() {
         // Different pattern variants should never match
         assert!(!RelationshipSlot::pattern_matches(
-            &PatternType::ProvidesWhenAsked { service_type: ServiceType::Crafting },
-            &PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable }
+            &PatternType::ProvidesWhenAsked {
+                service_type: ServiceType::Crafting
+            },
+            &PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Reliable
+            }
         ));
     }
 
@@ -1059,7 +1194,9 @@ mod expectation_tests {
         let mut slot = RelationshipSlot::new(target, 0);
 
         let pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Reliable,
+            },
             0,
         );
         slot.add_expectation(pattern);
@@ -1079,7 +1216,9 @@ mod expectation_tests {
         let mut slot = RelationshipSlot::new(target, 0);
 
         let pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Reliable },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Reliable,
+            },
             0,
         );
         slot.add_expectation(pattern);
@@ -1104,7 +1243,7 @@ mod expectation_tests {
             let mut pattern = BehaviorPattern::new(
                 PatternType::LocationDuring {
                     location_id: EntityId::new(),
-                    time_period: TimePeriod::Morning
+                    time_period: TimePeriod::Morning,
                 },
                 i as u64 * 100,
             );
@@ -1118,13 +1257,17 @@ mod expectation_tests {
         assert_eq!(slot.expectations.len(), MAX_PATTERNS_PER_SLOT);
 
         // Find the current minimum salience
-        let min_salience_before = slot.expectations.iter()
+        let min_salience_before = slot
+            .expectations
+            .iter()
             .map(|p| p.salience)
             .fold(f32::MAX, f32::min);
 
         // Add one more pattern - should evict lowest salience
         let new_pattern = BehaviorPattern::new(
-            PatternType::BehavesWithTrait { trait_indicator: TraitIndicator::Punctual },
+            PatternType::BehavesWithTrait {
+                trait_indicator: TraitIndicator::Punctual,
+            },
             1000,
         );
         let new_pattern_salience = new_pattern.salience;
@@ -1135,11 +1278,14 @@ mod expectation_tests {
 
         // The new minimum salience should be >= the old minimum
         // (because we evicted the lowest)
-        let min_salience_after = slot.expectations.iter()
+        let min_salience_after = slot
+            .expectations
+            .iter()
             .map(|p| p.salience)
             .fold(f32::MAX, f32::min);
-        assert!(min_salience_after >= min_salience_before ||
-                min_salience_after == new_pattern_salience,
-            "Lowest salience pattern should have been evicted");
+        assert!(
+            min_salience_after >= min_salience_before || min_salience_after == new_pattern_salience,
+            "Lowest salience pattern should have been evicted"
+        );
     }
 }

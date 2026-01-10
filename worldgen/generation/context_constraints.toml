@@ -1,0 +1,92 @@
+# Context-specific structural constraints for quality scoring
+# These are HARD REQUIREMENTS - outputs outside ranges score 0-3 on physical coherence
+
+[underground_dwarf_forge]
+description = "Deep underground dwarven forge chamber"
+elevation_min = -800
+elevation_max = -50
+temperature_min = 30
+temperature_max = 60
+terrain = ["underground", "cavern"]
+notes = "Forges are hot from smelting. Negative elevation = underground."
+
+[surface_human_settlement]
+description = "Temperate surface human city district"
+elevation_min = 0
+elevation_max = 500
+temperature_min = 5
+temperature_max = 35
+terrain = ["plains", "hills"]
+notes = "Human cities on flat or gently rolling terrain, temperate climate."
+
+[elven_forest]
+description = "Ancient elven forest grove with heart tree"
+elevation_min = 0
+elevation_max = 600
+temperature_min = 5
+temperature_max = 30
+terrain = ["forest", "dense_forest"]
+notes = "Elves live in forests, not on mountains or underground."
+
+[mountain_pass]
+description = "High mountain pass between peaks"
+elevation_min = 800
+elevation_max = 3000
+temperature_min = -20
+temperature_max = 15
+terrain = ["mountains", "high_mountains"]
+notes = "High altitude = cold. Passes are at significant elevation."
+
+[coastal_harbor]
+description = "Coastal harbor area near sea level"
+elevation_min = -10
+elevation_max = 50
+temperature_min = 10
+temperature_max = 35
+terrain = ["shallow_water", "plains", "marsh"]
+notes = "Harbors are at sea level. Moderate maritime climate."
+
+[desert_oasis]
+description = "Oasis in deep desert"
+elevation_min = 0
+elevation_max = 400
+temperature_min = 25
+temperature_max = 50
+terrain = ["desert"]
+notes = "Deserts are HOT. Oases are in desert terrain, not forest."
+
+[frozen_tundra]
+description = "Frozen northern wasteland with burial mounds"
+elevation_min = 0
+elevation_max = 300
+temperature_min = -40
+temperature_max = 5
+terrain = ["tundra", "glacier"]
+notes = "Tundra is COLD. Sub-zero temperatures expected."
+
+[deep_cavern]
+description = "Natural deep cavern system with underground lake"
+elevation_min = -500
+elevation_max = -100
+temperature_min = 10
+temperature_max = 20
+terrain = ["cavern", "underground"]
+notes = "Deep caves have stable temperature ~15C. Negative elevation."
+
+[volcanic_region]
+description = "Active volcanic highlands with lava flows"
+elevation_min = 500
+elevation_max = 2000
+temperature_min = 30
+temperature_max = 80
+terrain = ["volcanic", "mountains"]
+notes = "Volcanic = HOT from geothermal activity. High elevation."
+
+[swampland]
+description = "Murky swamp with ancient ruins"
+elevation_min = -20
+elevation_max = 50
+temperature_min = 15
+temperature_max = 35
+terrain = ["marsh", "shallow_water"]
+notes = "Swamps are low-lying wetlands. Warm and humid."

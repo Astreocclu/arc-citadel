@@ -1,13 +1,15 @@
 //! Population and economy system
 
-use crate::aggregate::world::AggregateWorld;
 use crate::aggregate::polity::SpeciesState;
+use crate::aggregate::world::AggregateWorld;
 use crate::core::types::Species;
 
 /// Update populations for all polities
 pub fn update_populations(world: &mut AggregateWorld) {
     // Collect population updates (to avoid borrow issues)
-    let updates: Vec<(u32, u32, f32, f32)> = world.polities.iter()
+    let updates: Vec<(u32, u32, f32, f32)> = world
+        .polities
+        .iter()
         .filter(|p| p.alive)
         .map(|polity| {
             let base_growth = match polity.species {
@@ -48,7 +50,9 @@ pub fn update_populations(world: &mut AggregateWorld) {
             let war_modifier = if at_war { 0.95 } else { 1.0 };
 
             // Calculate carrying capacity (territory now tracked via region.controller)
-            let capacity: u32 = world.regions.iter()
+            let capacity: u32 = world
+                .regions
+                .iter()
                 .filter(|r| r.controller == Some(polity.id.0))
                 .map(|r| r.max_population)
                 .sum();
@@ -64,17 +68,18 @@ pub fn update_populations(world: &mut AggregateWorld) {
             let growth_room = (1.0 - density).max(0.0);
 
             // Actual growth = 1.0 + (base_growth - 1.0) * growth_room * modifiers
-            let effective_growth = 1.0 + (base_growth - 1.0) * growth_room * territory_quality * war_modifier;
+            let effective_growth =
+                1.0 + (base_growth - 1.0) * growth_room * territory_quality * war_modifier;
 
             let new_pop = (polity.population as f32 * effective_growth) as u32;
 
             // Species-specific strength multipliers
             // Slower-growing species compensate with quality over quantity
             let (mil_mult, econ_mult) = match polity.species {
-                Species::Human => (1.0, 1.0),      // Baseline
-                Species::Dwarf => (2.5, 3.0),     // Master craftsmen, legendary equipment
-                Species::Elf => (3.0, 2.5),       // Ancient magic, immortal warriors
-                Species::Orc => (1.2, 0.6),       // Strong but poor economy
+                Species::Human => (1.0, 1.0), // Baseline
+                Species::Dwarf => (2.5, 3.0), // Master craftsmen, legendary equipment
+                Species::Elf => (3.0, 2.5),   // Ancient magic, immortal warriors
+                Species::Orc => (1.2, 0.6),   // Strong but poor economy
                 _ => (1.0, 1.0),
             };
 
@@ -126,9 +131,14 @@ fn decay_war_exhaustion(world: &mut AggregateWorld) {
     }
 }
 
-fn calculate_territory_quality(polity: &crate::aggregate::polity::Polity, world: &AggregateWorld) -> f32 {
+fn calculate_territory_quality(
+    polity: &crate::aggregate::polity::Polity,
+    world: &AggregateWorld,
+) -> f32 {
     // Get regions controlled by this polity (territory now tracked via region.controller)
-    let our_regions: Vec<&crate::aggregate::region::Region> = world.regions.iter()
+    let our_regions: Vec<&crate::aggregate::region::Region> = world
+        .regions
+        .iter()
         .filter(|r| r.controller == Some(polity.id.0))
         .collect();
 

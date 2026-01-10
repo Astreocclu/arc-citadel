@@ -7,22 +7,27 @@
 //!
 //! Uses rayon for parallel processing where safe.
 
-use crate::ecs::world::World;
-use crate::spatial::sparse_hash::SparseHashGrid;
-use crate::simulation::perception::{perception_system, find_nearest_food_zone, find_nearest_building_site, RelationshipType};
-use crate::simulation::action_select::{select_action_human, SelectionContext, select_action_orc, OrcSelectionContext};
-use crate::simulation::expectation_formation::process_observations;
-use crate::simulation::violation_detection::process_violations;
-use crate::entity::thoughts::{Thought, Valence, CauseType};
-use crate::entity::needs::NeedType;
-use crate::entity::tasks::Task;
-use crate::entity::social::EventType;
 use crate::actions::catalog::ActionId;
-use crate::city::building::BuildingState;
-use crate::city::construction::{apply_construction_work, calculate_worker_contribution, ContributionResult};
-use crate::simulation::housing::assign_housing;
+use crate::city::construction::{
+    apply_construction_work, calculate_worker_contribution, ContributionResult,
+};
+use crate::ecs::world::World;
+use crate::entity::needs::NeedType;
+use crate::entity::social::EventType;
+use crate::entity::tasks::Task;
+use crate::entity::thoughts::{CauseType, Thought, Valence};
+use crate::simulation::action_select::{
+    select_action_human, select_action_orc, OrcSelectionContext, SelectionContext,
+};
 use crate::simulation::consumption::consume_food;
+use crate::simulation::expectation_formation::process_observations;
+use crate::simulation::housing::assign_housing;
+use crate::simulation::perception::{
+    find_nearest_building_site, find_nearest_food_zone, perception_system, RelationshipType,
+};
 use crate::simulation::population::try_population_growth;
+use crate::simulation::violation_detection::process_violations;
+use crate::spatial::sparse_hash::SparseHashGrid;
 use rayon::prelude::*;
 
 /// Run a single simulation tick
@@ -138,7 +143,10 @@ fn run_perception(world: &World) -> Vec<crate::simulation::perception::Perceptio
     // IdleObserve grants 1.5x perception range
     const BASE_PERCEPTION_RANGE: f32 = 50.0;
     const IDLE_OBSERVE_MULTIPLIER: f32 = 1.5;
-    let perception_ranges: Vec<f32> = world.humans.task_queues.iter()
+    let perception_ranges: Vec<f32> = world
+        .humans
+        .task_queues
+        .iter()
         .map(|queue| {
             let is_observing = queue
                 .current()
@@ -154,23 +162,29 @@ fn run_perception(world: &World) -> Vec<crate::simulation::perception::Perceptio
 
     // Use parallel for large entity counts, sequential for small
     let mut perceptions = if ids.len() >= PARALLEL_THRESHOLD {
-        perception_system_parallel(&grid, &positions, &ids, &social_memories, &perception_ranges)
+        perception_system_parallel(
+            &grid,
+            &positions,
+            &ids,
+            &social_memories,
+            &perception_ranges,
+        )
     } else {
-        perception_system(&grid, &positions, &ids, &social_memories, &perception_ranges)
+        perception_system(
+            &grid,
+            &positions,
+            &ids,
+            &social_memories,
+            &perception_ranges,
+        )
     };
 
     // Populate nearest_food_zone and nearest_building_site for each perception
     for (i, perception) in perceptions.iter_mut().enumerate() {
-        perception.nearest_food_zone = find_nearest_food_zone(
-            positions[i],
-            perception_ranges[i],
-            &world.food_zones,
-        );
-        perception.nearest_building_site = find_nearest_building_site(
-            positions[i],
-            perception_ranges[i],
-            &world.buildings,
-        );
+        perception.nearest_food_zone =
+            find_nearest_food_zone(positions[i], perception_ranges[i], &world.food_zones);
+        perception.nearest_building_site =
+            find_nearest_building_site(positions[i], perception_ranges[i], &world.buildings);
     }
 
     perceptions
@@ -184,7 +198,7 @@ fn perception_system_parallel(
     social_memories: &[crate::entity::social::SocialMemory],
     perception_ranges: &[f32],
 ) -> Vec<crate::simulation::perception::Perception> {
-    use crate::simulation::perception::{Perception, PerceivedEntity};
+    use crate::simulation::perception::{PerceivedEntity, Perception};
 
     // Build O(1) lookup map
     let id_to_idx: ahash::AHashMap<_, _> = entity_ids
@@ -250,14 +264,18 @@ fn perception_system_parallel(
 /// Perceptions are filtered through values to generate appropriate thoughts.
 fn generate_thoughts(world: &mut World, perceptions: &[crate::simulation::perception::Perception]) {
     // Build O(1) lookup map once, not O(n) search per perception
-    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world.humans.ids
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world
+        .humans
+        .ids
         .iter()
         .enumerate()
         .map(|(i, &id)| (id, i))
         .collect();
 
     for perception in perceptions {
-        let Some(&idx) = id_to_idx.get(&perception.observer) else { continue };
+        let Some(&idx) = id_to_idx.get(&perception.observer) else {
+            continue;
+        };
         let values = &world.humans.values[idx];
 
         // Process perceived entities
@@ -267,7 +285,11 @@ fn generate_thoughts(world: &mut World, perceptions: &[crate::simulation::percep
                 let thought = Thought::new(
                     Valence::Negative,
                     perceived.threat_level,
-                    if values.safety > 0.5 { "fear" } else { "concern" },
+                    if values.safety > 0.5 {
+                        "fear"
+                    } else {
+                        "concern"
+                    },
                     "threatening entity nearby",
                     CauseType::Entity,
                     world.current_tick,
@@ -289,8 +311,9 @@ fn generate_thoughts(world: &mut World, perceptions: &[crate::simulation::percep
         for event in &perception.perceived_events {
             // Generate thoughts based on event significance
             if event.significance > 0.5 {
-                let valence = if event.event_type.contains("positive") ||
-                                 event.event_type.contains("celebration") {
+                let valence = if event.event_type.contains("positive")
+                    || event.event_type.contains("celebration")
+                {
                     Valence::Positive
                 } else {
                     Valence::Negative
@@ -389,11 +412,8 @@ fn select_actions(world: &mut World) {
     grid.rebuild(ids.iter().cloned().zip(positions.iter().cloned()));
 
     // Build O(1) lookup map for entity indices
-    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = ids
-        .iter()
-        .enumerate()
-        .map(|(i, &id)| (id, i))
-        .collect();
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+        ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
 
     let perception_range = 50.0;
 
@@ -409,10 +429,10 @@ fn select_actions(world: &mut World) {
                 let observer_id = world.humans.ids[i];
 
                 // Check if entity is AT a food zone
-                let food_available = world.food_zones.iter()
-                    .any(|zone| zone.contains(pos));
+                let food_available = world.food_zones.iter().any(|zone| zone.contains(pos));
                 // Find nearest food zone within perception range
-                let nearest_food_zone = find_nearest_food_zone(pos, perception_range, &world.food_zones);
+                let nearest_food_zone =
+                    find_nearest_food_zone(pos, perception_range, &world.food_zones);
 
                 // Query nearby entities and build dispositions list
                 let perceived_dispositions: Vec<_> = grid
@@ -423,7 +443,8 @@ fn select_actions(world: &mut World) {
                         let entity_pos = positions[entity_idx];
                         let distance = pos.distance(&entity_pos);
                         if distance <= perception_range {
-                            let disposition = world.humans.social_memories[i].get_disposition(entity);
+                            let disposition =
+                                world.humans.social_memories[i].get_disposition(entity);
                             Some((entity, disposition))
                         } else {
                             None
@@ -432,7 +453,8 @@ fn select_actions(world: &mut World) {
                     .collect();
 
                 // Find nearest building site for construction work
-                let nearest_building_site = find_nearest_building_site(pos, perception_range, &world.buildings);
+                let nearest_building_site =
+                    find_nearest_building_site(pos, perception_range, &world.buildings);
 
                 let ctx = SelectionContext {
                     body: &world.humans.body_states[i],
@@ -469,10 +491,10 @@ fn select_actions(world: &mut World) {
             let observer_id = world.humans.ids[i];
 
             // Check if entity is AT a food zone
-            let food_available = world.food_zones.iter()
-                .any(|zone| zone.contains(pos));
+            let food_available = world.food_zones.iter().any(|zone| zone.contains(pos));
             // Find nearest food zone within perception range
-            let nearest_food_zone = find_nearest_food_zone(pos, perception_range, &world.food_zones);
+            let nearest_food_zone =
+                find_nearest_food_zone(pos, perception_range, &world.food_zones);
 
             // Query nearby entities and build dispositions list
             let perceived_dispositions: Vec<_> = grid
@@ -492,7 +514,8 @@ fn select_actions(world: &mut World) {
                 .collect();
 
             // Find nearest building site for construction work
-            let nearest_building_site = find_nearest_building_site(pos, perception_range, &world.buildings);
+            let nearest_building_site =
+                find_nearest_building_site(pos, perception_range, &world.buildings);
 
             let ctx = SelectionContext {
                 body: &world.humans.body_states[i],
@@ -532,11 +555,8 @@ fn select_orc_actions(world: &mut World, current_tick: u64) {
     grid.rebuild(orc_ids.iter().cloned().zip(orc_positions.iter().cloned()));
 
     // Build lookup map for orc indices
-    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = orc_ids
-        .iter()
-        .enumerate()
-        .map(|(i, &id)| (id, i))
-        .collect();
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+        orc_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
 
     for i in orc_indices {
         if world.orcs.task_queues[i].current().is_some() {
@@ -619,7 +639,8 @@ fn execute_tasks(world: &mut World) {
                         if let Some(target_idx) = world.humans.index_of(target_id) {
                             Some((world.humans.positions[target_idx], true))
                         } else {
-                            Some((crate::core::types::Vec2::new(0.0, 0.0), false)) // Target doesn't exist
+                            Some((crate::core::types::Vec2::new(0.0, 0.0), false))
+                            // Target doesn't exist
                         }
                     } else {
                         None // No target entity
@@ -634,16 +655,27 @@ fn execute_tasks(world: &mut World) {
 
         // For social actions (TalkTo, Help, Trade), pre-compute target info
         // Returns (target_pos, target_idx, target_id, target_exists, target_is_idle)
-        let social_target_info: Option<(crate::core::types::Vec2, usize, crate::core::types::EntityId, bool, bool)> = {
+        let social_target_info: Option<(
+            crate::core::types::Vec2,
+            usize,
+            crate::core::types::EntityId,
+            bool,
+            bool,
+        )> = {
             if let Some(task) = world.humans.task_queues[i].current() {
-                if matches!(task.action, ActionId::TalkTo | ActionId::Help | ActionId::Trade) {
+                if matches!(
+                    task.action,
+                    ActionId::TalkTo | ActionId::Help | ActionId::Trade
+                ) {
                     if let Some(target_id) = task.target_entity {
                         if let Some(target_idx) = world.humans.index_of(target_id) {
                             let target_pos = world.humans.positions[target_idx];
                             // Check if target is idle (IdleWander/IdleObserve) or has no task
                             let target_is_idle = world.humans.task_queues[target_idx]
                                 .current()
-                                .map(|t| matches!(t.action, ActionId::IdleWander | ActionId::IdleObserve))
+                                .map(|t| {
+                                    matches!(t.action, ActionId::IdleWander | ActionId::IdleObserve)
+                                })
                                 .unwrap_or(true);
                             Some((target_pos, target_idx, target_id, true, target_is_idle))
                         } else {
@@ -673,52 +705,50 @@ fn execute_tasks(world: &mut World) {
             // Dispatch based on action category for cleaner organization
             let is_complete = match action.category() {
                 // =========== MOVEMENT ACTIONS (MoveTo, Follow, Flee) ===========
-                ActionCategory::Movement => {
-                    match action {
-                        ActionId::MoveTo => {
-                            if let Some(target) = target_pos {
+                ActionCategory::Movement => match action {
+                    ActionId::MoveTo => {
+                        if let Some(target) = target_pos {
+                            let current = world.humans.positions[i];
+                            let direction = (target - current).normalize();
+                            let speed = 2.0;
+                            if direction.length() > 0.0 {
+                                world.humans.positions[i] = current + direction * speed;
+                            }
+                            world.humans.positions[i].distance(&target) < 2.0
+                        } else {
+                            true
+                        }
+                    }
+                    ActionId::Flee => {
+                        if let Some(threat_pos) = target_pos {
+                            let current = world.humans.positions[i];
+                            let away = (current - threat_pos).normalize();
+                            let speed = 3.0;
+                            if away.length() > 0.0 {
+                                world.humans.positions[i] = current + away * speed;
+                            }
+                        }
+                        false
+                    }
+                    ActionId::Follow => {
+                        if let Some((target_pos, target_exists)) = follow_target_pos {
+                            if target_exists {
                                 let current = world.humans.positions[i];
-                                let direction = (target - current).normalize();
+                                let direction = (target_pos - current).normalize();
                                 let speed = 2.0;
                                 if direction.length() > 0.0 {
                                     world.humans.positions[i] = current + direction * speed;
                                 }
-                                world.humans.positions[i].distance(&target) < 2.0
+                                false
                             } else {
                                 true
                             }
+                        } else {
+                            true
                         }
-                        ActionId::Flee => {
-                            if let Some(threat_pos) = target_pos {
-                                let current = world.humans.positions[i];
-                                let away = (current - threat_pos).normalize();
-                                let speed = 3.0;
-                                if away.length() > 0.0 {
-                                    world.humans.positions[i] = current + away * speed;
-                                }
-                            }
-                            false
-                        }
-                        ActionId::Follow => {
-                            if let Some((target_pos, target_exists)) = follow_target_pos {
-                                if target_exists {
-                                    let current = world.humans.positions[i];
-                                    let direction = (target_pos - current).normalize();
-                                    let speed = 2.0;
-                                    if direction.length() > 0.0 {
-                                        world.humans.positions[i] = current + direction * speed;
-                                    }
-                                    false
-                                } else {
-                                    true
-                                }
-                            } else {
-                                true
-                            }
-                        }
-                        _ => false,
                     }
-                }
+                    _ => false,
+                },
 
                 // =========== SURVIVAL ACTIONS (Rest, Eat, SeekSafety) ===========
                 ActionCategory::Survival => {
@@ -761,7 +791,14 @@ fn execute_tasks(world: &mut World) {
 
                 // =========== SOCIAL ACTIONS (TalkTo, Help, Trade) ===========
                 ActionCategory::Social => {
-                    if let Some((target_pos, target_idx, _target_id, _target_exists, _target_is_idle)) = social_target_info {
+                    if let Some((
+                        target_pos,
+                        target_idx,
+                        _target_id,
+                        _target_exists,
+                        _target_is_idle,
+                    )) = social_target_info
+                    {
                         let current = world.humans.positions[i];
                         let distance = current.distance(&target_pos);
                         const SOCIAL_RANGE: f32 = 5.0;
@@ -786,7 +823,8 @@ fn execute_tasks(world: &mut World) {
 
                             if purpose_amount > 0.0 {
                                 world.humans.needs[i].satisfy(NeedType::Purpose, purpose_amount);
-                                world.humans.needs[target_idx].satisfy(NeedType::Purpose, purpose_amount);
+                                world.humans.needs[target_idx]
+                                    .satisfy(NeedType::Purpose, purpose_amount);
                             }
 
                             if task.progress < 0.01 {
@@ -797,14 +835,20 @@ fn execute_tasks(world: &mut World) {
                                 };
                                 let actor_id = world.humans.ids[i];
                                 world.humans.social_memories[i].record_encounter(
-                                    target_entity.unwrap(), event_type, 0.5, world.current_tick
+                                    target_entity.unwrap(),
+                                    event_type,
+                                    0.5,
+                                    world.current_tick,
                                 );
                                 let target_event = match action {
                                     ActionId::Help => EventType::AidReceived,
                                     _ => event_type,
                                 };
                                 world.humans.social_memories[target_idx].record_encounter(
-                                    actor_id, target_event, 0.5, world.current_tick
+                                    actor_id,
+                                    target_event,
+                                    0.5,
+                                    world.current_tick,
                                 );
                             }
 
@@ -824,7 +868,10 @@ fn execute_tasks(world: &mut World) {
                         ActionId::Gather => {
                             if let Some(zone_pos) = target_pos {
                                 let current = world.humans.positions[i];
-                                let zone_idx = world.resource_zones.iter().position(|z| z.contains(zone_pos));
+                                let zone_idx = world
+                                    .resource_zones
+                                    .iter()
+                                    .position(|z| z.contains(zone_pos));
 
                                 if let Some(zone_idx) = zone_idx {
                                     let distance = current.distance(&zone_pos);
@@ -839,12 +886,15 @@ fn execute_tasks(world: &mut World) {
                                     } else {
                                         let gathered = world.resource_zones[zone_idx].gather(0.02);
                                         if gathered > 0.0 {
-                                            world.humans.needs[i].satisfy(NeedType::Purpose, gathered * 0.5);
+                                            world.humans.needs[i]
+                                                .satisfy(NeedType::Purpose, gathered * 0.5);
                                         }
                                         let duration = action.base_duration() as f32;
-                                        let progress_rate = if duration > 0.0 { 1.0 / duration } else { 0.1 };
+                                        let progress_rate =
+                                            if duration > 0.0 { 1.0 / duration } else { 0.1 };
                                         task.progress += progress_rate;
-                                        task.progress >= 1.0 || world.resource_zones[zone_idx].current <= 0.0
+                                        task.progress >= 1.0
+                                            || world.resource_zones[zone_idx].current <= 0.0
                                     }
                                 } else {
                                     true
@@ -862,7 +912,8 @@ fn execute_tasks(world: &mut World) {
                                     let fatigue = world.humans.body_states[i].fatigue;
 
                                     // Calculate contribution
-                                    let contribution = calculate_worker_contribution(building_skill, fatigue);
+                                    let contribution =
+                                        calculate_worker_contribution(building_skill, fatigue);
 
                                     // Apply to building
                                     let result = apply_construction_work(
@@ -875,7 +926,8 @@ fn execute_tasks(world: &mut World) {
                                     match result {
                                         ContributionResult::Completed { .. } => {
                                             // Improve skill on completion (small increment, capped at 1.0)
-                                            world.humans.building_skills[i] = (world.humans.building_skills[i] + 0.01).min(1.0);
+                                            world.humans.building_skills[i] =
+                                                (world.humans.building_skills[i] + 0.01).min(1.0);
                                             true // Task complete
                                         }
                                         ContributionResult::InProgress { .. } => false,
@@ -912,41 +964,40 @@ fn execute_tasks(world: &mut World) {
                 }
 
                 // =========== IDLE ACTIONS (IdleWander, IdleObserve) ===========
-                ActionCategory::Idle => {
-                    match action {
-                        ActionId::IdleWander => {
-                            let current = world.humans.positions[i];
-                            let needs_new_target = target_pos.map(|t| current.distance(&t) < 1.0).unwrap_or(true);
+                ActionCategory::Idle => match action {
+                    ActionId::IdleWander => {
+                        let current = world.humans.positions[i];
+                        let needs_new_target = target_pos
+                            .map(|t| current.distance(&t) < 1.0)
+                            .unwrap_or(true);
 
-                            if needs_new_target {
-                                use rand::Rng;
-                                let mut rng = rand::thread_rng();
-                                let angle = rng.gen::<f32>() * std::f32::consts::TAU;
-                                let distance = rng.gen::<f32>() * 10.0;
-                                let offset = crate::core::types::Vec2::new(angle.cos() * distance, angle.sin() * distance);
-                                task.target_position = Some(current + offset);
-                            }
+                        if needs_new_target {
+                            use rand::Rng;
+                            let mut rng = rand::thread_rng();
+                            let angle = rng.gen::<f32>() * std::f32::consts::TAU;
+                            let distance = rng.gen::<f32>() * 10.0;
+                            let offset = crate::core::types::Vec2::new(
+                                angle.cos() * distance,
+                                angle.sin() * distance,
+                            );
+                            task.target_position = Some(current + offset);
+                        }
 
-                            if let Some(target) = task.target_position {
-                                let direction = (target - current).normalize();
-                                let speed = 1.0;
-                                if direction.length() > 0.0 {
-                                    world.humans.positions[i] = current + direction * speed;
-                                }
+                        if let Some(target) = task.target_position {
+                            let direction = (target - current).normalize();
+                            let speed = 1.0;
+                            if direction.length() > 0.0 {
+                                world.humans.positions[i] = current + direction * speed;
                             }
-                            false
                         }
-                        ActionId::IdleObserve => {
-                            false
-                        }
-                        _ => false,
+                        false
                     }
-                }
+                    ActionId::IdleObserve => false,
+                    _ => false,
+                },
 
                 // =========== COMBAT ACTIONS (stubs) ===========
-                ActionCategory::Combat => {
-                    false
-                }
+                ActionCategory::Combat => false,
             };
 
             (action, target_entity, is_complete)
@@ -982,7 +1033,9 @@ fn execute_tasks(world: &mut World) {
         // Push reciprocal task for social actions (deferred from closure to avoid borrow conflict)
         // This happens on the first tick of interaction when task.progress was < 0.01
         if matches!(action, ActionId::TalkTo | ActionId::Help | ActionId::Trade) {
-            if let Some((_target_pos, target_idx, _target_id, _target_exists, target_is_idle)) = social_target_info {
+            if let Some((_target_pos, target_idx, _target_id, _target_exists, target_is_idle)) =
+                social_target_info
+            {
                 // Check current task progress to see if this is the first tick of interaction
                 let first_tick_of_interaction = world.humans.task_queues[i]
                     .current()
@@ -993,13 +1046,22 @@ fn execute_tasks(world: &mut World) {
                     // Check if target is idle and not already doing a social action
                     let target_doing_social = world.humans.task_queues[target_idx]
                         .current()
-                        .map(|t| matches!(t.action, ActionId::TalkTo | ActionId::Help | ActionId::Trade))
+                        .map(|t| {
+                            matches!(
+                                t.action,
+                                ActionId::TalkTo | ActionId::Help | ActionId::Trade
+                            )
+                        })
                         .unwrap_or(false);
 
                     if target_is_idle && !target_doing_social {
                         let actor_id = world.humans.ids[i];
-                        let reciprocal = Task::new(action, crate::entity::tasks::TaskPriority::Normal, world.current_tick)
-                            .with_entity(actor_id);
+                        let reciprocal = Task::new(
+                            action,
+                            crate::entity::tasks::TaskPriority::Normal,
+                            world.current_tick,
+                        )
+                        .with_entity(actor_id);
                         world.humans.task_queues[target_idx].push(reciprocal);
                     }
                 }
@@ -1082,7 +1144,10 @@ fn execute_orc_tasks(world: &mut World) {
             };
 
             // Progress for non-movement actions
-            let is_movement_or_rest = matches!(action, ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Rest);
+            let is_movement_or_rest = matches!(
+                action,
+                ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Rest
+            );
             if !is_movement_or_rest {
                 let duration = task.action.base_duration();
                 let progress_rate = match duration {
@@ -1373,9 +1438,9 @@ mod tests {
 
     #[test]
     fn test_task_progress() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
         world.spawn_human("Worker".into());
@@ -1402,9 +1467,12 @@ mod tests {
             .map(|t| t.progress)
             .unwrap_or(0.0);
 
-        assert!(current_progress > initial_progress,
-                "Rest action should progress. Initial: {}, Current: {}",
-                initial_progress, current_progress);
+        assert!(
+            current_progress > initial_progress,
+            "Rest action should progress. Initial: {}, Current: {}",
+            initial_progress,
+            current_progress
+        );
     }
 
     #[test]
@@ -1419,12 +1487,16 @@ mod tests {
         let _zone_id = world.add_food_zone(
             Vec2::new(0.0, 0.0),
             10.0,
-            Abundance::Scarce { current: 10.0, max: 100.0, regen: 0.0 },
+            Abundance::Scarce {
+                current: 10.0,
+                max: 100.0,
+                regen: 0.0,
+            },
         );
 
         // Entity at the zone
         world.humans.positions[0] = Vec2::new(0.0, 0.0);
-        world.humans.needs[0].food = 0.9;  // Very hungry
+        world.humans.needs[0].food = 0.9; // Very hungry
 
         // Run several ticks (entity should eat and deplete)
         for _ in 0..50 {
@@ -1433,20 +1505,27 @@ mod tests {
 
         // Zone should be depleted
         if let Abundance::Scarce { current, .. } = &world.food_zones[0].abundance {
-            assert!(*current < 10.0, "Zone should be partially depleted, but current is {}", *current);
+            assert!(
+                *current < 10.0,
+                "Zone should be partially depleted, but current is {}",
+                *current
+            );
         } else {
             panic!("Zone should be Scarce");
         }
 
         // Entity should be less hungry
-        assert!(world.humans.needs[0].food < 0.9, "Entity should be less hungry");
+        assert!(
+            world.humans.needs[0].food < 0.9,
+            "Entity should be less hungry"
+        );
     }
 
     #[test]
     fn test_moveto_changes_position() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority, TaskSource};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
         world.spawn_human("Mover".into());
@@ -1473,7 +1552,7 @@ mod tests {
 
         // Position should have moved toward target
         assert!(world.humans.positions[0].x > 0.0);
-        assert!(world.humans.positions[0].x < 100.0);  // Not teleported
+        assert!(world.humans.positions[0].x < 100.0); // Not teleported
     }
 
     #[test]
@@ -1485,7 +1564,11 @@ mod tests {
         world.add_food_zone(
             Vec2::new(0.0, 0.0),
             10.0,
-            Abundance::Scarce { current: 0.0, max: 100.0, regen: 1.0 },  // Empty but regens
+            Abundance::Scarce {
+                current: 0.0,
+                max: 100.0,
+                regen: 1.0,
+            }, // Empty but regens
         );
 
         // Run ticks
@@ -1495,7 +1578,11 @@ mod tests {
 
         // Zone should have regenerated
         if let Abundance::Scarce { current, .. } = &world.food_zones[0].abundance {
-            assert!(*current > 0.0, "Zone should have regenerated, but current is {}", *current);
+            assert!(
+                *current > 0.0,
+                "Zone should have regenerated, but current is {}",
+                *current
+            );
         } else {
             panic!("Zone should be Scarce");
         }
@@ -1504,8 +1591,8 @@ mod tests {
     #[test]
     fn test_help_action_creates_memories() {
         use crate::core::types::Vec2;
-        use crate::entity::tasks::{TaskPriority, TaskSource};
         use crate::entity::social::Disposition;
+        use crate::entity::tasks::{TaskPriority, TaskSource};
 
         let mut world = World::new();
         let alice = world.spawn_human("Alice".into());
@@ -1549,7 +1636,8 @@ mod tests {
         let alice_memory = &world.humans.social_memories[alice_idx];
         let alice_disposition = alice_memory.get_disposition(bob);
         assert!(
-            alice_disposition == Disposition::Friendly || alice_disposition == Disposition::Favorable,
+            alice_disposition == Disposition::Friendly
+                || alice_disposition == Disposition::Favorable,
             "Alice should have friendly/favorable disposition toward Bob, got {:?}",
             alice_disposition
         );
@@ -1558,7 +1646,7 @@ mod tests {
     #[test]
     fn test_intense_thoughts_create_memories() {
         use crate::core::types::Vec2;
-        use crate::entity::thoughts::{Thought, CauseType};
+        use crate::entity::thoughts::{CauseType, Thought};
 
         let mut world = World::new();
         let alice = world.spawn_human("Alice".into());
@@ -1595,7 +1683,7 @@ mod tests {
     #[test]
     fn test_weak_thoughts_do_not_create_memories() {
         use crate::core::types::Vec2;
-        use crate::entity::thoughts::{Thought, CauseType};
+        use crate::entity::thoughts::{CauseType, Thought};
 
         let mut world = World::new();
         let alice = world.spawn_human("Alice".into());
@@ -1690,9 +1778,9 @@ mod tests {
 
     #[test]
     fn test_follow_tracks_moving_target() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -1710,8 +1798,7 @@ mod tests {
         world.humans.positions[target_idx] = Vec2::new(10.0, 0.0);
 
         // Give follower a Follow task
-        let task = Task::new(ActionId::Follow, TaskPriority::Normal, 0)
-            .with_entity(target_id);
+        let task = Task::new(ActionId::Follow, TaskPriority::Normal, 0).with_entity(target_id);
         world.humans.task_queues[follower_idx].push(task);
 
         // Run a tick
@@ -1729,14 +1816,17 @@ mod tests {
 
         // Follower should now be moving toward new position
         let follower_pos = world.humans.positions[follower_idx];
-        assert!(follower_pos.y > 0.0 || follower_pos.x > 2.0, "Follower should track moving target");
+        assert!(
+            follower_pos.y > 0.0 || follower_pos.x > 2.0,
+            "Follower should track moving target"
+        );
     }
 
     #[test]
     fn test_rest_reduces_fatigue() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
         let id = world.spawn_human("Tired".into());
@@ -1760,7 +1850,10 @@ mod tests {
         }
 
         let final_fatigue = world.humans.body_states[idx].fatigue;
-        assert!(final_fatigue < initial_fatigue, "Rest should reduce fatigue");
+        assert!(
+            final_fatigue < initial_fatigue,
+            "Rest should reduce fatigue"
+        );
 
         // With 0.01 reduction per tick over 10 ticks, fatigue should be 0.7
         assert!(
@@ -1772,9 +1865,9 @@ mod tests {
 
     #[test]
     fn test_seek_safety_moves_away_from_threats() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -1793,14 +1886,18 @@ mod tests {
 
         // Should have moved away (negative x direction)
         let pos = world.humans.positions[idx];
-        assert!(pos.x < 0.0, "Should move away from threat at (5,0), but x={}", pos.x);
+        assert!(
+            pos.x < 0.0,
+            "Should move away from threat at (5,0), but x={}",
+            pos.x
+        );
     }
 
     #[test]
     fn test_seek_safety_completes_when_safe() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -1819,16 +1916,19 @@ mod tests {
 
         // Task should be complete (entity was already safe distance away)
         assert!(
-            world.humans.task_queues[idx].current().map(|t| t.action != ActionId::SeekSafety).unwrap_or(true),
+            world.humans.task_queues[idx]
+                .current()
+                .map(|t| t.action != ActionId::SeekSafety)
+                .unwrap_or(true),
             "SeekSafety task should complete when entity is 20+ units from threat"
         );
     }
 
     #[test]
     fn test_seek_safety_no_target_completes_immediately() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -1845,16 +1945,19 @@ mod tests {
 
         // Task should be complete (no threat position = complete immediately)
         assert!(
-            world.humans.task_queues[idx].current().map(|t| t.action != ActionId::SeekSafety).unwrap_or(true),
+            world.humans.task_queues[idx]
+                .current()
+                .map(|t| t.action != ActionId::SeekSafety)
+                .unwrap_or(true),
             "SeekSafety task should complete immediately when no target_position"
         );
     }
 
     #[test]
     fn test_social_action_requires_proximity() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -1874,8 +1977,7 @@ mod tests {
         world.humans.needs[b_idx].social = 0.8;
 
         // Alice tries to TalkTo Bob
-        let task = Task::new(ActionId::TalkTo, TaskPriority::Normal, 0)
-            .with_entity(b_id);
+        let task = Task::new(ActionId::TalkTo, TaskPriority::Normal, 0).with_entity(b_id);
         world.humans.task_queues[a_idx].push(task);
 
         // Run tick
@@ -1883,19 +1985,25 @@ mod tests {
 
         // Alice should have moved toward Bob (not satisfied yet)
         let alice_pos = world.humans.positions[a_idx];
-        assert!(alice_pos.x > 0.0, "Should move toward target, but x={}", alice_pos.x);
+        assert!(
+            alice_pos.x > 0.0,
+            "Should move toward target, but x={}",
+            alice_pos.x
+        );
 
         // Social need should NOT be satisfied yet (too far)
-        assert!(world.humans.needs[a_idx].social > 0.7,
+        assert!(
+            world.humans.needs[a_idx].social > 0.7,
             "Should not satisfy social need when far, but social={}",
-            world.humans.needs[a_idx].social);
+            world.humans.needs[a_idx].social
+        );
     }
 
     #[test]
     fn test_social_action_mutual_satisfaction() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -1915,8 +2023,7 @@ mod tests {
         world.humans.needs[b_idx].social = 0.8;
 
         // Alice talks to Bob
-        let task = Task::new(ActionId::TalkTo, TaskPriority::Normal, 0)
-            .with_entity(b_id);
+        let task = Task::new(ActionId::TalkTo, TaskPriority::Normal, 0).with_entity(b_id);
         world.humans.task_queues[a_idx].push(task);
 
         // Run several ticks
@@ -1925,25 +2032,37 @@ mod tests {
         }
 
         // Both should have reduced social need
-        assert!(world.humans.needs[a_idx].social < 0.8,
+        assert!(
+            world.humans.needs[a_idx].social < 0.8,
             "Alice's social need should decrease, but got {}",
-            world.humans.needs[a_idx].social);
-        assert!(world.humans.needs[b_idx].social < 0.8,
+            world.humans.needs[a_idx].social
+        );
+        assert!(
+            world.humans.needs[b_idx].social < 0.8,
             "Bob's social need should decrease too, but got {}",
-            world.humans.needs[b_idx].social);
+            world.humans.needs[b_idx].social
+        );
 
         // Both should have memories of each other
-        assert!(world.humans.social_memories[a_idx].find_slot(b_id).is_some(),
-                "Alice should remember Bob");
-        assert!(world.humans.social_memories[b_idx].find_slot(a_id).is_some(),
-                "Bob should remember Alice");
+        assert!(
+            world.humans.social_memories[a_idx]
+                .find_slot(b_id)
+                .is_some(),
+            "Alice should remember Bob"
+        );
+        assert!(
+            world.humans.social_memories[b_idx]
+                .find_slot(a_id)
+                .is_some(),
+            "Bob should remember Alice"
+        );
     }
 
     #[test]
     fn test_social_action_creates_memories_for_both() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -1959,8 +2078,7 @@ mod tests {
         world.humans.positions[b_idx] = Vec2::new(3.0, 0.0);
 
         // Alice helps Bob
-        let task = Task::new(ActionId::Help, TaskPriority::Normal, 0)
-            .with_entity(b_id);
+        let task = Task::new(ActionId::Help, TaskPriority::Normal, 0).with_entity(b_id);
         world.humans.task_queues[a_idx].push(task);
 
         // Run a single tick (memory is created on first tick of interaction)
@@ -1970,27 +2088,27 @@ mod tests {
         let alice_memory = &world.humans.social_memories[a_idx];
         let bob_memory = &world.humans.social_memories[b_idx];
 
-        assert!(alice_memory.find_slot(b_id).is_some(),
-                "Alice should remember Bob after helping");
-        assert!(bob_memory.find_slot(a_id).is_some(),
-                "Bob should remember Alice after being helped");
+        assert!(
+            alice_memory.find_slot(b_id).is_some(),
+            "Alice should remember Bob after helping"
+        );
+        assert!(
+            bob_memory.find_slot(a_id).is_some(),
+            "Bob should remember Alice after being helped"
+        );
     }
 
     #[test]
     fn test_gather_depletes_resource_zone() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
-        use crate::simulation::resource_zone::{ResourceZone, ResourceType};
+        use crate::simulation::resource_zone::{ResourceType, ResourceZone};
 
         let mut world = World::new();
 
         // Create resource zone at (10, 0)
-        let zone = ResourceZone::new(
-            Vec2::new(10.0, 0.0),
-            ResourceType::Wood,
-            5.0,
-        );
+        let zone = ResourceZone::new(Vec2::new(10.0, 0.0), ResourceType::Wood, 5.0);
         world.resource_zones.push(zone);
 
         // Spawn gatherer at (10, 0) - already at zone
@@ -2015,31 +2133,33 @@ mod tests {
         }
 
         // Resources should be depleted
-        assert!(world.resource_zones[0].current < initial_resources,
-                "Resource zone should be depleted. Initial: {}, Current: {}",
-                initial_resources, world.resource_zones[0].current);
+        assert!(
+            world.resource_zones[0].current < initial_resources,
+            "Resource zone should be depleted. Initial: {}, Current: {}",
+            initial_resources,
+            world.resource_zones[0].current
+        );
 
         // Purpose need should decrease (0.02 gathered * 0.5 satisfaction per tick)
-        assert!(world.humans.needs[idx].purpose < initial_purpose,
-                "Purpose need should be satisfied. Initial: {}, Current: {}",
-                initial_purpose, world.humans.needs[idx].purpose);
+        assert!(
+            world.humans.needs[idx].purpose < initial_purpose,
+            "Purpose need should be satisfied. Initial: {}, Current: {}",
+            initial_purpose,
+            world.humans.needs[idx].purpose
+        );
     }
 
     #[test]
     fn test_gather_moves_to_zone_if_far() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
-        use crate::simulation::resource_zone::{ResourceZone, ResourceType};
+        use crate::simulation::resource_zone::{ResourceType, ResourceZone};
 
         let mut world = World::new();
 
         // Create resource zone at (10, 0)
-        let zone = ResourceZone::new(
-            Vec2::new(10.0, 0.0),
-            ResourceType::Wood,
-            5.0,
-        );
+        let zone = ResourceZone::new(Vec2::new(10.0, 0.0), ResourceType::Wood, 5.0);
         world.resource_zones.push(zone);
 
         // Spawn gatherer at origin - far from zone
@@ -2063,25 +2183,23 @@ mod tests {
         assert!(pos.x < 10.0, "Should not teleport to zone, but x={}", pos.x);
 
         // Resources should NOT be depleted yet (too far)
-        assert!((world.resource_zones[0].current - initial_resources).abs() < 0.001,
-                "Resources should not be depleted while moving");
+        assert!(
+            (world.resource_zones[0].current - initial_resources).abs() < 0.001,
+            "Resources should not be depleted while moving"
+        );
     }
 
     #[test]
     fn test_gather_completes_when_zone_depleted() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
-        use crate::simulation::resource_zone::{ResourceZone, ResourceType};
+        use crate::simulation::resource_zone::{ResourceType, ResourceZone};
 
         let mut world = World::new();
 
         // Create nearly depleted resource zone
-        let mut zone = ResourceZone::new(
-            Vec2::new(10.0, 0.0),
-            ResourceType::Stone,
-            5.0,
-        );
+        let mut zone = ResourceZone::new(Vec2::new(10.0, 0.0), ResourceType::Stone, 5.0);
         zone.current = 0.05; // Almost empty
         world.resource_zones.push(zone);
 
@@ -2101,21 +2219,28 @@ mod tests {
         }
 
         // Zone should be depleted
-        assert!(world.resource_zones[0].current < 0.01,
-                "Zone should be depleted, but current={}", world.resource_zones[0].current);
+        assert!(
+            world.resource_zones[0].current < 0.01,
+            "Zone should be depleted, but current={}",
+            world.resource_zones[0].current
+        );
 
         // Task should be complete (zone empty triggers completion)
         let current_task = world.humans.task_queues[idx].current();
-        let task_is_gather = current_task.map(|t| t.action == ActionId::Gather).unwrap_or(false);
-        assert!(!task_is_gather,
-                "Gather task should be complete when zone is depleted");
+        let task_is_gather = current_task
+            .map(|t| t.action == ActionId::Gather)
+            .unwrap_or(false);
+        assert!(
+            !task_is_gather,
+            "Gather task should be complete when zone is depleted"
+        );
     }
 
     #[test]
     fn test_idle_wander_moves_slowly() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -2141,14 +2266,17 @@ mod tests {
 
         // Should have moved (but slowly)
         assert!(distance_moved > 0.0, "Should move when wandering");
-        assert!(distance_moved < 20.0, "Should move slowly (speed 1.0 * 10 ticks = max 10 units, but target may be closer)");
+        assert!(
+            distance_moved < 20.0,
+            "Should move slowly (speed 1.0 * 10 ticks = max 10 units, but target may be closer)"
+        );
     }
 
     #[test]
     fn test_idle_wander_never_completes() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -2168,15 +2296,18 @@ mod tests {
         // Task should still be IdleWander (never auto-completes)
         let current_task = world.humans.task_queues[idx].current();
         assert!(current_task.is_some(), "Should still have a task");
-        assert_eq!(current_task.unwrap().action, ActionId::IdleWander,
-                   "Should still be IdleWander (continuous action)");
+        assert_eq!(
+            current_task.unwrap().action,
+            ActionId::IdleWander,
+            "Should still be IdleWander (continuous action)"
+        );
     }
 
     #[test]
     fn test_idle_wander_picks_new_target_when_reached() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -2194,7 +2325,10 @@ mod tests {
         let first_target = world.humans.task_queues[idx]
             .current()
             .and_then(|t| t.target_position);
-        assert!(first_target.is_some(), "Should have a target after first tick");
+        assert!(
+            first_target.is_some(),
+            "Should have a target after first tick"
+        );
 
         // Run enough ticks to reach the target (max distance 10, speed 1.0, so 10+ ticks)
         for _ in 0..15 {
@@ -2209,15 +2343,17 @@ mod tests {
 
         // After 16 ticks at speed 1.0, should have moved approximately 16 units
         // (but direction changes when reaching targets)
-        assert!(distance_from_start > 0.0,
-                "Should have moved from start position");
+        assert!(
+            distance_from_start > 0.0,
+            "Should have moved from start position"
+        );
     }
 
     #[test]
     fn test_idle_observe_stays_still() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -2244,20 +2380,22 @@ mod tests {
         assert!(
             (initial_pos.x - final_pos.x).abs() < 0.01,
             "Should not move in x direction. Initial: {}, Final: {}",
-            initial_pos.x, final_pos.x
+            initial_pos.x,
+            final_pos.x
         );
         assert!(
             (initial_pos.y - final_pos.y).abs() < 0.01,
             "Should not move in y direction. Initial: {}, Final: {}",
-            initial_pos.y, final_pos.y
+            initial_pos.y,
+            final_pos.y
         );
     }
 
     #[test]
     fn test_idle_observe_never_completes() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -2277,8 +2415,11 @@ mod tests {
         // Task should still be IdleObserve (never auto-completes)
         let current_task = world.humans.task_queues[idx].current();
         assert!(current_task.is_some(), "Should still have a task");
-        assert_eq!(current_task.unwrap().action, ActionId::IdleObserve,
-                   "Should still be IdleObserve (continuous action)");
+        assert_eq!(
+            current_task.unwrap().action,
+            ActionId::IdleObserve,
+            "Should still be IdleObserve (continuous action)"
+        );
     }
 
     #[test]
@@ -2286,9 +2427,9 @@ mod tests {
         // This test verifies that IdleObserve action correctly boosts perception range by 1.5x
         // We verify by checking the perception_ranges computed in run_perception
 
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::entity::tasks::{Task, TaskPriority};
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -2317,7 +2458,10 @@ mod tests {
         const BASE_PERCEPTION_RANGE: f32 = 50.0;
         const IDLE_OBSERVE_MULTIPLIER: f32 = 1.5;
 
-        let perception_ranges: Vec<f32> = world.humans.task_queues.iter()
+        let perception_ranges: Vec<f32> = world
+            .humans
+            .task_queues
+            .iter()
             .map(|queue| {
                 let is_observing = queue
                     .current()
@@ -2348,9 +2492,9 @@ mod tests {
 
     #[test]
     fn test_expectation_decay() {
+        use crate::actions::catalog::ActionId;
         use crate::core::types::Vec2;
         use crate::simulation::expectation_formation::record_observation;
-        use crate::actions::catalog::ActionId;
 
         let mut world = World::new();
 
@@ -2370,7 +2514,10 @@ mod tests {
         // Get initial salience (should exist and have positive salience)
         let initial_salience = {
             let slot = world.humans.social_memories[observer_idx].find_slot(actor_id);
-            assert!(slot.is_some(), "Observer should have a memory slot for Actor");
+            assert!(
+                slot.is_some(),
+                "Observer should have a memory slot for Actor"
+            );
             let slot = slot.unwrap();
             assert!(!slot.expectations.is_empty(), "Should have expectations");
             slot.expectations[0].salience
@@ -2389,21 +2536,27 @@ mod tests {
             let slot = world.humans.social_memories[observer_idx].find_slot(actor_id);
             assert!(slot.is_some(), "Observer should still have memory slot");
             let slot = slot.unwrap();
-            assert!(!slot.expectations.is_empty(), "Should still have expectations");
+            assert!(
+                !slot.expectations.is_empty(),
+                "Should still have expectations"
+            );
             slot.expectations[0].salience
         };
 
-        assert!(final_salience < initial_salience,
+        assert!(
+            final_salience < initial_salience,
             "Salience should decay after one day. Initial: {}, Final: {}",
-            initial_salience, final_salience);
+            initial_salience,
+            final_salience
+        );
     }
 
     #[test]
     fn test_build_action_with_building_target() {
-        use crate::city::building::{BuildingType, BuildingState};
-        use crate::entity::tasks::{Task, TaskPriority};
         use crate::actions::catalog::ActionId;
+        use crate::city::building::{BuildingState, BuildingType};
         use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
 
         let mut world = World::new();
         let entity = world.spawn_human("Builder".into());
@@ -2421,8 +2574,7 @@ mod tests {
         world.humans.building_skills[idx] = 1.0;
 
         // Create build task
-        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
-            .with_building(building_id);
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0).with_building(building_id);
         world.humans.task_queues[idx].push(task);
 
         // Run many ticks to complete construction
@@ -2433,15 +2585,18 @@ mod tests {
 
         // Building should be complete
         let building_idx = world.buildings.index_of(building_id).unwrap();
-        assert_eq!(world.buildings.states[building_idx], BuildingState::Complete);
+        assert_eq!(
+            world.buildings.states[building_idx],
+            BuildingState::Complete
+        );
     }
 
     #[test]
     fn test_build_action_improves_skill_on_completion() {
-        use crate::city::building::{BuildingType, BuildingState};
-        use crate::entity::tasks::{Task, TaskPriority};
         use crate::actions::catalog::ActionId;
+        use crate::city::building::{BuildingState, BuildingType};
         use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
 
         let mut world = World::new();
         let entity = world.spawn_human("Builder".into());
@@ -2457,8 +2612,7 @@ mod tests {
         let initial_skill = world.humans.building_skills[idx];
 
         // Create build task
-        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
-            .with_building(building_id);
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0).with_building(building_id);
         world.humans.task_queues[idx].push(task);
 
         // Run until building complete
@@ -2472,17 +2626,20 @@ mod tests {
 
         // Skill should have improved
         let final_skill = world.humans.building_skills[idx];
-        assert!(final_skill > initial_skill,
+        assert!(
+            final_skill > initial_skill,
             "Building skill should improve after completion. Initial: {}, Final: {}",
-            initial_skill, final_skill);
+            initial_skill,
+            final_skill
+        );
     }
 
     #[test]
     fn test_build_action_progress_reflects_construction() {
-        use crate::city::building::{BuildingType, BuildingState};
-        use crate::entity::tasks::{Task, TaskPriority};
         use crate::actions::catalog::ActionId;
+        use crate::city::building::{BuildingState, BuildingType};
         use crate::core::types::Vec2;
+        use crate::entity::tasks::{Task, TaskPriority};
 
         let mut world = World::new();
         let entity = world.spawn_human("Builder".into());
@@ -2495,8 +2652,7 @@ mod tests {
         world.humans.building_skills[idx] = 1.0; // Max skill = 1.0 contribution per tick
 
         // Create build task
-        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0)
-            .with_building(building_id);
+        let task = Task::new(ActionId::Build, TaskPriority::Normal, 0).with_building(building_id);
         world.humans.task_queues[idx].push(task);
 
         // Run 50 ticks (should be at 50% progress for 100-work house)
@@ -2510,12 +2666,17 @@ mod tests {
 
         // With skill 1.0 and no fatigue, contribution is 1.0 per tick
         // After 50 ticks, should have ~50 progress
-        assert!(progress > 40.0 && progress < 60.0,
+        assert!(
+            progress > 40.0 && progress < 60.0,
             "Construction progress should be around 50 after 50 ticks, got {}",
-            progress);
+            progress
+        );
 
         // Building should still be under construction
-        assert_eq!(world.buildings.states[building_idx], BuildingState::UnderConstruction);
+        assert_eq!(
+            world.buildings.states[building_idx],
+            BuildingState::UnderConstruction
+        );
     }
 
     #[test]
@@ -2537,13 +2698,16 @@ mod tests {
         let perceptions = run_perception(&world);
 
         // Find observer's perception
-        let observer_perception = perceptions.iter()
+        let observer_perception = perceptions
+            .iter()
             .find(|p| p.observer == entity)
             .expect("Should have perception for observer");
 
         // Verify building site is detected
-        assert!(observer_perception.nearest_building_site.is_some(),
-            "Observer should perceive nearby building site");
+        assert!(
+            observer_perception.nearest_building_site.is_some(),
+            "Observer should perceive nearby building site"
+        );
 
         let (perceived_id, _pos, distance) = observer_perception.nearest_building_site.unwrap();
         assert_eq!(perceived_id, building_id);
@@ -2552,7 +2716,7 @@ mod tests {
 
     #[test]
     fn test_perception_ignores_completed_building() {
-        use crate::city::building::{BuildingType, BuildingState};
+        use crate::city::building::{BuildingState, BuildingType};
         use crate::core::types::Vec2;
 
         let mut world = World::new();
@@ -2571,13 +2735,16 @@ mod tests {
         let perceptions = run_perception(&world);
 
         // Find observer's perception
-        let observer_perception = perceptions.iter()
+        let observer_perception = perceptions
+            .iter()
             .find(|p| p.observer == entity)
             .expect("Should have perception for observer");
 
         // Verify completed building is NOT detected as a building site
-        assert!(observer_perception.nearest_building_site.is_none(),
-            "Completed building should not be detected as building site");
+        assert!(
+            observer_perception.nearest_building_site.is_none(),
+            "Completed building should not be detected as building site"
+        );
     }
 
     #[test]
@@ -2590,7 +2757,8 @@ mod tests {
 
         // Assign house to one
         use crate::city::building::BuildingType;
-        let house_id = world.spawn_building(BuildingType::House, crate::core::types::Vec2::new(0.0, 0.0));
+        let house_id =
+            world.spawn_building(BuildingType::House, crate::core::types::Vec2::new(0.0, 0.0));
         let housed_idx = world.humans.index_of(housed_id).unwrap();
         world.humans.assigned_houses[housed_idx] = Some(house_id);
 
@@ -2606,16 +2774,19 @@ mod tests {
         let housed_food = world.humans.needs[housed_idx].food;
         let homeless_food = world.humans.needs[homeless_idx].food;
 
-        assert!(homeless_food > housed_food,
+        assert!(
+            homeless_food > housed_food,
             "Homeless should decay faster: homeless={} housed={}",
-            homeless_food, housed_food);
+            homeless_food,
+            housed_food
+        );
     }
 
     #[test]
     fn test_daily_systems_run_on_tick_1000() {
-        use crate::simulation::resource_zone::ResourceType;
-        use crate::city::building::{BuildingType, BuildingState};
+        use crate::city::building::{BuildingState, BuildingType};
         use crate::core::types::Vec2;
+        use crate::simulation::resource_zone::ResourceType;
 
         let mut world = World::new();
 
@@ -2635,9 +2806,15 @@ mod tests {
 
         // After daily tick:
         // - Should be housed (housing assignment ran)
-        assert!(world.humans.assigned_houses[0].is_some(), "Should be housed after daily tick");
+        assert!(
+            world.humans.assigned_houses[0].is_some(),
+            "Should be housed after daily tick"
+        );
 
         // - Food should have been consumed
-        assert!(world.stockpile.get(ResourceType::Food) < 1000, "Food should have been consumed");
+        assert!(
+            world.stockpile.get(ResourceType::Food) < 1000,
+            "Food should have been consumed"
+        );
     }
 }

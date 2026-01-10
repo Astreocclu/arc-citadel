@@ -8,7 +8,6 @@ use crate::entity::needs::Needs;
 use crate::entity::social::{EventBuffer, SocialMemory};
 use crate::entity::tasks::TaskQueue;
 use crate::entity::thoughts::ThoughtBuffer;
-use crate::genetics::Phenotype;
 
 /// Human-specific value vocabulary
 #[derive(Debug, Clone, Default)]
@@ -69,8 +68,6 @@ pub struct HumanArchetype {
     pub assigned_houses: Vec<Option<BuildingId>>,
     /// Skill chunk libraries for each entity
     pub chunk_libraries: Vec<crate::skills::ChunkLibrary>,
-    /// Physical/cognitive traits for each entity
-    pub phenotypes: Vec<Phenotype>,
 }
 
 impl HumanArchetype {
@@ -93,7 +90,6 @@ impl HumanArchetype {
             combat_states: Vec::new(),
             assigned_houses: Vec::new(),
             chunk_libraries: Vec::new(),
-            phenotypes: Vec::new(),
         }
     }
 
@@ -118,9 +114,7 @@ impl HumanArchetype {
         self.building_skills.push(0.0);
         self.combat_states.push(CombatState::default());
         self.assigned_houses.push(None);
-        self.chunk_libraries
-            .push(crate::skills::ChunkLibrary::with_basics());
-        self.phenotypes.push(Phenotype::with_variance(0.1)); // 10% variance
+        self.chunk_libraries.push(crate::skills::ChunkLibrary::with_basics());
     }
 
     pub fn index_of(&self, id: EntityId) -> Option<usize> {
@@ -223,16 +217,5 @@ mod tests {
         assert_eq!(archetype.chunk_libraries.len(), 1);
         // Fresh spawn has no combat chunks
         assert!(!archetype.chunk_libraries[0].has_chunk(crate::skills::ChunkId::BasicSwing));
-    }
-
-    #[test]
-    fn test_human_has_phenotype() {
-        let mut archetype = HumanArchetype::new();
-        let id = EntityId::new();
-        archetype.spawn(id, "Test".into(), 0);
-
-        assert_eq!(archetype.phenotypes.len(), 1);
-        // Just verify phenotype exists with reasonable defaults
-        assert!(archetype.phenotypes[0].strength > 0.0);
     }
 }

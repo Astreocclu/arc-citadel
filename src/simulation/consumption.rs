@@ -40,7 +40,11 @@ mod tests {
         let hungry = consume_food(&mut world);
 
         assert_eq!(hungry, 0, "No one should be hungry");
-        assert_eq!(world.stockpile.get(ResourceType::Food), 97, "Should consume 3 food");
+        assert_eq!(
+            world.stockpile.get(ResourceType::Food),
+            97,
+            "Should consume 3 food"
+        );
     }
 
     #[test]
@@ -57,7 +61,11 @@ mod tests {
         let hungry = consume_food(&mut world);
 
         assert_eq!(hungry, 2, "2 should go hungry");
-        assert_eq!(world.stockpile.get(ResourceType::Food), 0, "Should consume all food");
+        assert_eq!(
+            world.stockpile.get(ResourceType::Food),
+            0,
+            "Should consume all food"
+        );
     }
 
     #[test]

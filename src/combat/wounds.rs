@@ -2,10 +2,10 @@
 //!
 //! Wounds track zone, severity, and effects (bleeding, mobility, grip).
 
-use serde::{Deserialize, Serialize};
 use crate::combat::body_zone::{BodyZone, WoundSeverity};
 use crate::combat::penetration::PenetrationResult;
 use crate::combat::trauma::TraumaResult;
+use serde::{Deserialize, Serialize};
 
 /// A wound on a specific body zone
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,11 +33,7 @@ impl Wound {
 /// Combine penetration and trauma results into a wound
 ///
 /// Takes the WORSE of the two results (no multiplication).
-pub fn combine_results(
-    pen: PenetrationResult,
-    trauma: TraumaResult,
-    zone: BodyZone,
-) -> Wound {
+pub fn combine_results(pen: PenetrationResult, trauma: TraumaResult, zone: BodyZone) -> Wound {
     use PenetrationResult::*;
     use TraumaResult::*;
     use WoundSeverity::*;
@@ -65,8 +61,7 @@ pub fn combine_results(
     let bleeding = matches!(pen, DeepCut | Cut);
 
     // Mobility impact from legs OR knockdown trauma
-    let mobility_impact = zone.is_leg()
-        || matches!(trauma, KnockdownCrush | KnockdownBruise);
+    let mobility_impact = zone.is_leg() || matches!(trauma, KnockdownCrush | KnockdownBruise);
 
     // Grip impact from arms or hands
     let grip_impact = zone.is_arm() || zone.is_hand();

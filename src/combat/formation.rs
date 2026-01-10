@@ -3,9 +3,9 @@
 //! At formation level, individual exchanges become statistical.
 //! Property matchups determine casualty rates, not percentages.
 
-use serde::{Deserialize, Serialize};
-use crate::core::types::EntityId;
 use crate::combat::constants::FORMATION_BREAK_THRESHOLD;
+use crate::core::types::EntityId;
+use serde::{Deserialize, Serialize};
 
 /// Formation state for LOD 1 combat
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,7 +48,9 @@ impl FormationState {
 
     /// Effective fighting strength
     pub fn effective_strength(&self) -> usize {
-        self.entities.len().saturating_sub(self.broken_count as usize)
+        self.entities
+            .len()
+            .saturating_sub(self.broken_count as usize)
     }
 
     /// Check if formation is broken
@@ -143,6 +145,9 @@ mod tests {
         assert_eq!(formation.pressure_category(), PressureCategory::Neutral);
 
         formation.pressure = 0.9;
-        assert_eq!(formation.pressure_category(), PressureCategory::Overwhelming);
+        assert_eq!(
+            formation.pressure_category(),
+            PressureCategory::Overwhelming
+        );
     }
 }

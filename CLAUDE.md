@@ -28,6 +28,10 @@ Arc Citadel creates **emergent gameplay** through layered systems:
 
 The magic happens in the **interactions between systems**, not in scripted behaviors.
 
+## Development Philosophy
+
+**Implementation complexity is not a deciding factor** - LLMs handle complex implementations well. Only reject approaches if they cause performance problems (>500ms simulation time) or architectural conflicts. Prefer emergent/interesting designs over simple ones.
+
 ## Core Design Principles
 
 ### 1. Property Interaction
