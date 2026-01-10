@@ -28,7 +28,7 @@ pub use display::{
     compute_leadership, compute_medicine, compute_scholarship, DisplayStat, SkillLevel,
 };
 pub use domain::ChunkDomain;
-pub use learning::{calculate_encoding_depth, process_learning};
+pub use learning::{calculate_encoding_depth, process_learning, process_learning_with_modifiers};
 pub use library::{ChunkLibrary, DomainSummary, Experience, PersonalChunkState};
 pub use resolution::{
     find_best_chunk, resolve_attack, resolve_crossbow_reload, resolve_defense, resolve_ranged_attack,
