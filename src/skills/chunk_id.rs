@@ -134,6 +134,34 @@ pub enum ChunkId {
     MedDiagnosticIntuition, // Instantly recognize obscure conditions
     MedSurgicalExcellence,  // Perfect surgical technique
     MedHolisticTreatment,   // Treat body, mind, and spirit together
+
+    // === LEADERSHIP DOMAIN ===
+    // Level 1 - Micro-chunks
+    LeadCommandPresence,  // Project authority through bearing
+    LeadClearOrder,       // Articulate unambiguous commands
+    LeadSituationalRead,  // Quickly assess tactical situation
+
+    // Level 2 - Technique chunks
+    LeadIssueCommand,   // Deliver orders with proper timing
+    LeadAssessUnitState, // Evaluate unit morale and capability
+    LeadDelegateTask,    // Assign tasks to appropriate subordinates
+    LeadMaintainCalm,    // Stay composed under pressure
+
+    // Level 3 - Tactical chunks
+    LeadDirectFormation, // Guide unit positioning and movement
+    LeadRespondToCrisis, // React decisively to sudden changes
+    LeadRallyWavering,   // Restore morale to shaken troops
+    LeadCoordinateUnits, // Synchronize multiple units' actions
+
+    // Level 4 - Strategic chunks
+    LeadBattleManagement,    // Orchestrate entire battle
+    LeadCampaignPlanning,    // Plan long-term military operations
+    LeadOrganizationBuilding, // Build and maintain command structure
+
+    // Level 5 - Mastery chunks
+    LeadReadBattleFlow,     // Intuitive grasp of battle dynamics
+    LeadInspireArmy,        // Motivate entire force through presence
+    LeadStrategicIntuition, // Instant recognition of strategic opportunity
 }
 
 impl ChunkId {
@@ -228,6 +256,25 @@ impl ChunkId {
             | Self::MedDiagnosticIntuition
             | Self::MedSurgicalExcellence
             | Self::MedHolisticTreatment => ChunkDomain::Medicine,
+
+            // Leadership domain - all command and tactics chunks
+            Self::LeadCommandPresence
+            | Self::LeadClearOrder
+            | Self::LeadSituationalRead
+            | Self::LeadIssueCommand
+            | Self::LeadAssessUnitState
+            | Self::LeadDelegateTask
+            | Self::LeadMaintainCalm
+            | Self::LeadDirectFormation
+            | Self::LeadRespondToCrisis
+            | Self::LeadRallyWavering
+            | Self::LeadCoordinateUnits
+            | Self::LeadBattleManagement
+            | Self::LeadCampaignPlanning
+            | Self::LeadOrganizationBuilding
+            | Self::LeadReadBattleFlow
+            | Self::LeadInspireArmy
+            | Self::LeadStrategicIntuition => ChunkDomain::Leadership,
         }
     }
 
@@ -331,14 +378,39 @@ impl ChunkId {
             | Self::MedAmputation => 3,
 
             // Medicine Level 4
-            Self::MedBattlefieldTriage
-            | Self::MedComplexSurgery
-            | Self::MedEpidemicResponse => 4,
+            Self::MedBattlefieldTriage | Self::MedComplexSurgery | Self::MedEpidemicResponse => 4,
 
             // Medicine Level 5
             Self::MedDiagnosticIntuition
             | Self::MedSurgicalExcellence
             | Self::MedHolisticTreatment => 5,
+
+            // Leadership Level 1
+            Self::LeadCommandPresence
+            | Self::LeadClearOrder
+            | Self::LeadSituationalRead => 1,
+
+            // Leadership Level 2
+            Self::LeadIssueCommand
+            | Self::LeadAssessUnitState
+            | Self::LeadDelegateTask
+            | Self::LeadMaintainCalm => 2,
+
+            // Leadership Level 3
+            Self::LeadDirectFormation
+            | Self::LeadRespondToCrisis
+            | Self::LeadRallyWavering
+            | Self::LeadCoordinateUnits => 3,
+
+            // Leadership Level 4
+            Self::LeadBattleManagement
+            | Self::LeadCampaignPlanning
+            | Self::LeadOrganizationBuilding => 4,
+
+            // Leadership Level 5
+            Self::LeadReadBattleFlow
+            | Self::LeadInspireArmy
+            | Self::LeadStrategicIntuition => 5,
         }
     }
 
@@ -443,6 +515,28 @@ impl ChunkId {
             Self::MedDiagnosticIntuition => "Diagnostic Intuition",
             Self::MedSurgicalExcellence => "Surgical Excellence",
             Self::MedHolisticTreatment => "Holistic Treatment",
+            // Leadership Level 1
+            Self::LeadCommandPresence => "Command Presence",
+            Self::LeadClearOrder => "Clear Order",
+            Self::LeadSituationalRead => "Situational Read",
+            // Leadership Level 2
+            Self::LeadIssueCommand => "Issue Command",
+            Self::LeadAssessUnitState => "Assess Unit State",
+            Self::LeadDelegateTask => "Delegate Task",
+            Self::LeadMaintainCalm => "Maintain Calm",
+            // Leadership Level 3
+            Self::LeadDirectFormation => "Direct Formation",
+            Self::LeadRespondToCrisis => "Respond to Crisis",
+            Self::LeadRallyWavering => "Rally Wavering",
+            Self::LeadCoordinateUnits => "Coordinate Units",
+            // Leadership Level 4
+            Self::LeadBattleManagement => "Battle Management",
+            Self::LeadCampaignPlanning => "Campaign Planning",
+            Self::LeadOrganizationBuilding => "Organization Building",
+            // Leadership Level 5
+            Self::LeadReadBattleFlow => "Read Battle Flow",
+            Self::LeadInspireArmy => "Inspire Army",
+            Self::LeadStrategicIntuition => "Strategic Intuition",
         }
     }
 }
@@ -546,7 +640,24 @@ mod tests {
         assert_eq!(ChunkId::MedWoundAssessment.domain(), ChunkDomain::Medicine);
         assert_eq!(ChunkId::MedTreatLaceration.domain(), ChunkDomain::Medicine);
         assert_eq!(ChunkId::MedFieldSurgery.domain(), ChunkDomain::Medicine);
-        assert_eq!(ChunkId::MedBattlefieldTriage.domain(), ChunkDomain::Medicine);
-        assert_eq!(ChunkId::MedDiagnosticIntuition.domain(), ChunkDomain::Medicine);
+        assert_eq!(
+            ChunkId::MedBattlefieldTriage.domain(),
+            ChunkDomain::Medicine
+        );
+        assert_eq!(
+            ChunkId::MedDiagnosticIntuition.domain(),
+            ChunkDomain::Medicine
+        );
+    }
+
+    #[test]
+    fn test_leadership_chunks_exist() {
+        use crate::skills::ChunkDomain;
+
+        assert_eq!(ChunkId::LeadCommandPresence.domain(), ChunkDomain::Leadership);
+        assert_eq!(ChunkId::LeadIssueCommand.domain(), ChunkDomain::Leadership);
+        assert_eq!(ChunkId::LeadDirectFormation.domain(), ChunkDomain::Leadership);
+        assert_eq!(ChunkId::LeadBattleManagement.domain(), ChunkDomain::Leadership);
+        assert_eq!(ChunkId::LeadStrategicIntuition.domain(), ChunkDomain::Leadership);
     }
 }
