@@ -40,6 +40,38 @@ pub enum ChunkId {
     SniperShot,  // Maximum precision, high cost
     VolleyFire,  // Coordinated area fire
     PartingShot, // Fire while retreating (horse archers)
+
+    // === CRAFT DOMAIN ===
+    // Level 1 - Micro-chunks
+    CraftBasicHeatCycle,  // Heat metal to working temperature
+    CraftBasicHammerWork, // Basic hammer strikes for shaping
+    CraftBasicMeasure,    // Measure and mark materials
+    CraftBasicCut,        // Cut materials (wood, leather, cloth)
+    CraftBasicJoin,       // Join pieces (nails, stitches, glue)
+
+    // Level 2 - Technique chunks
+    CraftDrawOutMetal,  // Lengthen and thin metal through hammering
+    CraftUpsetMetal,    // Thicken and shorten metal
+    CraftBasicWeld,     // Forge-weld two pieces of metal
+    CraftShapeWood,     // Shape wood through carving/planing
+    CraftFinishSurface, // Sand, polish, apply finish
+
+    // Level 3 - Product chunks
+    CraftForgeKnife,     // Create a basic knife
+    CraftForgeToolHead,  // Create tool heads (axe, hammer, etc.)
+    CraftBuildFurniture, // Build basic furniture
+    CraftSewGarment,     // Sew a complete garment
+
+    // Level 4 - Complex product chunks
+    CraftForgeSword,     // Create a sword
+    CraftForgeArmor,     // Create armor pieces
+    CraftBuildStructure, // Build structural elements
+    CraftPatternWeld,    // Create pattern-welded steel
+
+    // Level 5 - Mastery chunks
+    CraftAssessAndExecute,   // Assess problem, choose approach, execute
+    CraftForgeMasterwork,    // Create masterwork quality items
+    CraftInnovativeTechnique, // Develop new techniques
 }
 
 impl ChunkId {
@@ -67,6 +99,29 @@ impl ChunkId {
             | Self::SniperShot
             | Self::VolleyFire
             | Self::PartingShot => ChunkDomain::Combat,
+
+            // Craft domain - all crafting chunks
+            Self::CraftBasicHeatCycle
+            | Self::CraftBasicHammerWork
+            | Self::CraftBasicMeasure
+            | Self::CraftBasicCut
+            | Self::CraftBasicJoin
+            | Self::CraftDrawOutMetal
+            | Self::CraftUpsetMetal
+            | Self::CraftBasicWeld
+            | Self::CraftShapeWood
+            | Self::CraftFinishSurface
+            | Self::CraftForgeKnife
+            | Self::CraftForgeToolHead
+            | Self::CraftBuildFurniture
+            | Self::CraftSewGarment
+            | Self::CraftForgeSword
+            | Self::CraftForgeArmor
+            | Self::CraftBuildStructure
+            | Self::CraftPatternWeld
+            | Self::CraftAssessAndExecute
+            | Self::CraftForgeMasterwork
+            | Self::CraftInnovativeTechnique => ChunkDomain::Craft,
         }
     }
 
@@ -87,6 +142,37 @@ impl ChunkId {
             Self::EngageMelee | Self::HandleFlanking => 3,
             // Ranged Level 3
             Self::RapidFire | Self::SniperShot | Self::VolleyFire | Self::PartingShot => 3,
+
+            // Craft Level 1
+            Self::CraftBasicHeatCycle
+            | Self::CraftBasicHammerWork
+            | Self::CraftBasicMeasure
+            | Self::CraftBasicCut
+            | Self::CraftBasicJoin => 1,
+
+            // Craft Level 2
+            Self::CraftDrawOutMetal
+            | Self::CraftUpsetMetal
+            | Self::CraftBasicWeld
+            | Self::CraftShapeWood
+            | Self::CraftFinishSurface => 2,
+
+            // Craft Level 3
+            Self::CraftForgeKnife
+            | Self::CraftForgeToolHead
+            | Self::CraftBuildFurniture
+            | Self::CraftSewGarment => 3,
+
+            // Craft Level 4
+            Self::CraftForgeSword
+            | Self::CraftForgeArmor
+            | Self::CraftBuildStructure
+            | Self::CraftPatternWeld => 4,
+
+            // Craft Level 5
+            Self::CraftAssessAndExecute
+            | Self::CraftForgeMasterwork
+            | Self::CraftInnovativeTechnique => 5,
         }
     }
 
@@ -115,6 +201,32 @@ impl ChunkId {
             Self::SniperShot => "Sniper Shot",
             Self::VolleyFire => "Volley Fire",
             Self::PartingShot => "Parting Shot",
+            // Craft Level 1
+            Self::CraftBasicHeatCycle => "Basic Heat Cycle",
+            Self::CraftBasicHammerWork => "Basic Hammer Work",
+            Self::CraftBasicMeasure => "Basic Measure",
+            Self::CraftBasicCut => "Basic Cut",
+            Self::CraftBasicJoin => "Basic Join",
+            // Craft Level 2
+            Self::CraftDrawOutMetal => "Draw Out Metal",
+            Self::CraftUpsetMetal => "Upset Metal",
+            Self::CraftBasicWeld => "Basic Weld",
+            Self::CraftShapeWood => "Shape Wood",
+            Self::CraftFinishSurface => "Finish Surface",
+            // Craft Level 3
+            Self::CraftForgeKnife => "Forge Knife",
+            Self::CraftForgeToolHead => "Forge Tool Head",
+            Self::CraftBuildFurniture => "Build Furniture",
+            Self::CraftSewGarment => "Sew Garment",
+            // Craft Level 4
+            Self::CraftForgeSword => "Forge Sword",
+            Self::CraftForgeArmor => "Forge Armor",
+            Self::CraftBuildStructure => "Build Structure",
+            Self::CraftPatternWeld => "Pattern Weld",
+            // Craft Level 5
+            Self::CraftAssessAndExecute => "Assess and Execute",
+            Self::CraftForgeMasterwork => "Forge Masterwork",
+            Self::CraftInnovativeTechnique => "Innovative Technique",
         }
     }
 }
@@ -173,5 +285,27 @@ mod tests {
         // Combat chunks - ranged
         assert_eq!(ChunkId::DrawBow.domain(), ChunkDomain::Combat);
         assert_eq!(ChunkId::RapidFire.domain(), ChunkDomain::Combat);
+    }
+
+    #[test]
+    fn test_craft_chunks_exist() {
+        use crate::skills::ChunkDomain;
+
+        // Level 1 craft chunks
+        assert_eq!(ChunkId::CraftBasicHeatCycle.domain(), ChunkDomain::Craft);
+        assert_eq!(ChunkId::CraftBasicHammerWork.domain(), ChunkDomain::Craft);
+        assert_eq!(ChunkId::CraftBasicMeasure.domain(), ChunkDomain::Craft);
+
+        // Level 2
+        assert_eq!(ChunkId::CraftDrawOutMetal.domain(), ChunkDomain::Craft);
+
+        // Level 3
+        assert_eq!(ChunkId::CraftForgeKnife.domain(), ChunkDomain::Craft);
+
+        // Level 4
+        assert_eq!(ChunkId::CraftForgeSword.domain(), ChunkDomain::Craft);
+
+        // Level 5
+        assert_eq!(ChunkId::CraftForgeMasterwork.domain(), ChunkDomain::Craft);
     }
 }
