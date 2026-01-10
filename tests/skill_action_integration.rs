@@ -50,8 +50,16 @@ fn test_novice_vs_master_attack() {
     // Master has higher skill modifier
     assert!(master_result.skill_modifier > novice_result.skill_modifier);
 
-    // Master pays less attention
-    assert!(master_result.attention_cost < novice_result.attention_cost);
+    // Novice works instinctively (no attention cost, but low skill)
+    // Master uses trained chunks (some attention cost, but high skill)
+    assert_eq!(
+        novice_result.attention_cost, 0.0,
+        "Novice should have no attention cost (instinctive work)"
+    );
+    assert!(
+        master_result.attention_cost > 0.0,
+        "Master should use attention for trained chunks"
+    );
 }
 
 #[test]

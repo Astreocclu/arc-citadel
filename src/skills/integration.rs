@@ -93,6 +93,11 @@ pub fn skill_check(library: &ChunkLibrary, action: ActionId) -> SkillCheckResult
 /// Calculate skill modifier and attention cost from required chunks
 ///
 /// Returns (attention_cost, skill_modifier, chunks_actually_used)
+///
+/// Design principle:
+/// - Attention cost is only for chunks you HAVE (conscious effort to coordinate them)
+/// - Missing chunks = work instinctively with low skill, but no attention cost
+/// - This allows unskilled entities to work (poorly) without attention overload
 fn calculate_action_skill(
     required_chunks: &[ChunkId],
     library: &ChunkLibrary,
@@ -100,6 +105,7 @@ fn calculate_action_skill(
     let mut total_cost = 0.0;
     let mut total_modifier = 1.0;
     let mut chunks_used = Vec::new();
+    let mut chunks_found = 0;
 
     for chunk_id in required_chunks {
         if let Some(state) = library.get_chunk(*chunk_id) {
@@ -111,13 +117,13 @@ fn calculate_action_skill(
             total_cost += cost;
             total_modifier *= modifier;
             chunks_used.push(*chunk_id);
+            chunks_found += 1;
         } else {
-            // Doesn't have this chunk - check if we can decompose
+            // Doesn't have this chunk - check if we can decompose to sub-chunks
             if let Some(def) = get_chunk_definition(*chunk_id) {
                 match &def.components {
                     ChunkComponents::Atomic => {
-                        // Must do atomically - very expensive, low skill
-                        total_cost += 0.9;
+                        // No chunk, work instinctively: low skill, no attention cost
                         total_modifier *= 0.3;
                     }
                     ChunkComponents::Composite(sub_chunks) => {
@@ -126,20 +132,25 @@ fn calculate_action_skill(
                             calculate_action_skill(sub_chunks, library);
                         total_cost += sub_cost;
                         total_modifier *= sub_mod;
+                        if !sub_used.is_empty() {
+                            chunks_found += 1;
+                        }
                         chunks_used.extend(sub_used);
                     }
                 }
             } else {
-                // Unknown chunk - treat as atomic
-                total_cost += 0.9;
+                // Unknown chunk - work instinctively with low skill
                 total_modifier *= 0.3;
             }
         }
     }
 
-    // Normalize: average cost across chunks, multiply modifiers
-    let num_chunks = required_chunks.len().max(1) as f32;
-    let avg_cost = total_cost / num_chunks;
+    // Average cost across chunks actually used (avoids divide-by-zero)
+    let avg_cost = if chunks_found > 0 {
+        total_cost / chunks_found as f32
+    } else {
+        0.0 // No chunks used = no attention cost (instinctive work)
+    };
 
     (avg_cost, total_modifier.clamp(0.1, 1.0), chunks_used)
 }
@@ -241,15 +252,27 @@ mod tests {
 
     #[test]
     fn test_skill_check_attention_overload() {
-        let mut lib = ChunkLibrary::new();
+        let mut lib = setup_library_with_chunks(0.3); // Low encoding = high attention cost
         lib.attention_budget = 0.2;
         lib.attention_spent = 0.2;
 
-        // No chunks = high cost = overload
+        // Has chunks with high cost but no attention remaining = overload
         let result = skill_check(&lib, ActionId::Attack);
 
         assert!(!result.can_execute);
         assert_eq!(result.failure_reason, Some(SkillFailure::AttentionOverload));
+    }
+
+    #[test]
+    fn test_skill_check_no_chunks_still_executes() {
+        let lib = ChunkLibrary::new(); // No chunks at all
+
+        // No chunks = work instinctively with no attention cost
+        let result = skill_check(&lib, ActionId::Attack);
+
+        assert!(result.can_execute);
+        assert_eq!(result.attention_cost, 0.0);
+        assert!(result.skill_modifier <= 0.1); // Very low skill
     }
 
     #[test]
