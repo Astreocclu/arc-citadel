@@ -6,6 +6,7 @@
 //! A novice conscript thinks: "Grip. Stance. Swing. Don't drop it."
 //! A master thinks: "Handle this flank." - thousands of micro-actions automatic.
 
+pub mod action_mapping;
 pub mod attention;
 pub mod chunk_id;
 pub mod context;
@@ -15,6 +16,7 @@ pub mod learning;
 pub mod library;
 pub mod resolution;
 
+pub use action_mapping::{action_requires_skill, get_chunks_for_action};
 pub use attention::{calculate_attention_budget, can_afford_attention, risks_fumble, FUMBLE_ATTENTION_THRESHOLD};
 pub use chunk_id::ChunkId;
 pub use context::{CombatContext, ContextTag};
