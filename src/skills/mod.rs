@@ -12,6 +12,7 @@ pub mod chunk_id;
 pub mod context;
 pub mod definitions;
 pub mod domain;
+pub mod integration;
 pub mod learning;
 pub mod library;
 pub mod resolution;
@@ -27,4 +28,8 @@ pub use library::{ChunkLibrary, Experience, PersonalChunkState};
 pub use resolution::{
     find_best_chunk, resolve_attack, resolve_defense, resolve_riposte, ActionResult,
     ATTACK_CHUNKS, DEFENSE_CHUNKS, RIPOSTE_CHUNKS,
+};
+pub use integration::{
+    record_action_experience, refresh_attention, skill_check, spend_attention, SkillCheckResult,
+    SkillFailure,
 };
