@@ -27,6 +27,7 @@ use crate::simulation::perception::{
 };
 use crate::simulation::population::try_population_growth;
 use crate::simulation::violation_detection::process_violations;
+use crate::skills::refresh_attention;
 use crate::spatial::sparse_hash::SparseHashGrid;
 use rayon::prelude::*;
 
@@ -52,6 +53,7 @@ pub fn run_simulation_tick(world: &mut World) {
     world.astronomy.advance_tick();
 
     update_needs(world);
+    refresh_all_attention(world);
     let perceptions = run_perception(world);
     generate_thoughts(world, &perceptions);
     process_observations(world, &perceptions);
@@ -117,6 +119,24 @@ fn update_needs(world: &mut World) {
         let dt = 1.0;
         world.orcs.needs[i].decay(dt, is_active);
     }
+}
+
+/// Refresh attention budgets for all entities
+///
+/// Called at start of tick to reset attention for new decision period.
+fn refresh_all_attention(world: &mut World) {
+    // Process humans
+    let living_indices: Vec<usize> = world.humans.iter_living().collect();
+    for i in living_indices {
+        let fatigue = world.humans.body_states[i].fatigue;
+        let pain = world.humans.body_states[i].pain;
+        // Use 0.0 for stress until stress system is added
+        let stress = 0.0;
+
+        refresh_attention(&mut world.humans.chunk_libraries[i], fatigue, pain, stress);
+    }
+
+    // TODO: Add refresh for other species when they have chunk_libraries
 }
 
 /// Run the perception system for all entities (PARALLEL when beneficial)
