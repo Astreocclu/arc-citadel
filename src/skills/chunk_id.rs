@@ -162,6 +162,35 @@ pub enum ChunkId {
     LeadReadBattleFlow,     // Intuitive grasp of battle dynamics
     LeadInspireArmy,        // Motivate entire force through presence
     LeadStrategicIntuition, // Instant recognition of strategic opportunity
+
+    // === KNOWLEDGE DOMAIN ===
+    // Level 1 - Micro-chunks
+    KnowFluentReading,  // Read text smoothly with comprehension
+    KnowFluentWriting,  // Write text clearly and legibly
+    KnowArithmetic,     // Basic mathematical operations
+    KnowMemorization,   // Commit information to memory
+
+    // Level 2 - Technique chunks
+    KnowResearchSource,   // Find and evaluate sources
+    KnowComposeDocument,  // Write formal documents
+    KnowMathematicalProof, // Construct logical proofs
+    KnowTeachConcept,      // Explain ideas to learners
+    KnowTranslateText,     // Convert between languages
+
+    // Level 3 - Application chunks
+    KnowAnalyzeText,       // Deep textual analysis
+    KnowSynthesizeSources, // Combine multiple sources
+    KnowFormalArgument,    // Construct rigorous arguments
+    KnowInstructStudent,   // Guide student development
+
+    // Level 4 - Expert chunks
+    KnowOriginalResearch,       // Conduct novel research
+    KnowComprehensiveTreatise,  // Write comprehensive works
+    KnowCurriculumDesign,       // Design educational programs
+
+    // Level 5 - Mastery chunks
+    KnowParadigmIntegration, // Integrate multiple paradigms
+    KnowIntellectualLegacy,  // Create lasting intellectual contributions
 }
 
 impl ChunkId {
@@ -275,6 +304,26 @@ impl ChunkId {
             | Self::LeadReadBattleFlow
             | Self::LeadInspireArmy
             | Self::LeadStrategicIntuition => ChunkDomain::Leadership,
+
+            // Knowledge domain - all scholarly and academic chunks
+            Self::KnowFluentReading
+            | Self::KnowFluentWriting
+            | Self::KnowArithmetic
+            | Self::KnowMemorization
+            | Self::KnowResearchSource
+            | Self::KnowComposeDocument
+            | Self::KnowMathematicalProof
+            | Self::KnowTeachConcept
+            | Self::KnowTranslateText
+            | Self::KnowAnalyzeText
+            | Self::KnowSynthesizeSources
+            | Self::KnowFormalArgument
+            | Self::KnowInstructStudent
+            | Self::KnowOriginalResearch
+            | Self::KnowComprehensiveTreatise
+            | Self::KnowCurriculumDesign
+            | Self::KnowParadigmIntegration
+            | Self::KnowIntellectualLegacy => ChunkDomain::Knowledge,
         }
     }
 
@@ -411,6 +460,33 @@ impl ChunkId {
             Self::LeadReadBattleFlow
             | Self::LeadInspireArmy
             | Self::LeadStrategicIntuition => 5,
+
+            // Knowledge Level 1
+            Self::KnowFluentReading
+            | Self::KnowFluentWriting
+            | Self::KnowArithmetic
+            | Self::KnowMemorization => 1,
+
+            // Knowledge Level 2
+            Self::KnowResearchSource
+            | Self::KnowComposeDocument
+            | Self::KnowMathematicalProof
+            | Self::KnowTeachConcept
+            | Self::KnowTranslateText => 2,
+
+            // Knowledge Level 3
+            Self::KnowAnalyzeText
+            | Self::KnowSynthesizeSources
+            | Self::KnowFormalArgument
+            | Self::KnowInstructStudent => 3,
+
+            // Knowledge Level 4
+            Self::KnowOriginalResearch
+            | Self::KnowComprehensiveTreatise
+            | Self::KnowCurriculumDesign => 4,
+
+            // Knowledge Level 5
+            Self::KnowParadigmIntegration | Self::KnowIntellectualLegacy => 5,
         }
     }
 
@@ -537,6 +613,29 @@ impl ChunkId {
             Self::LeadReadBattleFlow => "Read Battle Flow",
             Self::LeadInspireArmy => "Inspire Army",
             Self::LeadStrategicIntuition => "Strategic Intuition",
+            // Knowledge Level 1
+            Self::KnowFluentReading => "Fluent Reading",
+            Self::KnowFluentWriting => "Fluent Writing",
+            Self::KnowArithmetic => "Arithmetic",
+            Self::KnowMemorization => "Memorization",
+            // Knowledge Level 2
+            Self::KnowResearchSource => "Research Source",
+            Self::KnowComposeDocument => "Compose Document",
+            Self::KnowMathematicalProof => "Mathematical Proof",
+            Self::KnowTeachConcept => "Teach Concept",
+            Self::KnowTranslateText => "Translate Text",
+            // Knowledge Level 3
+            Self::KnowAnalyzeText => "Analyze Text",
+            Self::KnowSynthesizeSources => "Synthesize Sources",
+            Self::KnowFormalArgument => "Formal Argument",
+            Self::KnowInstructStudent => "Instruct Student",
+            // Knowledge Level 4
+            Self::KnowOriginalResearch => "Original Research",
+            Self::KnowComprehensiveTreatise => "Comprehensive Treatise",
+            Self::KnowCurriculumDesign => "Curriculum Design",
+            // Knowledge Level 5
+            Self::KnowParadigmIntegration => "Paradigm Integration",
+            Self::KnowIntellectualLegacy => "Intellectual Legacy",
         }
     }
 }
@@ -659,5 +758,16 @@ mod tests {
         assert_eq!(ChunkId::LeadDirectFormation.domain(), ChunkDomain::Leadership);
         assert_eq!(ChunkId::LeadBattleManagement.domain(), ChunkDomain::Leadership);
         assert_eq!(ChunkId::LeadStrategicIntuition.domain(), ChunkDomain::Leadership);
+    }
+
+    #[test]
+    fn test_knowledge_chunks_exist() {
+        use crate::skills::ChunkDomain;
+
+        assert_eq!(ChunkId::KnowFluentReading.domain(), ChunkDomain::Knowledge);
+        assert_eq!(ChunkId::KnowResearchSource.domain(), ChunkDomain::Knowledge);
+        assert_eq!(ChunkId::KnowAnalyzeText.domain(), ChunkDomain::Knowledge);
+        assert_eq!(ChunkId::KnowOriginalResearch.domain(), ChunkDomain::Knowledge);
+        assert_eq!(ChunkId::KnowIntellectualLegacy.domain(), ChunkDomain::Knowledge);
     }
 }
