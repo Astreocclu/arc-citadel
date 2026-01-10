@@ -69,8 +69,8 @@ pub enum ChunkId {
     CraftPatternWeld,    // Create pattern-welded steel
 
     // Level 5 - Mastery chunks
-    CraftAssessAndExecute,   // Assess problem, choose approach, execute
-    CraftForgeMasterwork,    // Create masterwork quality items
+    CraftAssessAndExecute,    // Assess problem, choose approach, execute
+    CraftForgeMasterwork,     // Create masterwork quality items
     CraftInnovativeTechnique, // Develop new techniques
 
     // === SOCIAL DOMAIN ===
@@ -81,18 +81,18 @@ pub enum ChunkId {
     SocialCreateTension,     // Introduce discomfort, silence, pressure
 
     // Level 2 - Technique chunks
-    SocialBuildRapport,      // Establish trust and common ground
-    SocialProjectAuthority,  // Command presence and respect
-    SocialReadReaction,      // Assess response, adjust approach
-    SocialDeflectInquiry,    // Redirect questions, avoid commitments
-    SocialEmotionalAppeal,   // Invoke emotions to persuade
+    SocialBuildRapport,     // Establish trust and common ground
+    SocialProjectAuthority, // Command presence and respect
+    SocialReadReaction,     // Assess response, adjust approach
+    SocialDeflectInquiry,   // Redirect questions, avoid commitments
+    SocialEmotionalAppeal,  // Invoke emotions to persuade
 
     // Level 3 - Tactical chunks
-    SocialNegotiateTerms,    // Reach mutually acceptable agreements
-    SocialIntimidate,        // Apply pressure through fear
-    SocialPersuade,          // Change minds through argument
-    SocialDeceive,           // Mislead while appearing truthful
-    SocialInspire,           // Motivate through vision and charisma
+    SocialNegotiateTerms, // Reach mutually acceptable agreements
+    SocialIntimidate,     // Apply pressure through fear
+    SocialPersuade,       // Change minds through argument
+    SocialDeceive,        // Mislead while appearing truthful
+    SocialInspire,        // Motivate through vision and charisma
 
     // Level 4 - Strategic chunks
     SocialWorkRoom,          // Manage multiple relationships at once
@@ -101,9 +101,39 @@ pub enum ChunkId {
     SocialMediateConflict,   // Resolve disputes between parties
 
     // Level 5 - Mastery chunks
-    SocialOmniscience,       // Read entire room's dynamics instantly
+    SocialOmniscience,        // Read entire room's dynamics instantly
     SocialManipulateDynamics, // Shape group behavior subtly
-    SocialCultOfPersonality, // Build devoted following
+    SocialCultOfPersonality,  // Build devoted following
+
+    // === MEDICINE DOMAIN ===
+    // Level 1 - Micro-chunks
+    MedWoundAssessment, // Evaluate wound severity and type
+    MedBasicCleaning,   // Clean wounds to prevent infection
+    MedBasicSuture,     // Close wounds with needle and thread
+    MedVitalCheck,      // Assess pulse, breathing, consciousness
+
+    // Level 2 - Technique chunks
+    MedTreatLaceration, // Complete laceration treatment
+    MedSetFracture,     // Align and immobilize broken bones
+    MedPreparePoultice, // Create herbal healing preparations
+    MedDiagnoseIllness, // Identify illness from symptoms
+    MedPainManagement,  // Administer pain relief techniques
+
+    // Level 3 - Treatment chunks
+    MedFieldSurgery,   // Perform surgery in non-ideal conditions
+    MedTreatInfection, // Combat established infections
+    MedDeliverBaby,    // Assist with childbirth
+    MedAmputation,     // Remove damaged limbs to save patient
+
+    // Level 4 - Complex treatment chunks
+    MedBattlefieldTriage, // Rapidly prioritize multiple casualties
+    MedComplexSurgery,    // Major internal surgery
+    MedEpidemicResponse,  // Manage disease outbreaks
+
+    // Level 5 - Mastery chunks
+    MedDiagnosticIntuition, // Instantly recognize obscure conditions
+    MedSurgicalExcellence,  // Perfect surgical technique
+    MedHolisticTreatment,   // Treat body, mind, and spirit together
 }
 
 impl ChunkId {
@@ -177,6 +207,27 @@ impl ChunkId {
             | Self::SocialOmniscience
             | Self::SocialManipulateDynamics
             | Self::SocialCultOfPersonality => ChunkDomain::Social,
+
+            // Medicine domain - all medical treatment chunks
+            Self::MedWoundAssessment
+            | Self::MedBasicCleaning
+            | Self::MedBasicSuture
+            | Self::MedVitalCheck
+            | Self::MedTreatLaceration
+            | Self::MedSetFracture
+            | Self::MedPreparePoultice
+            | Self::MedDiagnoseIllness
+            | Self::MedPainManagement
+            | Self::MedFieldSurgery
+            | Self::MedTreatInfection
+            | Self::MedDeliverBaby
+            | Self::MedAmputation
+            | Self::MedBattlefieldTriage
+            | Self::MedComplexSurgery
+            | Self::MedEpidemicResponse
+            | Self::MedDiagnosticIntuition
+            | Self::MedSurgicalExcellence
+            | Self::MedHolisticTreatment => ChunkDomain::Medicine,
         }
     }
 
@@ -259,6 +310,35 @@ impl ChunkId {
             Self::SocialOmniscience
             | Self::SocialManipulateDynamics
             | Self::SocialCultOfPersonality => 5,
+
+            // Medicine Level 1
+            Self::MedWoundAssessment
+            | Self::MedBasicCleaning
+            | Self::MedBasicSuture
+            | Self::MedVitalCheck => 1,
+
+            // Medicine Level 2
+            Self::MedTreatLaceration
+            | Self::MedSetFracture
+            | Self::MedPreparePoultice
+            | Self::MedDiagnoseIllness
+            | Self::MedPainManagement => 2,
+
+            // Medicine Level 3
+            Self::MedFieldSurgery
+            | Self::MedTreatInfection
+            | Self::MedDeliverBaby
+            | Self::MedAmputation => 3,
+
+            // Medicine Level 4
+            Self::MedBattlefieldTriage
+            | Self::MedComplexSurgery
+            | Self::MedEpidemicResponse => 4,
+
+            // Medicine Level 5
+            Self::MedDiagnosticIntuition
+            | Self::MedSurgicalExcellence
+            | Self::MedHolisticTreatment => 5,
         }
     }
 
@@ -339,6 +419,30 @@ impl ChunkId {
             Self::SocialOmniscience => "Social Omniscience",
             Self::SocialManipulateDynamics => "Manipulate Dynamics",
             Self::SocialCultOfPersonality => "Cult of Personality",
+            // Medicine Level 1
+            Self::MedWoundAssessment => "Wound Assessment",
+            Self::MedBasicCleaning => "Basic Cleaning",
+            Self::MedBasicSuture => "Basic Suture",
+            Self::MedVitalCheck => "Vital Check",
+            // Medicine Level 2
+            Self::MedTreatLaceration => "Treat Laceration",
+            Self::MedSetFracture => "Set Fracture",
+            Self::MedPreparePoultice => "Prepare Poultice",
+            Self::MedDiagnoseIllness => "Diagnose Illness",
+            Self::MedPainManagement => "Pain Management",
+            // Medicine Level 3
+            Self::MedFieldSurgery => "Field Surgery",
+            Self::MedTreatInfection => "Treat Infection",
+            Self::MedDeliverBaby => "Deliver Baby",
+            Self::MedAmputation => "Amputation",
+            // Medicine Level 4
+            Self::MedBattlefieldTriage => "Battlefield Triage",
+            Self::MedComplexSurgery => "Complex Surgery",
+            Self::MedEpidemicResponse => "Epidemic Response",
+            // Medicine Level 5
+            Self::MedDiagnosticIntuition => "Diagnostic Intuition",
+            Self::MedSurgicalExcellence => "Surgical Excellence",
+            Self::MedHolisticTreatment => "Holistic Treatment",
         }
     }
 }
@@ -429,6 +533,20 @@ mod tests {
         assert_eq!(ChunkId::SocialBuildRapport.domain(), ChunkDomain::Social);
         assert_eq!(ChunkId::SocialNegotiateTerms.domain(), ChunkDomain::Social);
         assert_eq!(ChunkId::SocialWorkRoom.domain(), ChunkDomain::Social);
-        assert_eq!(ChunkId::SocialManipulateDynamics.domain(), ChunkDomain::Social);
+        assert_eq!(
+            ChunkId::SocialManipulateDynamics.domain(),
+            ChunkDomain::Social
+        );
+    }
+
+    #[test]
+    fn test_medicine_chunks_exist() {
+        use crate::skills::ChunkDomain;
+
+        assert_eq!(ChunkId::MedWoundAssessment.domain(), ChunkDomain::Medicine);
+        assert_eq!(ChunkId::MedTreatLaceration.domain(), ChunkDomain::Medicine);
+        assert_eq!(ChunkId::MedFieldSurgery.domain(), ChunkDomain::Medicine);
+        assert_eq!(ChunkId::MedBattlefieldTriage.domain(), ChunkDomain::Medicine);
+        assert_eq!(ChunkId::MedDiagnosticIntuition.domain(), ChunkDomain::Medicine);
     }
 }
