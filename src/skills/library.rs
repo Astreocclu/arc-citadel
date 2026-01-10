@@ -1,6 +1,6 @@
 //! Per-entity chunk state storage
 
-use crate::skills::ChunkId;
+use crate::skills::{ChunkDomain, ChunkId};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -40,6 +40,27 @@ pub struct Experience {
     pub chunk_id: ChunkId,
     pub success: bool,
     pub tick: u64,
+}
+
+/// Summary of chunks in a specific domain
+#[derive(Debug, Clone)]
+pub struct DomainSummary {
+    pub domain: ChunkDomain,
+    pub chunk_count: usize,
+    pub total_encoding: f32,
+    pub best_chunk: Option<(ChunkId, f32)>,
+    pub highest_level: u8,
+}
+
+impl DomainSummary {
+    /// Average encoding depth (0.0 if no chunks)
+    pub fn average_encoding(&self) -> f32 {
+        if self.chunk_count == 0 {
+            0.0
+        } else {
+            self.total_encoding / self.chunk_count as f32
+        }
+    }
 }
 
 /// Per-entity skill chunk library
@@ -84,32 +105,44 @@ impl ChunkLibrary {
         let mut lib = Self::new();
 
         // Level 1 chunks - well practiced
-        lib.chunks.insert(ChunkId::BasicSwing, PersonalChunkState {
-            encoding_depth: 0.6,
-            repetition_count: 100,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(1000),
-        });
-        lib.chunks.insert(ChunkId::BasicBlock, PersonalChunkState {
-            encoding_depth: 0.5,
-            repetition_count: 80,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(1000),
-        });
-        lib.chunks.insert(ChunkId::BasicStance, PersonalChunkState {
-            encoding_depth: 0.7,
-            repetition_count: 150,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(1000),
-        });
+        lib.chunks.insert(
+            ChunkId::BasicSwing,
+            PersonalChunkState {
+                encoding_depth: 0.6,
+                repetition_count: 100,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1000),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicBlock,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 80,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1000),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicStance,
+            PersonalChunkState {
+                encoding_depth: 0.7,
+                repetition_count: 150,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1000),
+            },
+        );
 
         // Level 2 - forming
-        lib.chunks.insert(ChunkId::AttackSequence, PersonalChunkState {
-            encoding_depth: 0.3,
-            repetition_count: 30,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(500),
-        });
+        lib.chunks.insert(
+            ChunkId::AttackSequence,
+            PersonalChunkState {
+                encoding_depth: 0.3,
+                repetition_count: 30,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(500),
+            },
+        );
 
         lib
     }
@@ -133,32 +166,269 @@ impl ChunkLibrary {
         }
 
         // Level 2 chunks - practiced
-        lib.chunks.insert(ChunkId::AttackSequence, PersonalChunkState {
-            encoding_depth: 0.7,
-            repetition_count: 200,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(2000),
-        });
-        lib.chunks.insert(ChunkId::DefendSequence, PersonalChunkState {
-            encoding_depth: 0.65,
-            repetition_count: 180,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(2000),
-        });
-        lib.chunks.insert(ChunkId::Riposte, PersonalChunkState {
-            encoding_depth: 0.5,
-            repetition_count: 100,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(1500),
-        });
+        lib.chunks.insert(
+            ChunkId::AttackSequence,
+            PersonalChunkState {
+                encoding_depth: 0.7,
+                repetition_count: 200,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(2000),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::DefendSequence,
+            PersonalChunkState {
+                encoding_depth: 0.65,
+                repetition_count: 180,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(2000),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::Riposte,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 100,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1500),
+            },
+        );
 
         // Level 3 - forming
-        lib.chunks.insert(ChunkId::EngageMelee, PersonalChunkState {
-            encoding_depth: 0.3,
-            repetition_count: 50,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(500),
-        });
+        lib.chunks.insert(
+            ChunkId::EngageMelee,
+            PersonalChunkState {
+                encoding_depth: 0.3,
+                repetition_count: 50,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(500),
+            },
+        );
+
+        lib
+    }
+
+    // ========================================================================
+    // RANGED COMBAT LIBRARIES
+    // ========================================================================
+
+    /// Create a trained archer's chunk library
+    pub fn trained_archer(formation_tick: u64) -> Self {
+        let mut lib = Self::new();
+
+        // Level 1 fundamentals
+        lib.chunks.insert(
+            ChunkId::DrawBow,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 50,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicAim,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 40,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+
+        // Level 2 - standard shot
+        lib.chunks.insert(
+            ChunkId::LooseArrow,
+            PersonalChunkState {
+                encoding_depth: 0.4,
+                repetition_count: 60,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::SnapShot,
+            PersonalChunkState {
+                encoding_depth: 0.3,
+                repetition_count: 30,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+
+        lib
+    }
+
+    /// Create a veteran archer's chunk library
+    pub fn veteran_archer(formation_tick: u64) -> Self {
+        let mut lib = Self::trained_archer(formation_tick);
+
+        // Upgrade existing chunks
+        lib.chunks.insert(
+            ChunkId::DrawBow,
+            PersonalChunkState {
+                encoding_depth: 0.85,
+                repetition_count: 300,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicAim,
+            PersonalChunkState {
+                encoding_depth: 0.8,
+                repetition_count: 250,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::LooseArrow,
+            PersonalChunkState {
+                encoding_depth: 0.75,
+                repetition_count: 200,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::SnapShot,
+            PersonalChunkState {
+                encoding_depth: 0.7,
+                repetition_count: 150,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+
+        // Level 3 - advanced techniques
+        lib.chunks.insert(
+            ChunkId::RapidFire,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 100,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::SniperShot,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 100,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+
+        lib
+    }
+
+    /// Create a trained crossbowman's chunk library
+    pub fn trained_crossbowman(formation_tick: u64) -> Self {
+        let mut lib = Self::new();
+
+        // Level 1 fundamentals
+        lib.chunks.insert(
+            ChunkId::LoadCrossbow,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 30,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicAim,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 40,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+
+        // Level 2 - crossbow shot (easy ceiling)
+        lib.chunks.insert(
+            ChunkId::CrossbowShot,
+            PersonalChunkState {
+                encoding_depth: 0.6, // Higher floor than bow
+                repetition_count: 50,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+
+        lib
+    }
+
+    /// Create a veteran crossbowman's chunk library
+    pub fn veteran_crossbowman(formation_tick: u64) -> Self {
+        let mut lib = Self::trained_crossbowman(formation_tick);
+
+        // Crossbows have lower ceiling - max out faster
+        lib.chunks.insert(
+            ChunkId::LoadCrossbow,
+            PersonalChunkState {
+                encoding_depth: 0.8, // Not as high as bow mastery
+                repetition_count: 100,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicAim,
+            PersonalChunkState {
+                encoding_depth: 0.75,
+                repetition_count: 120,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::CrossbowShot,
+            PersonalChunkState {
+                encoding_depth: 0.75, // Lower ceiling than veteran archer
+                repetition_count: 100,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+
+        lib
+    }
+
+    /// Create a trained thrower's chunk library (javelins, axes)
+    pub fn trained_thrower(formation_tick: u64) -> Self {
+        let mut lib = Self::new();
+
+        lib.chunks.insert(
+            ChunkId::BasicThrow,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 30,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicAim,
+            PersonalChunkState {
+                encoding_depth: 0.4,
+                repetition_count: 25,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::AimedThrow,
+            PersonalChunkState {
+                encoding_depth: 0.4,
+                repetition_count: 40,
+                last_used_tick: formation_tick,
+                formation_tick,
+            },
+        );
 
         lib
     }
@@ -233,6 +503,44 @@ impl ChunkLibrary {
             })
             .map(|(id, state)| (*id, state.encoding_depth))
     }
+
+    /// Get summary of chunks in a specific domain
+    pub fn domain_summary(&self, domain: ChunkDomain) -> DomainSummary {
+        let domain_chunks: Vec<_> = self
+            .chunks
+            .iter()
+            .filter(|(id, _)| id.domain() == domain)
+            .collect();
+
+        let chunk_count = domain_chunks.len();
+        let total_encoding: f32 = domain_chunks
+            .iter()
+            .map(|(_, state)| state.encoding_depth)
+            .sum();
+
+        let best_chunk = domain_chunks
+            .iter()
+            .max_by(|a, b| {
+                let score_a = a.0.level() as f32 * 10.0 + a.1.encoding_depth * 5.0;
+                let score_b = b.0.level() as f32 * 10.0 + b.1.encoding_depth * 5.0;
+                score_a.partial_cmp(&score_b).unwrap()
+            })
+            .map(|(id, state)| (**id, state.encoding_depth));
+
+        let highest_level = domain_chunks
+            .iter()
+            .map(|(id, _)| id.level())
+            .max()
+            .unwrap_or(0);
+
+        DomainSummary {
+            domain,
+            chunk_count,
+            total_encoding,
+            best_chunk,
+            highest_level,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -289,5 +597,100 @@ mod tests {
         assert_eq!(lib.pending_experiences().len(), 1);
         lib.clear_experiences();
         assert_eq!(lib.pending_experiences().len(), 0);
+    }
+
+    #[test]
+    fn test_trained_archer_library() {
+        let lib = ChunkLibrary::trained_archer(0);
+
+        // Should have bow fundamentals
+        assert!(lib.has_chunk(ChunkId::DrawBow));
+        assert!(lib.has_chunk(ChunkId::BasicAim));
+        assert!(lib.has_chunk(ChunkId::LooseArrow));
+
+        // Should NOT have crossbow chunks
+        assert!(!lib.has_chunk(ChunkId::LoadCrossbow));
+        assert!(!lib.has_chunk(ChunkId::CrossbowShot));
+    }
+
+    #[test]
+    fn test_trained_crossbowman_library() {
+        let lib = ChunkLibrary::trained_crossbowman(0);
+
+        // Should have crossbow fundamentals
+        assert!(lib.has_chunk(ChunkId::LoadCrossbow));
+        assert!(lib.has_chunk(ChunkId::BasicAim));
+        assert!(lib.has_chunk(ChunkId::CrossbowShot));
+
+        // Should NOT have bow chunks
+        assert!(!lib.has_chunk(ChunkId::DrawBow));
+        assert!(!lib.has_chunk(ChunkId::LooseArrow));
+    }
+
+    #[test]
+    fn test_veteran_archer_has_advanced_chunks() {
+        let lib = ChunkLibrary::veteran_archer(0);
+
+        // Should have advanced bow chunks
+        assert!(lib.has_chunk(ChunkId::RapidFire));
+        assert!(lib.has_chunk(ChunkId::SniperShot));
+
+        // With high encoding depth
+        assert!(lib.get_chunk(ChunkId::LooseArrow).unwrap().encoding_depth > 0.7);
+    }
+
+    #[test]
+    fn test_trained_thrower_library() {
+        let lib = ChunkLibrary::trained_thrower(0);
+
+        assert!(lib.has_chunk(ChunkId::BasicThrow));
+        assert!(lib.has_chunk(ChunkId::BasicAim));
+        assert!(lib.has_chunk(ChunkId::AimedThrow));
+    }
+
+    #[test]
+    fn test_crossbow_lower_ceiling_than_bow() {
+        let archer = ChunkLibrary::veteran_archer(0);
+        let crossbowman = ChunkLibrary::veteran_crossbowman(0);
+
+        // Veteran archer LooseArrow vs veteran crossbowman CrossbowShot
+        let archer_depth = archer.get_chunk(ChunkId::LooseArrow).unwrap().encoding_depth;
+        let xbow_depth = crossbowman
+            .get_chunk(ChunkId::CrossbowShot)
+            .unwrap()
+            .encoding_depth;
+
+        // At veteran level, archer should have higher ceiling
+        assert!(
+            archer_depth >= xbow_depth,
+            "Archer depth {} should be >= crossbow depth {}",
+            archer_depth,
+            xbow_depth
+        );
+    }
+
+    #[test]
+    fn test_domain_summary_empty() {
+        use crate::skills::ChunkDomain;
+
+        let lib = ChunkLibrary::new();
+        let summary = lib.domain_summary(ChunkDomain::Combat);
+
+        assert_eq!(summary.chunk_count, 0);
+        assert_eq!(summary.total_encoding, 0.0);
+        assert!(summary.best_chunk.is_none());
+    }
+
+    #[test]
+    fn test_domain_summary_with_chunks() {
+        use crate::skills::ChunkDomain;
+
+        let lib = ChunkLibrary::trained_soldier(1000);
+        let summary = lib.domain_summary(ChunkDomain::Combat);
+
+        assert!(summary.chunk_count >= 3);
+        assert!(summary.total_encoding > 0.0);
+        assert!(summary.best_chunk.is_some());
+        assert!(summary.average_encoding() > 0.0);
     }
 }

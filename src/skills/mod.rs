@@ -15,14 +15,17 @@ pub mod learning;
 pub mod library;
 pub mod resolution;
 
-pub use attention::{calculate_attention_budget, can_afford_attention, risks_fumble, FUMBLE_ATTENTION_THRESHOLD};
+pub use attention::{
+    calculate_attention_budget, can_afford_attention, risks_fumble, FUMBLE_ATTENTION_THRESHOLD,
+};
 pub use chunk_id::ChunkId;
 pub use context::{CombatContext, ContextTag};
 pub use definitions::{get_chunk_definition, ChunkComponents, ChunkDefinition, CHUNK_LIBRARY};
 pub use domain::ChunkDomain;
 pub use learning::{calculate_encoding_depth, process_learning};
-pub use library::{ChunkLibrary, Experience, PersonalChunkState};
+pub use library::{ChunkLibrary, DomainSummary, Experience, PersonalChunkState};
 pub use resolution::{
-    find_best_chunk, resolve_attack, resolve_defense, resolve_riposte, ActionResult,
-    ATTACK_CHUNKS, DEFENSE_CHUNKS, RIPOSTE_CHUNKS,
+    find_best_chunk, resolve_attack, resolve_crossbow_reload, resolve_defense, resolve_ranged_attack,
+    resolve_riposte, ActionResult, ATTACK_CHUNKS, BOW_ATTACK_CHUNKS, CROSSBOW_ATTACK_CHUNKS,
+    DEFENSE_CHUNKS, RANGED_ATTACK_CHUNKS, RIPOSTE_CHUNKS, THROWN_ATTACK_CHUNKS,
 };
