@@ -15,6 +15,7 @@ pub mod domain;
 pub mod learning;
 pub mod library;
 pub mod resolution;
+pub mod species_mods;
 
 pub use attention::{
     calculate_attention_budget, can_afford_attention, risks_fumble, FUMBLE_ATTENTION_THRESHOLD,
@@ -34,3 +35,4 @@ pub use resolution::{
     resolve_riposte, ActionResult, ATTACK_CHUNKS, BOW_ATTACK_CHUNKS, CROSSBOW_ATTACK_CHUNKS,
     DEFENSE_CHUNKS, RANGED_ATTACK_CHUNKS, RIPOSTE_CHUNKS, THROWN_ATTACK_CHUNKS,
 };
+pub use species_mods::{DomainModifier, SpeciesChunkModifiers};
