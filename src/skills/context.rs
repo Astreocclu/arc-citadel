@@ -10,16 +10,26 @@ pub enum ContextTag {
     AtRange,
     Flanked,
     Flanking,
+    HighGround,
 
-    // Equipment
+    // Equipment - Melee
     HasSword,
     HasShield,
     HasPolearm,
     Armored,
 
-    // Opponent
+    // Equipment - Ranged
+    HasBow,
+    HasCrossbow,
+    HasThrown,
+    AmmoAvailable,
+    CrossbowLoaded,
+
+    // Opponent/Target
     EnemyVisible,
     MultipleEnemies,
+    TargetVisible,
+    TargetInCover,
 
     // State
     Fresh,
@@ -100,5 +110,18 @@ mod tests {
     fn test_match_quality_empty_requirements() {
         let ctx = CombatContext::new();
         assert_eq!(ctx.match_quality(&[]), 1.0);
+    }
+
+    #[test]
+    fn test_ranged_context_tags() {
+        let ctx = CombatContext::new()
+            .with_tag(ContextTag::AtRange)
+            .with_tag(ContextTag::HasBow)
+            .with_tag(ContextTag::TargetVisible);
+
+        assert!(ctx.has(ContextTag::AtRange));
+        assert!(ctx.has(ContextTag::HasBow));
+        assert!(ctx.has(ContextTag::TargetVisible));
+        assert!(!ctx.has(ContextTag::HasCrossbow));
     }
 }
