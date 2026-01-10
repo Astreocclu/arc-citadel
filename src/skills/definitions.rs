@@ -118,6 +118,140 @@ pub static CHUNK_LIBRARY: &[ChunkDefinition] = &[
         base_repetitions: 300,
     },
 
+    // === RANGED DOMAIN ===
+    // Level 1 - Micro-chunks (Atomic)
+    ChunkDefinition {
+        id: ChunkId::DrawBow,
+        name: "Draw Bow",
+        level: 1,
+        components: ChunkComponents::Atomic,
+        context_requirements: &[ContextTag::HasBow, ContextTag::AtRange],
+        prerequisite_chunks: &[],
+        base_repetitions: 30,
+    },
+    ChunkDefinition {
+        id: ChunkId::LoadCrossbow,
+        name: "Load Crossbow",
+        level: 1,
+        components: ChunkComponents::Atomic,
+        context_requirements: &[ContextTag::HasCrossbow],
+        prerequisite_chunks: &[],
+        base_repetitions: 15,
+    },
+    ChunkDefinition {
+        id: ChunkId::BasicAim,
+        name: "Basic Aim",
+        level: 1,
+        components: ChunkComponents::Atomic,
+        context_requirements: &[ContextTag::TargetVisible],
+        prerequisite_chunks: &[],
+        base_repetitions: 20,
+    },
+    ChunkDefinition {
+        id: ChunkId::BasicThrow,
+        name: "Basic Throw",
+        level: 1,
+        components: ChunkComponents::Atomic,
+        context_requirements: &[ContextTag::HasThrown, ContextTag::AtRange],
+        prerequisite_chunks: &[],
+        base_repetitions: 15,
+    },
+
+    // Level 2 - Action chunks (Composite)
+    ChunkDefinition {
+        id: ChunkId::LooseArrow,
+        name: "Loose Arrow",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::DrawBow,
+            ChunkId::BasicAim,
+        ]),
+        context_requirements: &[ContextTag::HasBow, ContextTag::AtRange, ContextTag::TargetVisible, ContextTag::AmmoAvailable],
+        prerequisite_chunks: &[ChunkId::DrawBow, ChunkId::BasicAim],
+        base_repetitions: 80,
+    },
+    ChunkDefinition {
+        id: ChunkId::CrossbowShot,
+        name: "Crossbow Shot",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::BasicAim,
+        ]),
+        context_requirements: &[ContextTag::HasCrossbow, ContextTag::CrossbowLoaded, ContextTag::AtRange, ContextTag::TargetVisible],
+        prerequisite_chunks: &[ChunkId::BasicAim],
+        base_repetitions: 40,
+    },
+    ChunkDefinition {
+        id: ChunkId::AimedThrow,
+        name: "Aimed Throw",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::BasicThrow,
+            ChunkId::BasicAim,
+        ]),
+        context_requirements: &[ContextTag::HasThrown, ContextTag::AtRange, ContextTag::TargetVisible],
+        prerequisite_chunks: &[ChunkId::BasicThrow, ChunkId::BasicAim],
+        base_repetitions: 50,
+    },
+    ChunkDefinition {
+        id: ChunkId::SnapShot,
+        name: "Snap Shot",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::DrawBow,
+        ]),
+        context_requirements: &[ContextTag::HasBow, ContextTag::AtRange, ContextTag::AmmoAvailable],
+        prerequisite_chunks: &[ChunkId::DrawBow],
+        base_repetitions: 60,
+    },
+
+    // Level 3 - Tactical chunks
+    ChunkDefinition {
+        id: ChunkId::RapidFire,
+        name: "Rapid Fire",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::LooseArrow,
+            ChunkId::SnapShot,
+        ]),
+        context_requirements: &[ContextTag::HasBow, ContextTag::AtRange, ContextTag::AmmoAvailable, ContextTag::TargetVisible],
+        prerequisite_chunks: &[ChunkId::LooseArrow, ChunkId::SnapShot],
+        base_repetitions: 200,
+    },
+    ChunkDefinition {
+        id: ChunkId::SniperShot,
+        name: "Sniper Shot",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::LooseArrow,
+        ]),
+        context_requirements: &[ContextTag::HasBow, ContextTag::AtRange, ContextTag::AmmoAvailable, ContextTag::TargetVisible],
+        prerequisite_chunks: &[ChunkId::LooseArrow],
+        base_repetitions: 250,
+    },
+    ChunkDefinition {
+        id: ChunkId::VolleyFire,
+        name: "Volley Fire",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::LooseArrow,
+        ]),
+        context_requirements: &[ContextTag::HasBow, ContextTag::AtRange, ContextTag::AmmoAvailable],
+        prerequisite_chunks: &[ChunkId::LooseArrow],
+        base_repetitions: 150,
+    },
+    ChunkDefinition {
+        id: ChunkId::PartingShot,
+        name: "Parting Shot",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SnapShot,
+        ]),
+        context_requirements: &[ContextTag::HasBow, ContextTag::AtRange, ContextTag::AmmoAvailable],
+        prerequisite_chunks: &[ChunkId::SnapShot],
+        base_repetitions: 180,
+    },
+
     // === CRAFT DOMAIN ===
     // Level 1 - Micro-chunks (Atomic)
     ChunkDefinition {
@@ -371,6 +505,268 @@ pub static CHUNK_LIBRARY: &[ChunkDefinition] = &[
         prerequisite_chunks: &[ChunkId::CraftAssessAndExecute, ChunkId::CraftForgeMasterwork],
         base_repetitions: 1500,
     },
+
+    // === SOCIAL DOMAIN ===
+    // Level 1 - Micro-chunks (Atomic)
+    ChunkDefinition {
+        id: ChunkId::SocialActiveListening,
+        name: "Active Listening",
+        level: 1,
+        components: ChunkComponents::Atomic,
+        context_requirements: &[],
+        prerequisite_chunks: &[],
+        base_repetitions: 20,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialProjectConfidence,
+        name: "Project Confidence",
+        level: 1,
+        components: ChunkComponents::Atomic,
+        context_requirements: &[],
+        prerequisite_chunks: &[],
+        base_repetitions: 25,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialEmpathicMirror,
+        name: "Empathic Mirror",
+        level: 1,
+        components: ChunkComponents::Atomic,
+        context_requirements: &[],
+        prerequisite_chunks: &[],
+        base_repetitions: 20,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialCreateTension,
+        name: "Create Tension",
+        level: 1,
+        components: ChunkComponents::Atomic,
+        context_requirements: &[],
+        prerequisite_chunks: &[],
+        base_repetitions: 15,
+    },
+
+    // Level 2 - Technique chunks (Composite)
+    ChunkDefinition {
+        id: ChunkId::SocialBuildRapport,
+        name: "Build Rapport",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialActiveListening,
+            ChunkId::SocialEmpathicMirror,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialActiveListening, ChunkId::SocialEmpathicMirror],
+        base_repetitions: 50,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialProjectAuthority,
+        name: "Project Authority",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialProjectConfidence,
+            ChunkId::SocialCreateTension,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialProjectConfidence, ChunkId::SocialCreateTension],
+        base_repetitions: 45,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialReadReaction,
+        name: "Read Reaction",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialActiveListening,
+            ChunkId::SocialEmpathicMirror,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialActiveListening, ChunkId::SocialEmpathicMirror],
+        base_repetitions: 40,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialDeflectInquiry,
+        name: "Deflect Inquiry",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialProjectConfidence,
+            ChunkId::SocialActiveListening,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialProjectConfidence, ChunkId::SocialActiveListening],
+        base_repetitions: 55,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialEmotionalAppeal,
+        name: "Emotional Appeal",
+        level: 2,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialEmpathicMirror,
+            ChunkId::SocialCreateTension,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialEmpathicMirror, ChunkId::SocialCreateTension],
+        base_repetitions: 60,
+    },
+
+    // Level 3 - Tactical chunks
+    ChunkDefinition {
+        id: ChunkId::SocialNegotiateTerms,
+        name: "Negotiate Terms",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialBuildRapport,
+            ChunkId::SocialReadReaction,
+            ChunkId::SocialProjectAuthority,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialBuildRapport, ChunkId::SocialReadReaction, ChunkId::SocialProjectAuthority],
+        base_repetitions: 120,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialIntimidate,
+        name: "Intimidate",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialProjectAuthority,
+            ChunkId::SocialCreateTension,
+            ChunkId::SocialReadReaction,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialProjectAuthority, ChunkId::SocialCreateTension, ChunkId::SocialReadReaction],
+        base_repetitions: 100,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialPersuade,
+        name: "Persuade",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialBuildRapport,
+            ChunkId::SocialEmotionalAppeal,
+            ChunkId::SocialReadReaction,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialBuildRapport, ChunkId::SocialEmotionalAppeal, ChunkId::SocialReadReaction],
+        base_repetitions: 150,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialDeceive,
+        name: "Deceive",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialProjectConfidence,
+            ChunkId::SocialDeflectInquiry,
+            ChunkId::SocialReadReaction,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialProjectConfidence, ChunkId::SocialDeflectInquiry, ChunkId::SocialReadReaction],
+        base_repetitions: 130,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialInspire,
+        name: "Inspire",
+        level: 3,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialProjectConfidence,
+            ChunkId::SocialEmotionalAppeal,
+            ChunkId::SocialBuildRapport,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialProjectConfidence, ChunkId::SocialEmotionalAppeal, ChunkId::SocialBuildRapport],
+        base_repetitions: 80,
+    },
+
+    // Level 4 - Strategic chunks
+    ChunkDefinition {
+        id: ChunkId::SocialWorkRoom,
+        name: "Work Room",
+        level: 4,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialNegotiateTerms,
+            ChunkId::SocialPersuade,
+            ChunkId::SocialReadReaction,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialNegotiateTerms, ChunkId::SocialPersuade, ChunkId::SocialReadReaction],
+        base_repetitions: 300,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialPoliticalManeuver,
+        name: "Political Maneuver",
+        level: 4,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialNegotiateTerms,
+            ChunkId::SocialDeceive,
+            ChunkId::SocialIntimidate,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialNegotiateTerms, ChunkId::SocialDeceive, ChunkId::SocialIntimidate],
+        base_repetitions: 350,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialLeadGroup,
+        name: "Lead Group",
+        level: 4,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialInspire,
+            ChunkId::SocialProjectAuthority,
+            ChunkId::SocialNegotiateTerms,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialInspire, ChunkId::SocialProjectAuthority, ChunkId::SocialNegotiateTerms],
+        base_repetitions: 250,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialMediateConflict,
+        name: "Mediate Conflict",
+        level: 4,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialNegotiateTerms,
+            ChunkId::SocialBuildRapport,
+            ChunkId::SocialPersuade,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialNegotiateTerms, ChunkId::SocialBuildRapport, ChunkId::SocialPersuade],
+        base_repetitions: 200,
+    },
+
+    // Level 5 - Mastery chunks
+    ChunkDefinition {
+        id: ChunkId::SocialOmniscience,
+        name: "Social Omniscience",
+        level: 5,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialWorkRoom,
+            ChunkId::SocialReadReaction,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialWorkRoom, ChunkId::SocialReadReaction],
+        base_repetitions: 700,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialManipulateDynamics,
+        name: "Manipulate Dynamics",
+        level: 5,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialPoliticalManeuver,
+            ChunkId::SocialWorkRoom,
+            ChunkId::SocialDeceive,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialPoliticalManeuver, ChunkId::SocialWorkRoom, ChunkId::SocialDeceive],
+        base_repetitions: 1000,
+    },
+    ChunkDefinition {
+        id: ChunkId::SocialCultOfPersonality,
+        name: "Cult of Personality",
+        level: 5,
+        components: ChunkComponents::Composite(&[
+            ChunkId::SocialLeadGroup,
+            ChunkId::SocialInspire,
+            ChunkId::SocialManipulateDynamics,
+        ]),
+        context_requirements: &[],
+        prerequisite_chunks: &[ChunkId::SocialLeadGroup, ChunkId::SocialInspire, ChunkId::SocialManipulateDynamics],
+        base_repetitions: 800,
+    },
 ];
 
 /// Look up a chunk definition by ID
@@ -423,5 +819,44 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_ranged_chunks_exist() {
+        // All ranged chunks should have definitions
+        assert!(get_chunk_definition(ChunkId::DrawBow).is_some());
+        assert!(get_chunk_definition(ChunkId::LoadCrossbow).is_some());
+        assert!(get_chunk_definition(ChunkId::BasicAim).is_some());
+        assert!(get_chunk_definition(ChunkId::BasicThrow).is_some());
+        assert!(get_chunk_definition(ChunkId::LooseArrow).is_some());
+        assert!(get_chunk_definition(ChunkId::CrossbowShot).is_some());
+        assert!(get_chunk_definition(ChunkId::AimedThrow).is_some());
+        assert!(get_chunk_definition(ChunkId::SnapShot).is_some());
+        assert!(get_chunk_definition(ChunkId::RapidFire).is_some());
+        assert!(get_chunk_definition(ChunkId::SniperShot).is_some());
+        assert!(get_chunk_definition(ChunkId::VolleyFire).is_some());
+        assert!(get_chunk_definition(ChunkId::PartingShot).is_some());
+    }
+
+    #[test]
+    fn test_ranged_prerequisites() {
+        // LooseArrow requires DrawBow and BasicAim
+        let def = get_chunk_definition(ChunkId::LooseArrow).unwrap();
+        assert!(def.prerequisite_chunks.contains(&ChunkId::DrawBow));
+        assert!(def.prerequisite_chunks.contains(&ChunkId::BasicAim));
+
+        // CrossbowShot only requires BasicAim (loading is separate)
+        let def = get_chunk_definition(ChunkId::CrossbowShot).unwrap();
+        assert!(def.prerequisite_chunks.contains(&ChunkId::BasicAim));
+        assert!(!def.prerequisite_chunks.contains(&ChunkId::LoadCrossbow));
+    }
+
+    #[test]
+    fn test_bow_requires_more_reps_than_crossbow() {
+        let bow = get_chunk_definition(ChunkId::LooseArrow).unwrap();
+        let crossbow = get_chunk_definition(ChunkId::CrossbowShot).unwrap();
+
+        // Bows are harder to master
+        assert!(bow.base_repetitions > crossbow.base_repetitions);
     }
 }

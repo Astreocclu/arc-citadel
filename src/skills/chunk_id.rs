@@ -72,6 +72,38 @@ pub enum ChunkId {
     CraftAssessAndExecute,   // Assess problem, choose approach, execute
     CraftForgeMasterwork,    // Create masterwork quality items
     CraftInnovativeTechnique, // Develop new techniques
+
+    // === SOCIAL DOMAIN ===
+    // Level 1 - Micro-chunks
+    SocialActiveListening,   // Focus on speaker, absorb content
+    SocialProjectConfidence, // Body language, voice tone, presence
+    SocialEmpathicMirror,    // Match emotional state, build connection
+    SocialCreateTension,     // Introduce discomfort, silence, pressure
+
+    // Level 2 - Technique chunks
+    SocialBuildRapport,      // Establish trust and common ground
+    SocialProjectAuthority,  // Command presence and respect
+    SocialReadReaction,      // Assess response, adjust approach
+    SocialDeflectInquiry,    // Redirect questions, avoid commitments
+    SocialEmotionalAppeal,   // Invoke emotions to persuade
+
+    // Level 3 - Tactical chunks
+    SocialNegotiateTerms,    // Reach mutually acceptable agreements
+    SocialIntimidate,        // Apply pressure through fear
+    SocialPersuade,          // Change minds through argument
+    SocialDeceive,           // Mislead while appearing truthful
+    SocialInspire,           // Motivate through vision and charisma
+
+    // Level 4 - Strategic chunks
+    SocialWorkRoom,          // Manage multiple relationships at once
+    SocialPoliticalManeuver, // Navigate power structures
+    SocialLeadGroup,         // Guide collective decision-making
+    SocialMediateConflict,   // Resolve disputes between parties
+
+    // Level 5 - Mastery chunks
+    SocialOmniscience,       // Read entire room's dynamics instantly
+    SocialManipulateDynamics, // Shape group behavior subtly
+    SocialCultOfPersonality, // Build devoted following
 }
 
 impl ChunkId {
@@ -122,6 +154,29 @@ impl ChunkId {
             | Self::CraftAssessAndExecute
             | Self::CraftForgeMasterwork
             | Self::CraftInnovativeTechnique => ChunkDomain::Craft,
+
+            // Social domain - all social interaction chunks
+            Self::SocialActiveListening
+            | Self::SocialProjectConfidence
+            | Self::SocialEmpathicMirror
+            | Self::SocialCreateTension
+            | Self::SocialBuildRapport
+            | Self::SocialProjectAuthority
+            | Self::SocialReadReaction
+            | Self::SocialDeflectInquiry
+            | Self::SocialEmotionalAppeal
+            | Self::SocialNegotiateTerms
+            | Self::SocialIntimidate
+            | Self::SocialPersuade
+            | Self::SocialDeceive
+            | Self::SocialInspire
+            | Self::SocialWorkRoom
+            | Self::SocialPoliticalManeuver
+            | Self::SocialLeadGroup
+            | Self::SocialMediateConflict
+            | Self::SocialOmniscience
+            | Self::SocialManipulateDynamics
+            | Self::SocialCultOfPersonality => ChunkDomain::Social,
         }
     }
 
@@ -173,6 +228,37 @@ impl ChunkId {
             Self::CraftAssessAndExecute
             | Self::CraftForgeMasterwork
             | Self::CraftInnovativeTechnique => 5,
+
+            // Social Level 1
+            Self::SocialActiveListening
+            | Self::SocialProjectConfidence
+            | Self::SocialEmpathicMirror
+            | Self::SocialCreateTension => 1,
+
+            // Social Level 2
+            Self::SocialBuildRapport
+            | Self::SocialProjectAuthority
+            | Self::SocialReadReaction
+            | Self::SocialDeflectInquiry
+            | Self::SocialEmotionalAppeal => 2,
+
+            // Social Level 3
+            Self::SocialNegotiateTerms
+            | Self::SocialIntimidate
+            | Self::SocialPersuade
+            | Self::SocialDeceive
+            | Self::SocialInspire => 3,
+
+            // Social Level 4
+            Self::SocialWorkRoom
+            | Self::SocialPoliticalManeuver
+            | Self::SocialLeadGroup
+            | Self::SocialMediateConflict => 4,
+
+            // Social Level 5
+            Self::SocialOmniscience
+            | Self::SocialManipulateDynamics
+            | Self::SocialCultOfPersonality => 5,
         }
     }
 
@@ -227,6 +313,32 @@ impl ChunkId {
             Self::CraftAssessAndExecute => "Assess and Execute",
             Self::CraftForgeMasterwork => "Forge Masterwork",
             Self::CraftInnovativeTechnique => "Innovative Technique",
+            // Social Level 1
+            Self::SocialActiveListening => "Active Listening",
+            Self::SocialProjectConfidence => "Project Confidence",
+            Self::SocialEmpathicMirror => "Empathic Mirror",
+            Self::SocialCreateTension => "Create Tension",
+            // Social Level 2
+            Self::SocialBuildRapport => "Build Rapport",
+            Self::SocialProjectAuthority => "Project Authority",
+            Self::SocialReadReaction => "Read Reaction",
+            Self::SocialDeflectInquiry => "Deflect Inquiry",
+            Self::SocialEmotionalAppeal => "Emotional Appeal",
+            // Social Level 3
+            Self::SocialNegotiateTerms => "Negotiate Terms",
+            Self::SocialIntimidate => "Intimidate",
+            Self::SocialPersuade => "Persuade",
+            Self::SocialDeceive => "Deceive",
+            Self::SocialInspire => "Inspire",
+            // Social Level 4
+            Self::SocialWorkRoom => "Work Room",
+            Self::SocialPoliticalManeuver => "Political Maneuver",
+            Self::SocialLeadGroup => "Lead Group",
+            Self::SocialMediateConflict => "Mediate Conflict",
+            // Social Level 5
+            Self::SocialOmniscience => "Social Omniscience",
+            Self::SocialManipulateDynamics => "Manipulate Dynamics",
+            Self::SocialCultOfPersonality => "Cult of Personality",
         }
     }
 }
@@ -307,5 +419,16 @@ mod tests {
 
         // Level 5
         assert_eq!(ChunkId::CraftForgeMasterwork.domain(), ChunkDomain::Craft);
+    }
+
+    #[test]
+    fn test_social_chunks_exist() {
+        use crate::skills::ChunkDomain;
+
+        assert_eq!(ChunkId::SocialActiveListening.domain(), ChunkDomain::Social);
+        assert_eq!(ChunkId::SocialBuildRapport.domain(), ChunkDomain::Social);
+        assert_eq!(ChunkId::SocialNegotiateTerms.domain(), ChunkDomain::Social);
+        assert_eq!(ChunkId::SocialWorkRoom.domain(), ChunkDomain::Social);
+        assert_eq!(ChunkId::SocialManipulateDynamics.domain(), ChunkDomain::Social);
     }
 }
