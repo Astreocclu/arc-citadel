@@ -727,46 +727,133 @@ fn execute_tasks(world: &mut World) {
             // Dispatch based on action category for cleaner organization
             let is_complete = match action.category() {
                 // =========== MOVEMENT ACTIONS (MoveTo, Follow, Flee) ===========
+                // Movement is always possible (fundamental), but skill affects efficiency (speed)
                 ActionCategory::Movement => match action {
                     ActionId::MoveTo => {
+                        let skill_result =
+                            skill_check(&world.humans.chunk_libraries[i], ActionId::MoveTo);
+
+                        // Only spend attention if can_execute is true
+                        if skill_result.can_execute && skill_result.attention_cost > 0.0 {
+                            spend_attention(
+                                &mut world.humans.chunk_libraries[i],
+                                skill_result.attention_cost,
+                            );
+                        }
+
+                        // Speed modified by skill (50% to 100%)
+                        let speed_modifier = 0.5 + (skill_result.skill_modifier * 0.5);
+
                         if let Some(target) = target_pos {
                             let current = world.humans.positions[i];
                             let direction = (target - current).normalize();
-                            let speed = 2.0;
-                            if direction.length() > 0.0 {
-                                world.humans.positions[i] = current + direction * speed;
+                            let base_speed = 2.0;
+                            let actual_speed = base_speed * speed_modifier;
+
+                            let distance = current.distance(&target);
+                            if distance < actual_speed {
+                                world.humans.positions[i] = target;
+
+                                // Record successful movement experience
+                                if !skill_result.chunks_used.is_empty() {
+                                    record_action_experience(
+                                        &mut world.humans.chunk_libraries[i],
+                                        &skill_result.chunks_used,
+                                        true,
+                                        world.current_tick,
+                                    );
+                                }
+
+                                true // Arrived
+                            } else {
+                                if direction.length() > 0.0 {
+                                    world.humans.positions[i] = current + direction * actual_speed;
+                                }
+                                false // Still moving
                             }
-                            world.humans.positions[i].distance(&target) < 2.0
                         } else {
-                            true
+                            true // No target
                         }
                     }
                     ActionId::Flee => {
+                        let skill_result =
+                            skill_check(&world.humans.chunk_libraries[i], ActionId::Flee);
+
+                        // Only spend attention if can_execute is true
+                        if skill_result.can_execute && skill_result.attention_cost > 0.0 {
+                            spend_attention(
+                                &mut world.humans.chunk_libraries[i],
+                                skill_result.attention_cost,
+                            );
+                        }
+
+                        // Speed modified by skill (50% to 100%) - higher base speed (adrenaline)
+                        let speed_modifier = 0.5 + (skill_result.skill_modifier * 0.5);
+
                         if let Some(threat_pos) = target_pos {
                             let current = world.humans.positions[i];
-                            let away = (current - threat_pos).normalize();
-                            let speed = 3.0;
+                            let away = (current - threat_pos).normalize(); // Move AWAY from target
+                            let base_speed = 3.0; // Higher base speed for fleeing (adrenaline)
+                            let actual_speed = base_speed * speed_modifier;
+
                             if away.length() > 0.0 {
-                                world.humans.positions[i] = current + away * speed;
+                                world.humans.positions[i] = current + away * actual_speed;
+                            }
+
+                            // Record fleeing experience
+                            if !skill_result.chunks_used.is_empty() {
+                                record_action_experience(
+                                    &mut world.humans.chunk_libraries[i],
+                                    &skill_result.chunks_used,
+                                    true,
+                                    world.current_tick,
+                                );
                             }
                         }
-                        false
+                        false // Flee continues until task is cancelled or timeout
                     }
                     ActionId::Follow => {
+                        let skill_result =
+                            skill_check(&world.humans.chunk_libraries[i], ActionId::Follow);
+
+                        // Only spend attention if can_execute is true
+                        if skill_result.can_execute && skill_result.attention_cost > 0.0 {
+                            spend_attention(
+                                &mut world.humans.chunk_libraries[i],
+                                skill_result.attention_cost,
+                            );
+                        }
+
+                        // Speed modified by skill (50% to 100%)
+                        let speed_modifier = 0.5 + (skill_result.skill_modifier * 0.5);
+
                         if let Some((target_pos, target_exists)) = follow_target_pos {
                             if target_exists {
                                 let current = world.humans.positions[i];
                                 let direction = (target_pos - current).normalize();
-                                let speed = 2.0;
+                                let base_speed = 2.0;
+                                let actual_speed = base_speed * speed_modifier;
+
                                 if direction.length() > 0.0 {
-                                    world.humans.positions[i] = current + direction * speed;
+                                    world.humans.positions[i] = current + direction * actual_speed;
                                 }
-                                false
+
+                                // Record following experience
+                                if !skill_result.chunks_used.is_empty() {
+                                    record_action_experience(
+                                        &mut world.humans.chunk_libraries[i],
+                                        &skill_result.chunks_used,
+                                        true,
+                                        world.current_tick,
+                                    );
+                                }
+
+                                false // Keep following
                             } else {
-                                true
+                                true // Target no longer exists
                             }
                         } else {
-                            true
+                            true // No target to follow
                         }
                     }
                     _ => false,
