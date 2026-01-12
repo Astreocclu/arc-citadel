@@ -11,6 +11,8 @@ use crate::actions::catalog::ActionId;
 use crate::city::construction::{
     apply_construction_work, calculate_worker_contribution, ContributionResult,
 };
+use crate::city::production::tick_production;
+use crate::city::recipe::RecipeCatalog;
 use crate::combat::{
     resolve_exchange, ArmorProperties, CombatSkill, CombatStance, Combatant, WeaponProperties,
     WoundSeverity,
@@ -70,11 +72,18 @@ pub fn run_simulation_tick(world: &mut World) {
     execute_tasks(world);
     regenerate_food_zones(world);
 
-    // TODO: Run production tick for buildings
-    // This requires a stockpile per settlement - for MVP, use a global stockpile
-    // Example integration:
-    //   let results = tick_production(&mut world.buildings, &recipes, &mut stockpile);
-    // See src/city/production.rs for implementation
+    // Run production tick for buildings
+    let recipes = RecipeCatalog::with_defaults(); // TODO: Load from config
+    let production_results = tick_production(&mut world.buildings, &recipes, &mut world.stockpile);
+
+    // Log production completions
+    for result in production_results {
+        tracing::debug!(
+            "Production complete: building {} produced {}",
+            result.building_idx,
+            result.recipe_id
+        );
+    }
 
     world.tick();
 
