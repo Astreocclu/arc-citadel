@@ -155,6 +155,7 @@ pub fn resolve_exchange(attacker: &Combatant, defender: &Combatant) -> ExchangeR
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::combat::body_zone::WoundSeverity;
 
     #[test]
     fn test_pressing_vs_recovering_is_free_hit() {

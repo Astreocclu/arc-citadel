@@ -945,6 +945,8 @@ mod critical_edge_case_tests {
 #[cfg(test)]
 mod expectation_tests {
     use super::*;
+    use crate::core::TimePeriod;
+    use crate::entity::social::service_types::{ServiceType, TraitIndicator};
 
     #[test]
     fn test_relationship_slot_expectations() {

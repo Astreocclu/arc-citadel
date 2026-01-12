@@ -257,9 +257,10 @@ fn get_or_create_waypoint_plan(plan: &mut BattlePlan, unit_id: UnitId) -> &mut W
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::battle::hex::BattleHexCoord;
     use crate::battle::planning::{GoCode, GoCodeTrigger};
     use crate::battle::unit_type::UnitType;
-    use crate::battle::units::{ArmyId, BattleFormation, BattleUnit, Element, FormationId};
+    use crate::battle::units::{ArmyId, BattleFormation, BattleUnit, Element, FormationId, FormationShape};
     use crate::core::types::EntityId;
 
     fn create_test_army_with_unit() -> (Army, UnitId) {

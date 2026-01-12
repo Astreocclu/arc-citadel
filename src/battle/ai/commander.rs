@@ -252,6 +252,7 @@ impl BattleAI for AiCommander {
 mod tests {
     use super::*;
     use crate::battle::ai::personality::AiPersonality;
+    use crate::battle::courier::OrderType;
     use crate::battle::hex::BattleHexCoord;
     use crate::battle::unit_type::UnitType;
     use crate::battle::units::{
