@@ -7,6 +7,7 @@ pub mod blueprints;
 pub mod campaign;
 pub mod city;
 pub mod combat;
+pub mod command;
 pub mod core;
 pub mod data;
 pub mod ecs;
