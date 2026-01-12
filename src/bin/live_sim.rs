@@ -119,6 +119,9 @@ fn main() {
     let mut last_fps_time = Instant::now();
     let mut sim_ticks: u64 = 0;
 
+    // Mouse position tracking for entity selection
+    let mut mouse_pos: Option<(f32, f32)> = None;
+
     // Run event loop
     event_loop
         .run(move |event, elwt| {
@@ -204,6 +207,44 @@ fn main() {
                                 camera.zoom_by(zoom_factor);
                             }
 
+                            WindowEvent::CursorMoved { position, .. } => {
+                                mouse_pos = Some((position.x as f32, position.y as f32));
+                            }
+
+                            WindowEvent::MouseInput {
+                                state: ElementState::Pressed,
+                                button: winit::event::MouseButton::Left,
+                                ..
+                            } => {
+                                if let Some((mx, my)) = mouse_pos {
+                                    // Convert screen to world coordinates
+                                    let world_pos = camera.screen_to_world(Vec2::new(mx, my));
+
+                                    // Find entity near click (within 10 units, scaled by zoom)
+                                    let click_radius = 10.0 * camera.zoom;
+
+                                    let mut closest: Option<(arc_citadel::core::types::EntityId, f32)> = None;
+                                    for i in 0..world.humans.ids.len() {
+                                        if !world.humans.alive[i] {
+                                            continue;
+                                        }
+                                        let pos = world.humans.positions[i];
+                                        let dist = ((pos.x - world_pos.x).powi(2) + (pos.y - world_pos.y).powi(2)).sqrt();
+                                        if dist < click_radius {
+                                            if closest.is_none() || dist < closest.unwrap().1 {
+                                                closest = Some((world.humans.ids[i], dist));
+                                            }
+                                        }
+                                    }
+
+                                    if let Some((entity_id, _)) = closest {
+                                        game_ui.toggle_select(entity_id);
+                                    } else {
+                                        game_ui.deselect();
+                                    }
+                                }
+                            }
+
                             _ => {}
                         }
                     }
@@ -238,11 +279,18 @@ fn main() {
                             let pos = world.humans.positions[i];
                             let id = world.humans.ids[i];
 
-                            // Color by need level (redder = more urgent needs)
-                            let needs = &world.humans.needs[i];
-                            let urgency = (needs.food + needs.rest + needs.social) / 3.0;
-                            let color =
-                                Color::rgba(0.3 + urgency * 0.7, 0.7 - urgency * 0.5, 0.3, 1.0);
+                            // Check if this entity is selected
+                            let is_selected = game_ui.selected_entity == Some(id);
+
+                            // Color: yellow highlight if selected, otherwise by need level
+                            let color = if is_selected {
+                                Color::rgba(1.0, 1.0, 0.0, 1.0) // Yellow highlight
+                            } else {
+                                // Color by need level (redder = more urgent needs)
+                                let needs = &world.humans.needs[i];
+                                let urgency = (needs.food + needs.rest + needs.social) / 3.0;
+                                Color::rgba(0.3 + urgency * 0.7, 0.7 - urgency * 0.5, 0.3, 1.0)
+                            };
 
                             entities.push(RenderEntity {
                                 id,
