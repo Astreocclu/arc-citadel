@@ -4,11 +4,12 @@
 //! It sets up the async runtime, spawns test entities, runs simulation ticks,
 //! and provides a basic game loop for interacting with the simulation.
 
+use arc_citadel::command::CommandExecutor;
 use arc_citadel::core::error::Result;
 use arc_citadel::ecs::world::World;
 use arc_citadel::llm::client::LlmClient;
 use arc_citadel::llm::context::GameContext;
-use arc_citadel::llm::parser::parse_command;
+use arc_citadel::llm::parser::{parse_command, IntentAction};
 use arc_citadel::simulation::tick::run_simulation_tick;
 
 use std::io::{self, Write};
@@ -138,6 +139,31 @@ fn main() -> Result<()> {
                     if !intent.ambiguous_concepts.is_empty() {
                         println!("  Ambiguous concepts: {:?}", intent.ambiguous_concepts);
                         println!("  (These may be interpreted differently by different species)");
+                    }
+
+                    // Execute the command
+                    match &intent.action {
+                        IntentAction::Query => {
+                            // Handle queries (status, info) without creating tasks
+                            println!("Query: {:?}", intent.target);
+                        }
+                        _ => {
+                            // Execute command
+                            let current_tick = world.current_tick;
+                            let result =
+                                CommandExecutor::execute(&mut world, &intent, current_tick);
+
+                            if let Some(error) = &result.error {
+                                println!("Command failed: {}", error);
+                            } else if result.tasks_created > 0 {
+                                println!("Assigned {} task(s) to:", result.tasks_created);
+                                for (_, name) in &result.assigned_to {
+                                    println!("  - {}", name);
+                                }
+                            } else {
+                                println!("No tasks created");
+                            }
+                        }
                     }
                 }
                 Err(e) => {
