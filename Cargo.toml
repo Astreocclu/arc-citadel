@@ -27,6 +27,11 @@ rayon = "1.11.0"
 wgpu = "0.19"
 winit = "0.29"
 bytemuck = { version = "1.14", features = ["derive"] }
+
+# UI overlay
+egui = "0.28"
+egui-wgpu = "0.28"
+egui-winit = "0.28"
 pollster = "0.3"
 glam = "0.25"
 image = "0.24"
