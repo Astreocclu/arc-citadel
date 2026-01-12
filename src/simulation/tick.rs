@@ -11,6 +11,10 @@ use crate::actions::catalog::ActionId;
 use crate::city::construction::{
     apply_construction_work, calculate_worker_contribution, ContributionResult,
 };
+use crate::combat::{
+    resolve_exchange, ArmorProperties, CombatSkill, CombatStance, Combatant, WeaponProperties,
+    WoundSeverity,
+};
 use crate::ecs::world::World;
 use crate::entity::needs::NeedType;
 use crate::entity::social::EventType;
@@ -714,6 +718,28 @@ fn execute_tasks(world: &mut World) {
             }
         };
 
+        // For combat actions (Attack), pre-compute target info
+        // Returns (target_id, defender_idx) if target exists
+        let combat_target_info: Option<(crate::core::types::EntityId, usize)> = {
+            if let Some(task) = world.humans.task_queues[i].current() {
+                if task.action == ActionId::Attack {
+                    if let Some(target_id) = task.target_entity {
+                        if let Some(defender_idx) = world.humans.index_of(target_id) {
+                            Some((target_id, defender_idx))
+                        } else {
+                            None // Target doesn't exist
+                        }
+                    } else {
+                        None // No target entity
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
         // Get task info and execute based on action category
         // Note: Helper functions cannot be extracted due to Rust's borrowing rules -
         // the closure captures world mutably for task access, so we dispatch inline.
@@ -1308,9 +1334,74 @@ fn execute_tasks(world: &mut World) {
                                     skill_result.attention_cost,
                                 );
 
-                                // Execute attack (existing logic or stub)
-                                // skill_result.skill_modifier affects damage/accuracy
-                                let success = true; // TODO: actual combat resolution
+                                // Execute attack using combat resolution
+                                let success = if let Some((_, defender_idx)) = combat_target_info {
+                                    // Build combatants from entity data
+                                    let attacker_skill = CombatSkill::from_chunk_library(
+                                        &world.humans.chunk_libraries[i],
+                                    );
+                                    let defender_skill = CombatSkill::from_chunk_library(
+                                        &world.humans.chunk_libraries[defender_idx],
+                                    );
+
+                                    let attacker = Combatant {
+                                        weapon: WeaponProperties::fists(),
+                                        armor: ArmorProperties::none(),
+                                        stance: CombatStance::Pressing,
+                                        skill: attacker_skill,
+                                    };
+
+                                    let defender = Combatant {
+                                        weapon: WeaponProperties::fists(),
+                                        armor: ArmorProperties::none(),
+                                        stance: CombatStance::Neutral,
+                                        skill: defender_skill,
+                                    };
+
+                                    // Resolve the exchange
+                                    let exchange = resolve_exchange(&attacker, &defender);
+
+                                    // Apply wounds to defender
+                                    if let Some(wound) = &exchange.defender_wound {
+                                        if wound.severity != WoundSeverity::None {
+                                            // Apply fatigue/damage to defender based on severity
+                                            let fatigue_increase = match wound.severity {
+                                                WoundSeverity::None => 0.0,
+                                                WoundSeverity::Scratch => 0.05,
+                                                WoundSeverity::Minor => 0.1,
+                                                WoundSeverity::Serious => 0.2,
+                                                WoundSeverity::Critical => 0.4,
+                                                WoundSeverity::Destroyed => 0.6,
+                                            };
+                                            world.humans.body_states[defender_idx].fatigue =
+                                                (world.humans.body_states[defender_idx].fatigue
+                                                    + fatigue_increase)
+                                                    .min(1.0);
+                                        }
+                                    }
+
+                                    // Apply wounds to attacker (if defender counter-attacked)
+                                    if let Some(wound) = &exchange.attacker_wound {
+                                        if wound.severity != WoundSeverity::None {
+                                            let fatigue_increase = match wound.severity {
+                                                WoundSeverity::None => 0.0,
+                                                WoundSeverity::Scratch => 0.05,
+                                                WoundSeverity::Minor => 0.1,
+                                                WoundSeverity::Serious => 0.2,
+                                                WoundSeverity::Critical => 0.4,
+                                                WoundSeverity::Destroyed => 0.6,
+                                            };
+                                            world.humans.body_states[i].fatigue =
+                                                (world.humans.body_states[i].fatigue
+                                                    + fatigue_increase)
+                                                    .min(1.0);
+                                        }
+                                    }
+
+                                    exchange.defender_hit
+                                } else {
+                                    false // No target found
+                                };
 
                                 // Record experience
                                 record_action_experience(

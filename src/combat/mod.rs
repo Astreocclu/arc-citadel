@@ -7,6 +7,7 @@
 //! 1. DAMAGE PATH: Inflict wounds until they can't fight
 //! 2. MORALE PATH: Inflict stress until they break and flee
 
+pub mod adapter;
 pub mod armor;
 pub mod body_zone;
 pub mod constants;
@@ -21,6 +22,7 @@ pub mod trauma;
 pub mod weapons;
 pub mod wounds;
 
+pub use adapter::{CombatAdapter, CombatResult};
 pub use armor::{ArmorProperties, Coverage, Padding, Rigidity};
 pub use body_zone::{BodyZone, WoundSeverity};
 pub use formation::{FormationState, PressureCategory, ShockType};
