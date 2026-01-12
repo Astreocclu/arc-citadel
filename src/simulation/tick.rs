@@ -1116,10 +1116,9 @@ fn execute_tasks(world: &mut World) {
                                     let building_skill = world.humans.building_skills[i];
                                     let fatigue = world.humans.body_states[i].fatigue;
 
-                                    // Calculate contribution with skill modifier
-                                    let base_contribution =
+                                    // Calculate contribution - skill already factored into base calculation
+                                    let contribution =
                                         calculate_worker_contribution(building_skill, fatigue);
-                                    let contribution = base_contribution * effective_skill;
 
                                     // Apply to building
                                     let result = apply_construction_work(
