@@ -232,6 +232,332 @@ pub fn generate_chunks_from_history(
     library
 }
 
+/// Generate a plausible life history for an entity with given role and age.
+///
+/// This is a convenience function for mass spawning. For important NPCs,
+/// construct history explicitly.
+pub fn generate_history_for_role(
+    role: Role,
+    age: u32,
+    rng: &mut impl Rng,
+) -> Vec<LifeExperience> {
+    let mut history = Vec::new();
+
+    // Everyone has childhood (general life until age 12)
+    let childhood_end = 12.min(age);
+    if childhood_end > 0 {
+        history.push(LifeExperience {
+            activity: ActivityType::GeneralLife,
+            duration_years: childhood_end as f32,
+            intensity: 1.0,
+            training_quality: 0.5 + rng.gen_range(-0.2..0.2),
+        });
+    }
+
+    if age <= 12 {
+        return history; // Just a child
+    }
+
+    // Role-specific history from age 12+
+    match role {
+        Role::Child => {
+            // Already handled above
+        }
+
+        Role::Farmer => {
+            let farming_years = (age - 10) as f32;
+            history.push(LifeExperience {
+                activity: ActivityType::Farming,
+                duration_years: farming_years,
+                intensity: 0.9 + rng.gen_range(-0.1..0.1),
+                training_quality: 0.5 + rng.gen_range(-0.2..0.2),
+            });
+        }
+
+        Role::Miner => {
+            let mining_years = (age - 14) as f32;
+            if mining_years > 0.0 {
+                history.push(LifeExperience {
+                    activity: ActivityType::Mining,
+                    duration_years: mining_years,
+                    intensity: 0.9,
+                    training_quality: 0.4 + rng.gen_range(-0.1..0.1),
+                });
+            }
+        }
+
+        Role::Craftsman(specialty) => {
+            // Some adolescent labor
+            history.push(LifeExperience {
+                activity: ActivityType::Hauling,
+                duration_years: rng.gen_range(2.0_f32..5.0).min((age - 12) as f32),
+                intensity: 0.7,
+                training_quality: 0.5,
+            });
+
+            // Apprenticeship starts around 14
+            let apprentice_years: f32 = rng.gen_range(4.0..8.0);
+            let craft_start = 14;
+
+            if age > craft_start {
+                let years_in_craft = (age - craft_start) as f32;
+                let training_years = apprentice_years.min(years_in_craft);
+                let journeyman_years = (years_in_craft - training_years).max(0.0);
+
+                // Apprenticeship (good training quality)
+                if training_years > 0.0 {
+                    history.push(LifeExperience {
+                        activity: specialty.to_activity(),
+                        duration_years: training_years,
+                        intensity: 1.0,
+                        training_quality: rng.gen_range(0.6..0.9),
+                    });
+                }
+
+                // Journeyman/master years (self-directed)
+                if journeyman_years > 0.0 {
+                    history.push(LifeExperience {
+                        activity: specialty.to_activity(),
+                        duration_years: journeyman_years,
+                        intensity: 1.0,
+                        training_quality: 0.5 + rng.gen_range(-0.1..0.1),
+                    });
+                }
+            }
+        }
+
+        Role::Soldier => {
+            // Background before military
+            let military_start = rng.gen_range(16..22);
+
+            if age > 12 {
+                // Pre-military labor
+                let labor_years = ((military_start.min(age) - 12) as f32).max(0.0);
+                if labor_years > 0.0 {
+                    history.push(LifeExperience {
+                        activity: if rng.gen_bool(0.7) {
+                            ActivityType::Farming
+                        } else {
+                            ActivityType::Construction
+                        },
+                        duration_years: labor_years,
+                        intensity: 0.8,
+                        training_quality: 0.5,
+                    });
+                }
+            }
+
+            if age > military_start {
+                let training_years: f32 = rng.gen_range(0.5..2.0);
+                let service_years = (age - military_start) as f32;
+
+                // Military training
+                history.push(LifeExperience {
+                    activity: ActivityType::MilitaryTraining {
+                        unit_type: UnitType::Infantry,
+                    },
+                    duration_years: training_years.min(service_years),
+                    intensity: 1.0,
+                    training_quality: rng.gen_range(0.5..0.9),
+                });
+
+                // Combat experience (maybe)
+                let post_training = service_years - training_years;
+                if post_training > 0.0 {
+                    let battles = (post_training * rng.gen_range(0.0..0.5)) as u32;
+                    if battles > 0 {
+                        history.push(LifeExperience {
+                            activity: ActivityType::CombatExperience { battles_fought: battles },
+                            duration_years: post_training,
+                            intensity: 0.3, // Combat is intermittent
+                            training_quality: 1.0,
+                        });
+                    }
+
+                    // Guard duty between combat
+                    history.push(LifeExperience {
+                        activity: ActivityType::GuardDuty,
+                        duration_years: post_training,
+                        intensity: 0.6,
+                        training_quality: 0.4,
+                    });
+                }
+            }
+        }
+
+        Role::Guard => {
+            // Similar to soldier but more guard duty, less combat
+            let guard_start = rng.gen_range(18..25);
+
+            if age > 12 {
+                let labor_years = ((guard_start.min(age) - 12) as f32).max(0.0);
+                if labor_years > 0.0 {
+                    history.push(LifeExperience {
+                        activity: ActivityType::Construction,
+                        duration_years: labor_years,
+                        intensity: 0.8,
+                        training_quality: 0.5,
+                    });
+                }
+            }
+
+            if age > guard_start {
+                history.push(LifeExperience {
+                    activity: ActivityType::MilitaryTraining {
+                        unit_type: UnitType::Infantry,
+                    },
+                    duration_years: rng.gen_range(0.3_f32..1.0),
+                    intensity: 0.8,
+                    training_quality: 0.5,
+                });
+
+                history.push(LifeExperience {
+                    activity: ActivityType::GuardDuty,
+                    duration_years: (age - guard_start) as f32,
+                    intensity: 0.9,
+                    training_quality: 0.4,
+                });
+            }
+        }
+
+        Role::Noble => {
+            // Education starts early
+            history.push(LifeExperience {
+                activity: ActivityType::FormalEducation,
+                duration_years: rng.gen_range(5.0_f32..10.0).min((age - 6) as f32),
+                intensity: 0.8,
+                training_quality: 0.8,
+            });
+
+            if age > 16 {
+                // Court life
+                history.push(LifeExperience {
+                    activity: ActivityType::CourtLife,
+                    duration_years: (age - 16) as f32,
+                    intensity: 0.7,
+                    training_quality: 0.6,
+                });
+            }
+
+            // Maybe military training
+            if rng.gen_bool(0.4) && age > 18 {
+                history.push(LifeExperience {
+                    activity: ActivityType::MilitaryTraining {
+                        unit_type: if rng.gen_bool(0.6) {
+                            UnitType::Cavalry
+                        } else {
+                            UnitType::Infantry
+                        },
+                    },
+                    duration_years: rng.gen_range(1.0_f32..4.0),
+                    intensity: 0.7,
+                    training_quality: 0.8,
+                });
+
+                // Command experience if older
+                if age > 25 {
+                    history.push(LifeExperience {
+                        activity: ActivityType::MilitaryCommand {
+                            soldiers_led: rng.gen_range(20..200),
+                        },
+                        duration_years: (age - 25) as f32 * 0.3,
+                        intensity: 0.5,
+                        training_quality: 0.5,
+                    });
+                }
+            }
+        }
+
+        Role::Merchant => {
+            // Some education
+            history.push(LifeExperience {
+                activity: ActivityType::FormalEducation,
+                duration_years: rng.gen_range(3.0_f32..6.0).min((age - 8) as f32),
+                intensity: 0.7,
+                training_quality: 0.6,
+            });
+
+            // Trading from adolescence
+            if age > 14 {
+                history.push(LifeExperience {
+                    activity: ActivityType::Trading,
+                    duration_years: (age - 14) as f32,
+                    intensity: 0.9,
+                    training_quality: 0.5 + rng.gen_range(-0.2..0.3),
+                });
+            }
+        }
+
+        Role::Scholar => {
+            // Extensive education
+            history.push(LifeExperience {
+                activity: ActivityType::FormalEducation,
+                duration_years: rng.gen_range(8.0_f32..15.0).min((age - 6) as f32),
+                intensity: 0.9,
+                training_quality: 0.7 + rng.gen_range(-0.1..0.2),
+            });
+
+            // Research if older
+            if age > 25 {
+                history.push(LifeExperience {
+                    activity: ActivityType::Research,
+                    duration_years: (age - 25) as f32,
+                    intensity: 0.8,
+                    training_quality: 0.6,
+                });
+            }
+
+            // Maybe teaching
+            if age > 30 && rng.gen_bool(0.5) {
+                history.push(LifeExperience {
+                    activity: ActivityType::Teaching,
+                    duration_years: (age - 30) as f32 * 0.5,
+                    intensity: 0.5,
+                    training_quality: 0.5,
+                });
+            }
+        }
+
+        Role::Priest => {
+            // Education
+            history.push(LifeExperience {
+                activity: ActivityType::FormalEducation,
+                duration_years: rng.gen_range(5.0_f32..10.0).min((age - 8) as f32),
+                intensity: 0.8,
+                training_quality: 0.7,
+            });
+
+            // Public speaking/preaching
+            if age > 20 {
+                history.push(LifeExperience {
+                    activity: ActivityType::PublicSpeaking,
+                    duration_years: (age - 20) as f32,
+                    intensity: 0.6,
+                    training_quality: 0.5,
+                });
+            }
+        }
+
+        Role::Servant => {
+            // General labor
+            if age > 10 {
+                history.push(LifeExperience {
+                    activity: ActivityType::Hauling,
+                    duration_years: (age - 10) as f32,
+                    intensity: 0.8,
+                    training_quality: 0.3,
+                });
+            }
+        }
+
+        Role::Unemployed => {
+            // Just general life, no specialized activities
+        }
+    }
+
+    history
+}
+
 /// Get chunks generated by an activity with their growth rates.
 /// Growth rate affects how quickly this activity builds the chunk (0.0 to 1.0).
 pub fn get_chunks_for_activity(activity: &ActivityType) -> Vec<(ChunkId, f32)> {
@@ -682,5 +1008,56 @@ mod tests {
         // Should have BOTH farming and combat chunks
         assert!(library.has_chunk(ChunkId::PhysSustainedLabor));
         assert!(library.has_chunk(ChunkId::BasicStance));
+    }
+
+    #[test]
+    fn test_generate_history_for_farmer() {
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+        let history = generate_history_for_role(Role::Farmer, 30, &mut rng);
+
+        // Should have general life and farming
+        assert!(history.iter().any(|e| matches!(e.activity, ActivityType::GeneralLife)));
+        assert!(history.iter().any(|e| matches!(e.activity, ActivityType::Farming)));
+    }
+
+    #[test]
+    fn test_generate_history_for_soldier() {
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+        let history = generate_history_for_role(Role::Soldier, 30, &mut rng);
+
+        // Should have military training
+        assert!(history.iter().any(|e| matches!(
+            e.activity,
+            ActivityType::MilitaryTraining { .. }
+        )));
+    }
+
+    #[test]
+    fn test_child_has_minimal_history() {
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+        let history = generate_history_for_role(Role::Child, 8, &mut rng);
+
+        // Only general life
+        assert_eq!(history.len(), 1);
+        assert!(matches!(history[0].activity, ActivityType::GeneralLife));
+    }
+
+    #[test]
+    fn test_same_role_different_ages() {
+        let mut rng1 = ChaCha8Rng::seed_from_u64(42);
+        let mut rng2 = ChaCha8Rng::seed_from_u64(42);
+
+        let young_history = generate_history_for_role(Role::Farmer, 20, &mut rng1);
+        let old_history = generate_history_for_role(Role::Farmer, 50, &mut rng2);
+
+        let young_chunks = generate_chunks_from_history(&young_history, 0, &mut rng1);
+        let old_chunks = generate_chunks_from_history(&old_history, 0, &mut rng2);
+
+        let young_farming = young_chunks.get_chunk(ChunkId::PhysSustainedLabor)
+            .unwrap().encoding_depth;
+        let old_farming = old_chunks.get_chunk(ChunkId::PhysSustainedLabor)
+            .unwrap().encoding_depth;
+
+        assert!(old_farming > young_farming);
     }
 }

@@ -38,6 +38,6 @@ pub use integration::{
 pub use spawn_loadouts::generate_spawn_chunks;
 pub use history::{
     calculate_experience_contribution, combine_encoding, estimate_repetitions,
-    generate_chunks_from_history, get_chunks_for_activity, ActivityType, CraftSpecialty,
-    LifeExperience, Role, UnitType,
+    generate_chunks_from_history, generate_history_for_role, get_chunks_for_activity,
+    ActivityType, CraftSpecialty, LifeExperience, Role, UnitType,
 };
