@@ -26,17 +26,21 @@ impl SpriteBuffers {
         let quad_verts = unit_quad_vertices();
         let quad_indices = unit_quad_indices();
 
-        let quad_vertex_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Quad Vertex Buffer"),
-            contents: bytemuck::cast_slice(&quad_verts),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
+        let quad_vertex_buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Sprite Quad Vertex Buffer"),
+                contents: bytemuck::cast_slice(&quad_verts),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
-        let quad_index_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Quad Index Buffer"),
-            contents: bytemuck::cast_slice(&quad_indices),
-            usage: wgpu::BufferUsages::INDEX,
-        });
+        let quad_index_buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Sprite Quad Index Buffer"),
+                contents: bytemuck::cast_slice(&quad_indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
 
         let instance_buffer = ctx.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Sprite Instance Buffer"),
@@ -72,11 +76,8 @@ impl SpriteBuffers {
             tracing::debug!("Grew sprite instance buffer to {} capacity", new_capacity);
         }
 
-        ctx.queue.write_buffer(
-            &self.instance_buffer,
-            0,
-            bytemuck::cast_slice(instances),
-        );
+        ctx.queue
+            .write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(instances));
     }
 
     /// Ensure instance buffer has enough capacity. Returns true if buffer was reallocated.

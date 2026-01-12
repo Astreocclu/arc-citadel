@@ -32,7 +32,8 @@ struct SkeletonResponse {
 
 fn get_schema_snippet(component_type: &str) -> &'static str {
     match component_type {
-        "wall_segment" => r#"
+        "wall_segment" => {
+            r#"
 ## REQUIRED SCHEMA FOR wall_segment:
 ```json
 {
@@ -62,8 +63,10 @@ fn get_schema_snippet(component_type: &str) -> &'static str {
     {"id": "west", "position": [x,y], "direction": "west|east|north|south", "compatible_with": ["wall_segment","gate"]}
   ]
 }
-```"#,
-        "archer_tower" => r#"
+```"#
+        }
+        "archer_tower" => {
+            r#"
 ## REQUIRED SCHEMA FOR archer_tower:
 ```json
 {
@@ -99,8 +102,10 @@ fn get_schema_snippet(component_type: &str) -> &'static str {
   ]
 }
 ```
-IMPORTANT: firing_arcs is REQUIRED. Angles are 0-360 degrees, 0=East, 90=North, counter-clockwise."#,
-        "trench_segment" => r#"
+IMPORTANT: firing_arcs is REQUIRED. Angles are 0-360 degrees, 0=East, 90=North, counter-clockwise."#
+        }
+        "trench_segment" => {
+            r#"
 ## REQUIRED SCHEMA FOR trench_segment:
 ```json
 {
@@ -130,8 +135,10 @@ IMPORTANT: firing_arcs is REQUIRED. Angles are 0-360 degrees, 0=East, 90=North, 
     {"id": "end_a", "position": [x,y], "direction": "west", "compatible_with": ["trench_segment"]}
   ]
 }
-```"#,
-        "gate" => r#"
+```"#
+        }
+        "gate" => {
+            r#"
 ## REQUIRED SCHEMA FOR gate:
 ```json
 {
@@ -164,8 +171,10 @@ IMPORTANT: firing_arcs is REQUIRED. Angles are 0-360 degrees, 0=East, 90=North, 
   ]
 }
 ```
-IMPORTANT: passable_by is REQUIRED. Use: infantry (width>=2.5m), cavalry (width>=6m), cart (width>=4m), siege_engine (width>=8m)"#,
-        "street_segment" => r#"
+IMPORTANT: passable_by is REQUIRED. Use: infantry (width>=2.5m), cavalry (width>=6m), cart (width>=4m), siege_engine (width>=8m)"#
+        }
+        "street_segment" => {
+            r#"
 ## REQUIRED SCHEMA FOR street_segment:
 ```json
 {
@@ -194,8 +203,9 @@ IMPORTANT: passable_by is REQUIRED. Use: infantry (width>=2.5m), cavalry (width>
   ]
 }
 ```
-IMPORTANT: passable_by and traffic_capacity are REQUIRED. Width determines passable_by: 2m=infantry, 4m+=cart, 6m+=cavalry"#,
-        _ => ""
+IMPORTANT: passable_by and traffic_capacity are REQUIRED. Width determines passable_by: 2m=infantry, 4m+=cart, 6m+=cavalry"#
+        }
+        _ => "",
     }
 }
 
@@ -225,33 +235,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let details_prompt = fs::read_to_string("data/prompts/geometry_details.txt")?;
 
     // Get API key
-    let api_key = std::env::var("LLM_API_KEY")
-        .expect("LLM_API_KEY required");
+    let api_key = std::env::var("LLM_API_KEY").expect("LLM_API_KEY required");
     let api_url = std::env::var("LLM_API_URL")
         .unwrap_or_else(|_| "https://api.deepseek.com/v1/chat/completions".into());
 
     // Stage 1: Reasoner generates skeleton
     println!("=== STAGE 1: Skeleton Generation (Reasoner) ===");
-    let reasoner = LlmClient::new(
-        api_key.clone(),
-        api_url.clone(),
-        "deepseek-reasoner".into(),
-    );
+    let reasoner = LlmClient::new(api_key.clone(), api_url.clone(), "deepseek-reasoner".into());
 
     println!("Sending skeleton request to reasoner...");
     let skeleton_response = reasoner
-        .complete(&skeleton_prompt, "Generate the geometry component skeleton now.")
+        .complete(
+            &skeleton_prompt,
+            "Generate the geometry component skeleton now.",
+        )
         .await?;
 
-    println!("Received skeleton response ({} chars)", skeleton_response.len());
+    println!(
+        "Received skeleton response ({} chars)",
+        skeleton_response.len()
+    );
 
     // Save raw skeleton response
     fs::write("skeleton_raw.txt", &skeleton_response)?;
     println!("Saved raw response to skeleton_raw.txt");
 
     // Parse skeleton
-    let json_str = extract_json(&skeleton_response)
-        .ok_or("No JSON found in skeleton response")?;
+    let json_str = extract_json(&skeleton_response).ok_or("No JSON found in skeleton response")?;
 
     let skeleton: SkeletonResponse = match serde_json::from_str(json_str) {
         Ok(s) => s,
@@ -271,11 +281,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Stage 2: Chat fills in details
     println!("\n=== STAGE 2: Detail Generation (Chat) ===");
-    let chat = LlmClient::new(
-        api_key,
-        api_url,
-        "deepseek-chat".into(),
-    );
+    let chat = LlmClient::new(api_key, api_url, "deepseek-chat".into());
 
     let mut all_components: Vec<serde_json::Value> = Vec::new();
 
@@ -294,7 +300,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        println!("\nProcessing {} ({} components)...", component_type, skeletons.len());
+        println!(
+            "\nProcessing {} ({} components)...",
+            component_type,
+            skeletons.len()
+        );
 
         // Component-specific schema snippets
         let schema_snippet = get_schema_snippet(component_type);
@@ -355,7 +365,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "total_components": all_components.len()
     });
 
-    fs::write("twostage_results.json", serde_json::to_string_pretty(&output)?)?;
+    fs::write(
+        "twostage_results.json",
+        serde_json::to_string_pretty(&output)?,
+    )?;
     println!("\n=== Results ===");
     println!("Total components generated: {}", all_components.len());
     println!("Saved to twostage_results.json");

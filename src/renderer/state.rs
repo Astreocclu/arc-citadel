@@ -1,15 +1,15 @@
 //! Render state types - frozen snapshots for rendering.
 
-use glam::Vec2;
 use crate::core::types::EntityId;
+use glam::Vec2;
 
 /// Frozen snapshot of simulation state for rendering.
 /// Immutable once created - no references back to simulation.
 #[derive(Clone)]
 pub struct RenderState {
     pub tick: u64,
-    pub entities: Vec<RenderEntity>,      // Shape-based entities
-    pub sprites: Vec<SpriteEntity>,       // Textured sprites
+    pub entities: Vec<RenderEntity>, // Shape-based entities
+    pub sprites: Vec<SpriteEntity>,  // Textured sprites
     pub camera: CameraState,
 }
 
@@ -18,8 +18,8 @@ pub struct RenderState {
 pub struct SpriteEntity {
     pub id: EntityId,
     pub position: Vec2,
-    pub uv_rect: [f32; 4],  // [u, v, width, height] normalized
-    pub color: [u8; 4],     // RGBA tint
+    pub uv_rect: [f32; 4], // [u, v, width, height] normalized
+    pub color: [u8; 4],    // RGBA tint
     pub rotation: f32,
     pub scale: f32,
     pub flip_x: bool,
@@ -143,8 +143,8 @@ mod tests {
 
         let transparent_blue = Color::rgba(0.0, 0.0, 1.0, 0.5);
         let packed = transparent_blue.to_u32();
-        assert_eq!(packed >> 24, 0);           // R = 0
-        assert_eq!((packed >> 16) & 0xFF, 0);  // G = 0
+        assert_eq!(packed >> 24, 0); // R = 0
+        assert_eq!((packed >> 16) & 0xFF, 0); // G = 0
         assert_eq!((packed >> 8) & 0xFF, 255); // B = 255
         assert!((packed & 0xFF) > 100 && (packed & 0xFF) < 140); // A ≈ 127
     }

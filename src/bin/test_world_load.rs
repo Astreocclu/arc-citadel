@@ -24,7 +24,17 @@ fn main() {
     }
 
     // Check some specific blueprints we expect
-    let expected = ["oak_tree", "pine_tree", "stone_wall", "wooden_house", "watchtower", "shrine", "well", "boulder", "rock_outcrop"];
+    let expected = [
+        "oak_tree",
+        "pine_tree",
+        "stone_wall",
+        "wooden_house",
+        "watchtower",
+        "shrine",
+        "well",
+        "boulder",
+        "rock_outcrop",
+    ];
     println!("\nChecking expected blueprints:");
     for name in &expected {
         if registry.id_by_name(name).is_some() {

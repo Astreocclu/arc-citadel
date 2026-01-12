@@ -103,7 +103,9 @@ impl PlacedByJson {
                     year: *year,
                 }
             }
-            PlacedByJson::Gameplay { tick } => crate::blueprints::PlacedBy::Gameplay { tick: *tick },
+            PlacedByJson::Gameplay { tick } => {
+                crate::blueprints::PlacedBy::Gameplay { tick: *tick }
+            }
         }
     }
 }

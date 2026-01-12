@@ -14,7 +14,7 @@ mod phase_plans;
 // Re-exports
 pub use commander::AiCommander;
 pub use decision_context::DecisionContext;
-pub use personality::{AiPersonality, load_personality};
+pub use personality::{load_personality, AiPersonality};
 pub use phase_plans::{PhasePlan, PhasePlanManager, PhaseTransition};
 
 use crate::battle::courier::Order;

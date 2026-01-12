@@ -94,8 +94,12 @@ mod tests {
     fn test_archetype_variants_exist() {
         let _peasant = EntityArchetype::Peasant;
         let _laborer = EntityArchetype::Laborer;
-        let _craftsman = EntityArchetype::Craftsman { specialty: CraftSpecialty::Smithing };
-        let _soldier = EntityArchetype::Soldier { training: TrainingLevel::Levy };
+        let _craftsman = EntityArchetype::Craftsman {
+            specialty: CraftSpecialty::Smithing,
+        };
+        let _soldier = EntityArchetype::Soldier {
+            training: TrainingLevel::Levy,
+        };
         let _noble = EntityArchetype::Noble;
         let _merchant = EntityArchetype::Merchant;
         let _scholar = EntityArchetype::Scholar;

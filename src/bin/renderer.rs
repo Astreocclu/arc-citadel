@@ -12,16 +12,14 @@ use std::time::Instant;
 
 use glam::Vec2;
 use winit::{
-    event::{ElementState, Event, WindowEvent, MouseScrollDelta},
+    event::{ElementState, Event, MouseScrollDelta, WindowEvent},
     event_loop::EventLoop,
     keyboard::{KeyCode, PhysicalKey},
     window::WindowBuilder,
 };
 
 use arc_citadel::core::types::EntityId;
-use arc_citadel::renderer::{
-    CameraState, Color, RenderEntity, RenderState, Renderer, ShapeType,
-};
+use arc_citadel::renderer::{CameraState, Color, RenderEntity, RenderState, Renderer, ShapeType};
 
 fn main() {
     // Initialize tracing

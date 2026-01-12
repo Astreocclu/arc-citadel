@@ -1,7 +1,7 @@
 //! Camera system with coordinate transformations.
 
-use glam::{Mat4, Vec2};
 use super::state::CameraState;
+use glam::{Mat4, Vec2};
 
 impl CameraState {
     /// Create a new camera centered at origin.
@@ -44,8 +44,8 @@ impl CameraState {
             self.center.x + half_width,  // right
             self.center.y - half_height, // bottom
             self.center.y + half_height, // top
-            -1000.0,                      // near
-            1000.0,                       // far
+            -1000.0,                     // near
+            1000.0,                      // far
         )
     }
 
@@ -94,15 +94,16 @@ impl CameraState {
     /// Check if a world point is visible on screen.
     pub fn is_visible(&self, world_pos: Vec2) -> bool {
         let (min, max) = self.visible_bounds();
-        world_pos.x >= min.x && world_pos.x <= max.x &&
-        world_pos.y >= min.y && world_pos.y <= max.y
+        world_pos.x >= min.x && world_pos.x <= max.x && world_pos.y >= min.y && world_pos.y <= max.y
     }
 
     /// Check if a world point with radius is visible (for culling).
     pub fn is_visible_with_radius(&self, world_pos: Vec2, radius: f32) -> bool {
         let (min, max) = self.visible_bounds();
-        world_pos.x + radius >= min.x && world_pos.x - radius <= max.x &&
-        world_pos.y + radius >= min.y && world_pos.y - radius <= max.y
+        world_pos.x + radius >= min.x
+            && world_pos.x - radius <= max.x
+            && world_pos.y + radius >= min.y
+            && world_pos.y - radius <= max.y
     }
 }
 

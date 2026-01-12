@@ -99,7 +99,9 @@ pub fn get_liege(polity_id: PolityId, polities: &HashMap<PolityId, Polity>) -> O
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::aggregate::polity::{CulturalDrift, FoundingConditions, HumanState, PolityType, SpeciesState};
+    use crate::aggregate::polity::{
+        CulturalDrift, FoundingConditions, HumanState, PolityType, SpeciesState,
+    };
     use crate::core::types::Species;
     use crate::core::types::{GovernmentType, PolityTier, RulerId};
 

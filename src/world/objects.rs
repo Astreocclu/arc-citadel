@@ -71,7 +71,9 @@ impl Default for WorldObjects {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blueprints::{BlueprintId, BlueprintInstance, EvaluatedGeometry, InstanceId, PlacedBy};
+    use crate::blueprints::{
+        BlueprintId, BlueprintInstance, EvaluatedGeometry, InstanceId, PlacedBy,
+    };
     use glam::Vec2;
     use std::collections::HashMap;
 

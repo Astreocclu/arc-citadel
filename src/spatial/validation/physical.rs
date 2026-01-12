@@ -41,7 +41,11 @@ impl PhysicalValidator {
     }
 
     /// Validate feature position is grounded (z = 0 or on platform)
-    pub fn validate_grounded(position: [f32; 3], expected_z: f32, tolerance: f32) -> Vec<ValidationError> {
+    pub fn validate_grounded(
+        position: [f32; 3],
+        expected_z: f32,
+        tolerance: f32,
+    ) -> Vec<ValidationError> {
         let mut errors = Vec::new();
 
         if (position[2] - expected_z).abs() > tolerance {

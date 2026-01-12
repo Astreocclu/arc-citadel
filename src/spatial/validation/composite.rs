@@ -126,7 +126,8 @@ impl CompositeValidator {
 
                 // Geometric: interior zone polygons
                 for zone in &trench.zones {
-                    report.add_geometric_errors(GeometricValidator::validate_polygon(&zone.polygon));
+                    report
+                        .add_geometric_errors(GeometricValidator::validate_polygon(&zone.polygon));
                 }
 
                 // Physical: trench depth

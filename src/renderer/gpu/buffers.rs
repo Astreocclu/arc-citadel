@@ -1,12 +1,11 @@
 //! GPU buffer management for shapes.
 
-use wgpu::util::DeviceExt;
 use super::context::GpuContext;
-use crate::renderer::shapes::ShapeInstance;
 use crate::renderer::shapes::vertex::{
-    circle_geometry, rectangle_geometry,
-    triangle_geometry, hexagon_geometry,
+    circle_geometry, hexagon_geometry, rectangle_geometry, triangle_geometry,
 };
+use crate::renderer::shapes::ShapeInstance;
+use wgpu::util::DeviceExt;
 
 /// Static geometry for a shape type.
 pub struct ShapeGeometry {
@@ -50,17 +49,21 @@ impl ShapeBuffers {
         name: &str,
         (vertices, indices): (Vec<crate::renderer::shapes::Vertex>, Vec<u16>),
     ) -> ShapeGeometry {
-        let vertex_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(&format!("{} Vertex Buffer", name)),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
+        let vertex_buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(&format!("{} Vertex Buffer", name)),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
-        let index_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(&format!("{} Index Buffer", name)),
-            contents: bytemuck::cast_slice(&indices),
-            usage: wgpu::BufferUsages::INDEX,
-        });
+        let index_buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(&format!("{} Index Buffer", name)),
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
 
         ShapeGeometry {
             vertex_buffer,
@@ -90,11 +93,7 @@ impl ShapeBuffers {
     /// Upload instances to the instance buffer.
     pub fn upload_instances(&self, queue: &wgpu::Queue, instances: &[ShapeInstance]) {
         if !instances.is_empty() {
-            queue.write_buffer(
-                &self.instance_buffer,
-                0,
-                bytemuck::cast_slice(instances),
-            );
+            queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(instances));
         }
     }
 

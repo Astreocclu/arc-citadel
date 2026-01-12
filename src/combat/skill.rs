@@ -90,7 +90,8 @@ impl CombatSkill {
     /// - >= 0.85 → Master
     pub fn from_chunk_library(library: &crate::skills::ChunkLibrary) -> Self {
         // Use the highest encoding depth to represent overall mastery
-        let max_depth = library.chunks()
+        let max_depth = library
+            .chunks()
             .values()
             .map(|s| s.encoding_depth)
             .max_by(|a, b| a.partial_cmp(b).unwrap())

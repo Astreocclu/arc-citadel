@@ -18,7 +18,12 @@ pub struct SpriteRegion {
 impl SpriteRegion {
     /// Create a new sprite region.
     pub const fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     /// Get UV coordinates (offset and size) for this region.
@@ -184,7 +189,14 @@ impl TextureAtlas {
     }
 
     /// Define a grid of uniform sprites (e.g., 8x8 grid of 32x32 sprites).
-    pub fn define_grid(&mut self, prefix: &str, cols: u32, rows: u32, sprite_width: u32, sprite_height: u32) {
+    pub fn define_grid(
+        &mut self,
+        prefix: &str,
+        cols: u32,
+        rows: u32,
+        sprite_width: u32,
+        sprite_height: u32,
+    ) {
         for row in 0..rows {
             for col in 0..cols {
                 let name = format!("{}_{}", prefix, row * cols + col);
@@ -200,10 +212,21 @@ impl TextureAtlas {
     }
 
     /// Get UV for a grid-based frame index.
-    pub fn grid_uv(&self, frame: u32, cols: u32, sprite_width: u32, sprite_height: u32) -> ([f32; 2], [f32; 2]) {
+    pub fn grid_uv(
+        &self,
+        frame: u32,
+        cols: u32,
+        sprite_width: u32,
+        sprite_height: u32,
+    ) -> ([f32; 2], [f32; 2]) {
         let col = frame % cols;
         let row = frame / cols;
-        let region = SpriteRegion::new(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
+        let region = SpriteRegion::new(
+            col * sprite_width,
+            row * sprite_height,
+            sprite_width,
+            sprite_height,
+        );
         region.uv(self.width, self.height)
     }
 }

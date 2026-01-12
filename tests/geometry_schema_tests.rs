@@ -1,13 +1,18 @@
 //! Tests for geometry schema deserialization
 
 use arc_citadel::spatial::geometry_schema::*;
-use arc_citadel::spatial::validation::{CivilianValidator, GeometricValidator, TacticalValidator, ValidationError};
+use arc_citadel::spatial::validation::{
+    CivilianValidator, GeometricValidator, TacticalValidator, ValidationError,
+};
 
 fn make_firing_position(id: &str, center_angle: f32, arc_width: f32) -> FiringPosition {
     FiringPosition {
         id: id.to_string(),
         position: [0.0, 0.0, 8.0],
-        firing_arc: FiringArc { center_angle, arc_width },
+        firing_arc: FiringArc {
+            center_angle,
+            arc_width,
+        },
         elevation: 8.0,
         cover_value: CoverLevel::Full,
         capacity: 1,
@@ -33,7 +38,9 @@ fn test_self_intersecting_polygon_fails() {
 fn test_insufficient_vertices_fails() {
     let vertices = vec![[0.0, 0.0], [1.0, 1.0]];
     let errors = GeometricValidator::validate_polygon(&vertices);
-    assert!(errors.iter().any(|e| matches!(e, ValidationError::InsufficientVertices { .. })));
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::InsufficientVertices { .. })));
 }
 
 #[test]
@@ -147,7 +154,11 @@ fn test_complete_360_coverage_passes() {
         make_firing_position("west", 270.0, 90.0),
     ];
     let errors = TacticalValidator::validate_firing_arcs(&positions);
-    assert!(errors.is_empty(), "Complete 360° coverage should pass: {:?}", errors);
+    assert!(
+        errors.is_empty(),
+        "Complete 360° coverage should pass: {:?}",
+        errors
+    );
 }
 
 #[test]
@@ -158,27 +169,37 @@ fn test_incomplete_coverage_fails() {
         // Missing south and west
     ];
     let errors = TacticalValidator::validate_firing_arcs(&positions);
-    assert!(errors.iter().any(|e| matches!(e, ValidationError::FiringArcGap { .. })));
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::FiringArcGap { .. })));
 }
 
 #[test]
 fn test_arc_over_180_fails() {
-    let positions = vec![
-        make_firing_position("wide", 0.0, 200.0),
-    ];
+    let positions = vec![make_firing_position("wide", 0.0, 200.0)];
     let errors = TacticalValidator::validate_firing_arcs(&positions);
-    assert!(errors.iter().any(|e| matches!(e, ValidationError::ArcTooWide { .. })));
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::ArcTooWide { .. })));
 }
 
 // ============================================================================
 // CIVILIAN VALIDATOR TESTS
 // ============================================================================
 
-fn make_street(width: f32, pedestrian_capacity: u32, cart_lanes: u32, market_stalls: u32) -> StreetSegment {
+fn make_street(
+    width: f32,
+    pedestrian_capacity: u32,
+    cart_lanes: u32,
+    market_stalls: u32,
+) -> StreetSegment {
     StreetSegment {
         variant_id: "test_street".into(),
         display_name: "Test Street".into(),
-        dimensions: StreetDimensions { length: 10.0, width },
+        dimensions: StreetDimensions {
+            length: 10.0,
+            width,
+        },
         footprint: Footprint {
             shape: "rectangle".into(),
             vertices: vec![[0.0, 0.0], [10.0, 0.0], [10.0, width], [0.0, width]],
@@ -219,7 +240,9 @@ fn test_street_cart_lanes_width_valid() {
 fn test_street_cart_lanes_too_narrow() {
     let street = make_street(2.0, 10, 2, 0);
     let errors = CivilianValidator::validate_street(&street);
-    assert!(errors.iter().any(|e| matches!(e, ValidationError::InsufficientWidth { .. })));
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::InsufficientWidth { .. })));
 }
 
 #[test]
@@ -227,7 +250,10 @@ fn test_market_stalls_exceed_length() {
     // 10m street, but claiming 10 stalls at 1.5m each = 15m needed
     let street = make_street(8.0, 50, 2, 10);
     let errors = CivilianValidator::validate_street(&street);
-    assert!(!errors.is_empty(), "Too many market stalls for street length");
+    assert!(
+        !errors.is_empty(),
+        "Too many market stalls for street length"
+    );
 }
 
 #[test]
@@ -236,7 +262,10 @@ fn test_cavalry_on_narrow_street() {
     let mut street = make_street(4.0, 20, 1, 0);
     street.military_properties.cavalry_charge_viable = true;
     let errors = CivilianValidator::validate_street(&street);
-    assert!(!errors.is_empty(), "Cavalry should not be viable on 4m street");
+    assert!(
+        !errors.is_empty(),
+        "Cavalry should not be viable on 4m street"
+    );
 }
 
 // ============================================================================
@@ -279,7 +308,10 @@ fn test_misaligned_connections_fail() {
         compatible_with: vec!["wall_segment".into()],
     };
     let errors = ConnectionValidator::validate_alignment(&p1, &p2, 0.1);
-    assert!(errors.iter().any(|e| matches!(e, arc_citadel::spatial::validation::ValidationError::ConnectionMisaligned { .. })));
+    assert!(errors.iter().any(|e| matches!(
+        e,
+        arc_citadel::spatial::validation::ValidationError::ConnectionMisaligned { .. }
+    )));
 }
 
 // ============================================================================
@@ -289,13 +321,19 @@ fn test_misaligned_connections_fail() {
 #[test]
 fn test_platform_clearance_valid() {
     let errors = PhysicalValidator::validate_platform_clearance(8.0, 2.0);
-    assert!(errors.is_empty(), "8m platform with 2m clearance should pass");
+    assert!(
+        errors.is_empty(),
+        "8m platform with 2m clearance should pass"
+    );
 }
 
 #[test]
 fn test_platform_clearance_insufficient() {
     let errors = PhysicalValidator::validate_platform_clearance(1.5, 2.0);
-    assert!(!errors.is_empty(), "1.5m platform should fail 2m clearance check");
+    assert!(
+        !errors.is_empty(),
+        "1.5m platform should fail 2m clearance check"
+    );
 }
 
 #[test]
@@ -344,8 +382,13 @@ fn test_composite_validator_wall_segment() {
         "tactical_notes": "Standard defensive wall."
     }"#;
 
-    let component: arc_citadel::spatial::geometry_schema::Component = serde_json::from_str(json).unwrap();
+    let component: arc_citadel::spatial::geometry_schema::Component =
+        serde_json::from_str(json).unwrap();
     let report = CompositeValidator::validate_component(&component);
 
-    assert!(report.is_valid, "Valid wall segment should pass: {:?}", report.errors);
+    assert!(
+        report.is_valid,
+        "Valid wall segment should pass: {:?}",
+        report.errors
+    );
 }

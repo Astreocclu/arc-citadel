@@ -1031,17 +1031,14 @@ fn execute_tasks(world: &mut World) {
 
                             // Work actions always proceed
                             let effective_skill = if skill_result.can_execute {
-                                if skill_result.attention_cost > 0.0 {
-                                    spend_attention(
-                                        &mut world.humans.chunk_libraries[i],
-                                        skill_result.attention_cost,
-                                    );
-                                    skill_result.skill_modifier
-                                } else {
-                                    1.0 // No chunks = work instinctively at normal rate
-                                }
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+                                skill_result.skill_modifier
                             } else {
-                                0.5 // Exhausted: work at 50% efficiency
+                                // Exhausted: work at reduced efficiency
+                                0.5
                             };
 
                             let is_complete = if let Some(zone_pos) = target_pos {
@@ -1058,8 +1055,7 @@ fn execute_tasks(world: &mut World) {
                                         let direction = (zone_pos - current).normalize();
                                         let speed = 2.0;
                                         if direction.length() > 0.0 {
-                                            world.humans.positions[i] =
-                                                current + direction * speed;
+                                            world.humans.positions[i] = current + direction * speed;
                                         }
                                         false
                                     } else {
@@ -1102,22 +1098,14 @@ fn execute_tasks(world: &mut World) {
                                 skill_check(&world.humans.chunk_libraries[i], ActionId::Build);
 
                             // Work actions always proceed
-                            // If entity has chunks: benefit from training (skill_modifier)
-                            // If entity has no chunks: work normally (1.0), building_skill handles ability
-                            // If exhausted: work at reduced efficiency (0.5)
                             let effective_skill = if skill_result.can_execute {
-                                if skill_result.attention_cost > 0.0 {
-                                    spend_attention(
-                                        &mut world.humans.chunk_libraries[i],
-                                        skill_result.attention_cost,
-                                    );
-                                    skill_result.skill_modifier
-                                } else {
-                                    // No attention cost = no chunks = work instinctively at normal rate
-                                    1.0
-                                }
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+                                skill_result.skill_modifier
                             } else {
-                                // Exhausted: work at 50% efficiency
+                                // Exhausted: work at reduced efficiency
                                 0.5
                             };
 
@@ -1186,17 +1174,14 @@ fn execute_tasks(world: &mut World) {
 
                             // Work actions always proceed
                             let effective_skill = if skill_result.can_execute {
-                                if skill_result.attention_cost > 0.0 {
-                                    spend_attention(
-                                        &mut world.humans.chunk_libraries[i],
-                                        skill_result.attention_cost,
-                                    );
-                                    skill_result.skill_modifier
-                                } else {
-                                    1.0 // No chunks = work instinctively at normal rate
-                                }
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+                                skill_result.skill_modifier
                             } else {
-                                0.5 // Exhausted: work at 50% efficiency
+                                // Exhausted: work at reduced efficiency
+                                0.5
                             };
 
                             let duration = task.action.base_duration();
@@ -1227,17 +1212,14 @@ fn execute_tasks(world: &mut World) {
 
                             // Work actions always proceed
                             let effective_skill = if skill_result.can_execute {
-                                if skill_result.attention_cost > 0.0 {
-                                    spend_attention(
-                                        &mut world.humans.chunk_libraries[i],
-                                        skill_result.attention_cost,
-                                    );
-                                    skill_result.skill_modifier
-                                } else {
-                                    1.0 // No chunks = work instinctively at normal rate
-                                }
+                                spend_attention(
+                                    &mut world.humans.chunk_libraries[i],
+                                    skill_result.attention_cost,
+                                );
+                                skill_result.skill_modifier
                             } else {
-                                0.5 // Exhausted: work at 50% efficiency
+                                // Exhausted: work at reduced efficiency
+                                0.5
                             };
 
                             let duration = task.action.base_duration();

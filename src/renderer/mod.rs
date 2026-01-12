@@ -15,7 +15,7 @@ pub mod state;
 use std::sync::Arc;
 use winit::window::Window;
 
-use gpu::{GpuContext, ShapeBuffers, ShapePipeline, SpritePipeline, SpriteBuffers, Texture};
+use gpu::{GpuContext, ShapeBuffers, ShapePipeline, SpriteBuffers, SpritePipeline, Texture};
 use shapes::ShapeInstance;
 use sprites::SpriteInstance;
 
@@ -107,7 +107,8 @@ impl Renderer {
         // Update camera uniform for both pipelines
         let view_proj = state.camera.view_projection_matrix();
         self.pipeline.update_camera(&self.ctx.queue, view_proj);
-        self.sprite_pipeline.update_camera(&self.ctx.queue, view_proj);
+        self.sprite_pipeline
+            .update_camera(&self.ctx.queue, view_proj);
 
         // Batch entities by shape type
         self.circle_instances.clear();
@@ -144,11 +145,16 @@ impl Renderer {
 
         // Get surface texture
         let output = self.ctx.surface.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self.ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -253,7 +259,8 @@ impl Renderer {
                     ));
                 }
 
-                self.sprite_buffers.upload_instances(&self.ctx, &self.sprite_instances);
+                self.sprite_buffers
+                    .upload_instances(&self.ctx, &self.sprite_instances);
                 self.metrics.record_buffer_upload();
 
                 render_pass.set_pipeline(&self.sprite_pipeline.render_pipeline);

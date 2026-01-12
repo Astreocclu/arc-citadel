@@ -102,7 +102,11 @@ impl PhasePlanManager {
     pub fn update(&mut self, current_tick: Tick, strength_ratio: f32, casualties: f32) {
         let ticks_in_phase = current_tick.saturating_sub(self.phase_start_tick);
 
-        if self.current_phase().transition.is_triggered(ticks_in_phase, strength_ratio, casualties) {
+        if self
+            .current_phase()
+            .transition
+            .is_triggered(ticks_in_phase, strength_ratio, casualties)
+        {
             self.advance_phase(current_tick);
         }
     }

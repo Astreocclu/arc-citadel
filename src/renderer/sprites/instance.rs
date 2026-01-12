@@ -68,12 +68,7 @@ impl SpriteInstance {
     }
 
     /// Create a simple sprite instance without rotation or flip.
-    pub fn simple(
-        position: [f32; 2],
-        uv_offset: [f32; 2],
-        uv_size: [f32; 2],
-        scale: f32,
-    ) -> Self {
+    pub fn simple(position: [f32; 2], uv_offset: [f32; 2], uv_size: [f32; 2], scale: f32) -> Self {
         Self::new(
             position,
             uv_offset,

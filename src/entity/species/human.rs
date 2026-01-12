@@ -10,8 +10,8 @@ use crate::entity::tasks::TaskQueue;
 use crate::entity::thoughts::ThoughtBuffer;
 use crate::entity::EntityArchetype;
 use crate::skills::{
-    generate_chunks_from_history, generate_history_for_role, generate_spawn_chunks,
-    LifeExperience, Role,
+    generate_chunks_from_history, generate_history_for_role, generate_spawn_chunks, LifeExperience,
+    Role,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -125,7 +125,8 @@ impl HumanArchetype {
         self.ids.push(id);
         self.names.push(name);
         // Calculate birth tick from age (approximate: 365 days * 24 ticks/day)
-        self.birth_ticks.push(tick.saturating_sub((age as u64) * 365 * 24));
+        self.birth_ticks
+            .push(tick.saturating_sub((age as u64) * 365 * 24));
         self.positions.push(Vec2::default());
         self.velocities.push(Vec2::default());
         self.body_states.push(BodyState::default());
@@ -165,7 +166,8 @@ impl HumanArchetype {
 
         self.ids.push(id);
         self.names.push(name);
-        self.birth_ticks.push(tick.saturating_sub((age as u64) * 365 * 24));
+        self.birth_ticks
+            .push(tick.saturating_sub((age as u64) * 365 * 24));
         self.positions.push(Vec2::default());
         self.velocities.push(Vec2::default());
         self.body_states.push(BodyState::default());
@@ -196,7 +198,8 @@ impl HumanArchetype {
 
         self.ids.push(id);
         self.names.push(name);
-        self.birth_ticks.push(tick.saturating_sub((age as u64) * 365 * 24));
+        self.birth_ticks
+            .push(tick.saturating_sub((age as u64) * 365 * 24));
         self.positions.push(Vec2::default());
         self.velocities.push(Vec2::default());
         self.body_states.push(BodyState::default());
@@ -405,7 +408,9 @@ mod tests {
         archetype.spawn_with_role(id, "Farmer".to_string(), 0, Role::Farmer, 30);
 
         let idx = archetype.index_of(id).unwrap();
-        assert!(archetype.chunk_libraries[idx].has_chunk(crate::skills::ChunkId::PhysSustainedLabor));
+        assert!(
+            archetype.chunk_libraries[idx].has_chunk(crate::skills::ChunkId::PhysSustainedLabor)
+        );
     }
 
     #[test]
@@ -446,7 +451,9 @@ mod tests {
         archetype.spawn_with_history(id, "Master Smith".to_string(), 0, &history, 32);
 
         let idx = archetype.index_of(id).unwrap();
-        assert!(archetype.chunk_libraries[idx].has_chunk(crate::skills::ChunkId::CraftBasicHammerWork));
+        assert!(
+            archetype.chunk_libraries[idx].has_chunk(crate::skills::ChunkId::CraftBasicHammerWork)
+        );
 
         // Master smith should have deep encoding
         let depth = archetype.chunk_libraries[idx]
@@ -500,6 +507,8 @@ mod tests {
 
         let idx = archetype.index_of(id).unwrap();
         // Smith should have forging chunks
-        assert!(archetype.chunk_libraries[idx].has_chunk(crate::skills::ChunkId::CraftBasicHammerWork));
+        assert!(
+            archetype.chunk_libraries[idx].has_chunk(crate::skills::ChunkId::CraftBasicHammerWork)
+        );
     }
 }

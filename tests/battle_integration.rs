@@ -366,7 +366,10 @@ fn test_full_ai_battle() {
         state.friendly_army.effective_strength()
     );
     println!("  - Total casualties: {}", friendly_casualties);
-    println!("  - Routing percentage: {:.1}%", state.friendly_army.percentage_routing() * 100.0);
+    println!(
+        "  - Routing percentage: {:.1}%",
+        state.friendly_army.percentage_routing() * 100.0
+    );
     println!("----------------------------------------");
     println!("Enemy Army:");
     println!("  - Initial strength: {}", 80 * 3);
@@ -375,16 +378,25 @@ fn test_full_ai_battle() {
         state.enemy_army.effective_strength()
     );
     println!("  - Total casualties: {}", enemy_casualties);
-    println!("  - Routing percentage: {:.1}%", state.enemy_army.percentage_routing() * 100.0);
+    println!(
+        "  - Routing percentage: {:.1}%",
+        state.enemy_army.percentage_routing() * 100.0
+    );
     println!("----------------------------------------");
     println!("AI Activity:");
-    println!("  - Total couriers dispatched: {}", total_couriers_dispatched);
+    println!(
+        "  - Total couriers dispatched: {}",
+        total_couriers_dispatched
+    );
     println!("  - Max couriers in flight: {}", max_couriers_in_flight);
     println!(
         "  - Couriers currently in system: {}",
         state.courier_system.delivered.len() + state.courier_system.in_flight.len()
     );
-    println!("  - Enemy couriers remaining: {}", state.enemy_army.courier_pool.len());
+    println!(
+        "  - Enemy couriers remaining: {}",
+        state.enemy_army.courier_pool.len()
+    );
     println!("========================================\n");
 
     // Additional verification: The test demonstrates:

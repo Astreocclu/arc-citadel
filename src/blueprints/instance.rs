@@ -340,10 +340,7 @@ mod tests {
 
         assert!(!instance.is_complete());
         assert_eq!(instance.construction_progress, 0.5);
-        assert_eq!(
-            instance.construction_stage,
-            Some("foundation".to_string())
-        );
+        assert_eq!(instance.construction_stage, Some("foundation".to_string()));
     }
 
     #[test]

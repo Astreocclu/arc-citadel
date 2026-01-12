@@ -4,8 +4,8 @@
 //! spending attention, and determining outcome variance.
 
 use crate::skills::{
-    can_afford_attention, get_chunk_definition, risks_fumble, ChunkId, ChunkLibrary,
-    CombatContext, Experience,
+    can_afford_attention, get_chunk_definition, risks_fumble, ChunkId, ChunkLibrary, CombatContext,
+    Experience,
 };
 
 /// Result of attempting an action
@@ -33,7 +33,10 @@ pub enum ActionResult {
 
 impl ActionResult {
     pub fn is_success(&self) -> bool {
-        matches!(self, ActionResult::Success { .. } | ActionResult::Critical { .. })
+        matches!(
+            self,
+            ActionResult::Success { .. } | ActionResult::Critical { .. }
+        )
     }
 
     pub fn skill_modifier(&self) -> f32 {
@@ -67,9 +70,8 @@ pub fn find_best_chunk(
 
                 // Score: level matters, but encoding depth (efficiency) matters more
                 // A well-practiced level 2 chunk beats a forming level 3 chunk
-                let score = (def.level as f32) * 3.0
-                    + state.encoding_depth * 10.0
-                    + context_quality * 3.0;
+                let score =
+                    (def.level as f32) * 3.0 + state.encoding_depth * 10.0 + context_quality * 3.0;
 
                 if best.map_or(true, |(_, _, s)| score > s) {
                     best = Some((*chunk_id, state.encoding_depth, score));
@@ -98,10 +100,7 @@ pub const DEFENSE_CHUNKS: &[ChunkId] = &[
 ];
 
 /// Chunks applicable for riposte (counter-attack)
-pub const RIPOSTE_CHUNKS: &[ChunkId] = &[
-    ChunkId::Riposte,
-    ChunkId::EngageMelee,
-];
+pub const RIPOSTE_CHUNKS: &[ChunkId] = &[ChunkId::Riposte, ChunkId::EngageMelee];
 
 /// Resolve an attack action
 ///

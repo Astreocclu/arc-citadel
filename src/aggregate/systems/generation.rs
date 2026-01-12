@@ -600,7 +600,8 @@ fn generate_species_polities(
         let population = territory.len() as u32 * pop_per_region + rng.gen_range(100..1000);
 
         // Calculate founding conditions from environment
-        let founding_conditions = calculate_founding_conditions(capital_id, &territory, regions, rng);
+        let founding_conditions =
+            calculate_founding_conditions(capital_id, &territory, regions, rng);
 
         // Generate species-specific cultural drift
         let cultural_drift = generate_cultural_drift(species, &founding_conditions, rng);
@@ -1063,9 +1064,15 @@ fn calculate_founding_conditions(
     let claimed_neighbors = capital
         .neighbors
         .iter()
-        .filter(|&&n| regions.get(n as usize).map(|r| r.controller.is_some()).unwrap_or(false))
+        .filter(|&&n| {
+            regions
+                .get(n as usize)
+                .map(|r| r.controller.is_some())
+                .unwrap_or(false)
+        })
         .count();
-    let initial_isolation = 1.0 - (claimed_neighbors as f32 / capital.neighbors.len().max(1) as f32);
+    let initial_isolation =
+        1.0 - (claimed_neighbors as f32 / capital.neighbors.len().max(1) as f32);
 
     // Determine founding context (random with environmental bias)
     let founding_context = if terrain_harshness > 0.7 {
@@ -1103,7 +1110,8 @@ fn calculate_founding_conditions(
     };
 
     // Neighbor pressure based on how many neighbors there are
-    let neighbor_pressure = (capital.neighbors.len() as f32 / 6.0).min(1.0) * rng.gen_range(0.5..1.0);
+    let neighbor_pressure =
+        (capital.neighbors.len() as f32 / 6.0).min(1.0) * rng.gen_range(0.5..1.0);
 
     // Resource scarcity based on territory resources
     let resource_count = territory

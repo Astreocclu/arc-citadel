@@ -114,7 +114,7 @@ pub struct WaypointPlan {
     pub unit_id: UnitId,
     pub waypoints: Vec<Waypoint>,
     pub current_waypoint: usize,
-    pub wait_start_tick: Option<Tick>,  // When waiting started
+    pub wait_start_tick: Option<Tick>, // When waiting started
 }
 
 impl WaypointPlan {

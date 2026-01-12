@@ -70,9 +70,9 @@ pub fn rectangle_geometry() -> (Vec<Vertex>, Vec<u16>) {
 pub fn triangle_geometry() -> (Vec<Vertex>, Vec<u16>) {
     let h = 0.866_f32; // sqrt(3)/2
     let vertices = vec![
-        Vertex::new(0.0, h * 0.667),     // Top
-        Vertex::new(-0.5, -h * 0.333),   // Bottom-left
-        Vertex::new(0.5, -h * 0.333),    // Bottom-right
+        Vertex::new(0.0, h * 0.667),   // Top
+        Vertex::new(-0.5, -h * 0.333), // Bottom-left
+        Vertex::new(0.5, -h * 0.333),  // Bottom-right
     ];
     let indices = vec![0, 1, 2];
     (vertices, indices)
@@ -177,9 +177,9 @@ mod tests {
 
         // Check corners are at [-0.5, 0.5] range
         assert_eq!(verts[0].position, [-0.5, -0.5]); // Bottom-left
-        assert_eq!(verts[1].position, [0.5, -0.5]);  // Bottom-right
-        assert_eq!(verts[2].position, [0.5, 0.5]);   // Top-right
-        assert_eq!(verts[3].position, [-0.5, 0.5]);  // Top-left
+        assert_eq!(verts[1].position, [0.5, -0.5]); // Bottom-right
+        assert_eq!(verts[2].position, [0.5, 0.5]); // Top-right
+        assert_eq!(verts[3].position, [-0.5, 0.5]); // Top-left
 
         // Check indices form two triangles
         assert_eq!(indices, vec![0, 1, 2, 0, 2, 3]);

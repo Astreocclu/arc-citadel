@@ -5,7 +5,9 @@ use std::collections::HashMap;
 use arc_citadel::aggregate::hierarchy::{
     get_all_vassals, get_sovereign, get_vassals, is_vassal_of, same_realm,
 };
-use arc_citadel::aggregate::polity::{CulturalDrift, FoundingConditions, HumanState, Polity, PolityType, SpeciesState};
+use arc_citadel::aggregate::polity::{
+    CulturalDrift, FoundingConditions, HumanState, Polity, PolityType, SpeciesState,
+};
 use arc_citadel::aggregate::ruler::{Family, Opinion, PersonalityTrait, Ruler, Skills};
 use arc_citadel::campaign::Location;
 use arc_citadel::core::types::{

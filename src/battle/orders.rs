@@ -117,8 +117,7 @@ fn apply_order_to_unit(
             waypoint_plan.current_waypoint = 0;
             waypoint_plan.wait_start_tick = None;
             waypoint_plan.add_waypoint(
-                Waypoint::new(*position, WaypointBehavior::HoldAt)
-                    .with_pace(MovementPace::Quick),
+                Waypoint::new(*position, WaypointBehavior::HoldAt).with_pace(MovementPace::Quick),
             );
 
             // Set engagement rule to defensive

@@ -137,12 +137,12 @@ pub enum ChunkId {
 
     // === LEADERSHIP DOMAIN ===
     // Level 1 - Micro-chunks
-    LeadCommandPresence,  // Project authority through bearing
-    LeadClearOrder,       // Articulate unambiguous commands
-    LeadSituationalRead,  // Quickly assess tactical situation
+    LeadCommandPresence, // Project authority through bearing
+    LeadClearOrder,      // Articulate unambiguous commands
+    LeadSituationalRead, // Quickly assess tactical situation
 
     // Level 2 - Technique chunks
-    LeadIssueCommand,   // Deliver orders with proper timing
+    LeadIssueCommand,    // Deliver orders with proper timing
     LeadAssessUnitState, // Evaluate unit morale and capability
     LeadDelegateTask,    // Assign tasks to appropriate subordinates
     LeadMaintainCalm,    // Stay composed under pressure
@@ -154,8 +154,8 @@ pub enum ChunkId {
     LeadCoordinateUnits, // Synchronize multiple units' actions
 
     // Level 4 - Strategic chunks
-    LeadBattleManagement,    // Orchestrate entire battle
-    LeadCampaignPlanning,    // Plan long-term military operations
+    LeadBattleManagement,     // Orchestrate entire battle
+    LeadCampaignPlanning,     // Plan long-term military operations
     LeadOrganizationBuilding, // Build and maintain command structure
 
     // Level 5 - Mastery chunks
@@ -165,10 +165,10 @@ pub enum ChunkId {
 
     // === PHYSICAL DOMAIN ===
     // Level 1 - Micro-chunks
-    PhysEfficientGait,  // Energy-efficient walking form
-    PhysQuietMovement,  // Move without making noise
-    PhysPowerStance,    // Leverage body weight for lifting
-    PhysClimbGrip,      // Grip technique for climbing
+    PhysEfficientGait, // Energy-efficient walking form
+    PhysQuietMovement, // Move without making noise
+    PhysPowerStance,   // Leverage body weight for lifting
+    PhysClimbGrip,     // Grip technique for climbing
 
     // Level 2 - Technique chunks
     PhysDistanceRunning, // Sustained running pace
@@ -178,11 +178,11 @@ pub enum ChunkId {
     PhysHorseControl,    // Basic mounted movement
 
     // Level 3 - Application chunks
-    PhysSustainedLabor,      // Work for extended periods
-    PhysInfiltration,        // Move through guarded areas
-    PhysRoughTerrainTravel,  // Navigate difficult terrain
-    PhysCavalryRiding,       // Combat-ready mounted movement
-    PhysSwimming,            // Swim in various conditions
+    PhysSustainedLabor,     // Work for extended periods
+    PhysInfiltration,       // Move through guarded areas
+    PhysRoughTerrainTravel, // Navigate difficult terrain
+    PhysCavalryRiding,      // Combat-ready mounted movement
+    PhysSwimming,           // Swim in various conditions
 
     // Level 4 - Expert chunks
     PhysLaborLeadership, // Organize and lead work crews
@@ -197,14 +197,14 @@ pub enum ChunkId {
 
     // === KNOWLEDGE DOMAIN ===
     // Level 1 - Micro-chunks
-    KnowFluentReading,  // Read text smoothly with comprehension
-    KnowFluentWriting,  // Write text clearly and legibly
-    KnowArithmetic,     // Basic mathematical operations
-    KnowMemorization,   // Commit information to memory
+    KnowFluentReading, // Read text smoothly with comprehension
+    KnowFluentWriting, // Write text clearly and legibly
+    KnowArithmetic,    // Basic mathematical operations
+    KnowMemorization,  // Commit information to memory
 
     // Level 2 - Technique chunks
-    KnowResearchSource,   // Find and evaluate sources
-    KnowComposeDocument,  // Write formal documents
+    KnowResearchSource,    // Find and evaluate sources
+    KnowComposeDocument,   // Write formal documents
     KnowMathematicalProof, // Construct logical proofs
     KnowTeachConcept,      // Explain ideas to learners
     KnowTranslateText,     // Convert between languages
@@ -216,9 +216,9 @@ pub enum ChunkId {
     KnowInstructStudent,   // Guide student development
 
     // Level 4 - Expert chunks
-    KnowOriginalResearch,       // Conduct novel research
-    KnowComprehensiveTreatise,  // Write comprehensive works
-    KnowCurriculumDesign,       // Design educational programs
+    KnowOriginalResearch,      // Conduct novel research
+    KnowComprehensiveTreatise, // Write comprehensive works
+    KnowCurriculumDesign,      // Design educational programs
 
     // Level 5 - Mastery chunks
     KnowParadigmIntegration, // Integrate multiple paradigms
@@ -490,9 +490,7 @@ impl ChunkId {
             | Self::MedHolisticTreatment => 5,
 
             // Leadership Level 1
-            Self::LeadCommandPresence
-            | Self::LeadClearOrder
-            | Self::LeadSituationalRead => 1,
+            Self::LeadCommandPresence | Self::LeadClearOrder | Self::LeadSituationalRead => 1,
 
             // Leadership Level 2
             Self::LeadIssueCommand
@@ -512,9 +510,7 @@ impl ChunkId {
             | Self::LeadOrganizationBuilding => 4,
 
             // Leadership Level 5
-            Self::LeadReadBattleFlow
-            | Self::LeadInspireArmy
-            | Self::LeadStrategicIntuition => 5,
+            Self::LeadReadBattleFlow | Self::LeadInspireArmy | Self::LeadStrategicIntuition => 5,
 
             // Knowledge Level 1
             Self::KnowFluentReading
@@ -570,9 +566,7 @@ impl ChunkId {
             | Self::PhysSurvivalTravel => 4,
 
             // Physical Level 5
-            Self::PhysTirelessEndurance
-            | Self::PhysShadowMovement
-            | Self::PhysCentaurUnity => 5,
+            Self::PhysTirelessEndurance | Self::PhysShadowMovement | Self::PhysCentaurUnity => 5,
         }
     }
 
@@ -865,11 +859,23 @@ mod tests {
     fn test_leadership_chunks_exist() {
         use crate::skills::ChunkDomain;
 
-        assert_eq!(ChunkId::LeadCommandPresence.domain(), ChunkDomain::Leadership);
+        assert_eq!(
+            ChunkId::LeadCommandPresence.domain(),
+            ChunkDomain::Leadership
+        );
         assert_eq!(ChunkId::LeadIssueCommand.domain(), ChunkDomain::Leadership);
-        assert_eq!(ChunkId::LeadDirectFormation.domain(), ChunkDomain::Leadership);
-        assert_eq!(ChunkId::LeadBattleManagement.domain(), ChunkDomain::Leadership);
-        assert_eq!(ChunkId::LeadStrategicIntuition.domain(), ChunkDomain::Leadership);
+        assert_eq!(
+            ChunkId::LeadDirectFormation.domain(),
+            ChunkDomain::Leadership
+        );
+        assert_eq!(
+            ChunkId::LeadBattleManagement.domain(),
+            ChunkDomain::Leadership
+        );
+        assert_eq!(
+            ChunkId::LeadStrategicIntuition.domain(),
+            ChunkDomain::Leadership
+        );
     }
 
     #[test]
@@ -879,8 +885,14 @@ mod tests {
         assert_eq!(ChunkId::KnowFluentReading.domain(), ChunkDomain::Knowledge);
         assert_eq!(ChunkId::KnowResearchSource.domain(), ChunkDomain::Knowledge);
         assert_eq!(ChunkId::KnowAnalyzeText.domain(), ChunkDomain::Knowledge);
-        assert_eq!(ChunkId::KnowOriginalResearch.domain(), ChunkDomain::Knowledge);
-        assert_eq!(ChunkId::KnowIntellectualLegacy.domain(), ChunkDomain::Knowledge);
+        assert_eq!(
+            ChunkId::KnowOriginalResearch.domain(),
+            ChunkDomain::Knowledge
+        );
+        assert_eq!(
+            ChunkId::KnowIntellectualLegacy.domain(),
+            ChunkDomain::Knowledge
+        );
     }
 
     #[test]
@@ -891,6 +903,9 @@ mod tests {
         assert_eq!(ChunkId::PhysDistanceRunning.domain(), ChunkDomain::Physical);
         assert_eq!(ChunkId::PhysSustainedLabor.domain(), ChunkDomain::Physical);
         assert_eq!(ChunkId::PhysScoutMission.domain(), ChunkDomain::Physical);
-        assert_eq!(ChunkId::PhysTirelessEndurance.domain(), ChunkDomain::Physical);
+        assert_eq!(
+            ChunkId::PhysTirelessEndurance.domain(),
+            ChunkDomain::Physical
+        );
     }
 }

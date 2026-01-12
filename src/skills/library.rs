@@ -84,32 +84,44 @@ impl ChunkLibrary {
         let mut lib = Self::new();
 
         // Level 1 chunks - well practiced
-        lib.chunks.insert(ChunkId::BasicSwing, PersonalChunkState {
-            encoding_depth: 0.6,
-            repetition_count: 100,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(1000),
-        });
-        lib.chunks.insert(ChunkId::BasicBlock, PersonalChunkState {
-            encoding_depth: 0.5,
-            repetition_count: 80,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(1000),
-        });
-        lib.chunks.insert(ChunkId::BasicStance, PersonalChunkState {
-            encoding_depth: 0.7,
-            repetition_count: 150,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(1000),
-        });
+        lib.chunks.insert(
+            ChunkId::BasicSwing,
+            PersonalChunkState {
+                encoding_depth: 0.6,
+                repetition_count: 100,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1000),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicBlock,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 80,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1000),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::BasicStance,
+            PersonalChunkState {
+                encoding_depth: 0.7,
+                repetition_count: 150,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1000),
+            },
+        );
 
         // Level 2 - forming
-        lib.chunks.insert(ChunkId::AttackSequence, PersonalChunkState {
-            encoding_depth: 0.3,
-            repetition_count: 30,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(500),
-        });
+        lib.chunks.insert(
+            ChunkId::AttackSequence,
+            PersonalChunkState {
+                encoding_depth: 0.3,
+                repetition_count: 30,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(500),
+            },
+        );
 
         lib
     }
@@ -133,32 +145,44 @@ impl ChunkLibrary {
         }
 
         // Level 2 chunks - practiced
-        lib.chunks.insert(ChunkId::AttackSequence, PersonalChunkState {
-            encoding_depth: 0.7,
-            repetition_count: 200,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(2000),
-        });
-        lib.chunks.insert(ChunkId::DefendSequence, PersonalChunkState {
-            encoding_depth: 0.65,
-            repetition_count: 180,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(2000),
-        });
-        lib.chunks.insert(ChunkId::Riposte, PersonalChunkState {
-            encoding_depth: 0.5,
-            repetition_count: 100,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(1500),
-        });
+        lib.chunks.insert(
+            ChunkId::AttackSequence,
+            PersonalChunkState {
+                encoding_depth: 0.7,
+                repetition_count: 200,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(2000),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::DefendSequence,
+            PersonalChunkState {
+                encoding_depth: 0.65,
+                repetition_count: 180,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(2000),
+            },
+        );
+        lib.chunks.insert(
+            ChunkId::Riposte,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 100,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(1500),
+            },
+        );
 
         // Level 3 - forming
-        lib.chunks.insert(ChunkId::EngageMelee, PersonalChunkState {
-            encoding_depth: 0.3,
-            repetition_count: 50,
-            last_used_tick: tick,
-            formation_tick: tick.saturating_sub(500),
-        });
+        lib.chunks.insert(
+            ChunkId::EngageMelee,
+            PersonalChunkState {
+                encoding_depth: 0.3,
+                repetition_count: 50,
+                last_used_tick: tick,
+                formation_tick: tick.saturating_sub(500),
+            },
+        );
 
         lib
     }

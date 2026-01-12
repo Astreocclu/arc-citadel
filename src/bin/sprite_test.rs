@@ -66,7 +66,12 @@ fn main() {
         })
         .collect();
 
-    tracing::info!("Created {} sprites in {}x{} grid", sprites.len(), GRID_SIZE, GRID_SIZE);
+    tracing::info!(
+        "Created {} sprites in {}x{} grid",
+        sprites.len(),
+        GRID_SIZE,
+        GRID_SIZE
+    );
 
     // Calculate grid center for camera
     let grid_center = Vec2::new(
@@ -86,122 +91,124 @@ fn main() {
     let mut last_fps_time = Instant::now();
 
     // Run event loop
-    event_loop.run(move |event, elwt| {
-        match event {
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::CloseRequested => {
-                    elwt.exit();
-                }
+    event_loop
+        .run(move |event, elwt| {
+            match event {
+                Event::WindowEvent { event, .. } => match event {
+                    WindowEvent::CloseRequested => {
+                        elwt.exit();
+                    }
 
-                WindowEvent::Resized(size) => {
-                    renderer.resize(size.width, size.height);
-                    camera.set_viewport_size(size.width as f32, size.height as f32);
-                }
+                    WindowEvent::Resized(size) => {
+                        renderer.resize(size.width, size.height);
+                        camera.set_viewport_size(size.width as f32, size.height as f32);
+                    }
 
-                WindowEvent::KeyboardInput { event, .. } => {
-                    if event.state == ElementState::Pressed {
-                        let pan_speed = 20.0 * camera.zoom;
-                        match event.physical_key {
-                            PhysicalKey::Code(KeyCode::KeyW)
-                            | PhysicalKey::Code(KeyCode::ArrowUp) => {
-                                camera.pan(Vec2::new(0.0, pan_speed));
+                    WindowEvent::KeyboardInput { event, .. } => {
+                        if event.state == ElementState::Pressed {
+                            let pan_speed = 20.0 * camera.zoom;
+                            match event.physical_key {
+                                PhysicalKey::Code(KeyCode::KeyW)
+                                | PhysicalKey::Code(KeyCode::ArrowUp) => {
+                                    camera.pan(Vec2::new(0.0, pan_speed));
+                                }
+                                PhysicalKey::Code(KeyCode::KeyS)
+                                | PhysicalKey::Code(KeyCode::ArrowDown) => {
+                                    camera.pan(Vec2::new(0.0, -pan_speed));
+                                }
+                                PhysicalKey::Code(KeyCode::KeyA)
+                                | PhysicalKey::Code(KeyCode::ArrowLeft) => {
+                                    camera.pan(Vec2::new(-pan_speed, 0.0));
+                                }
+                                PhysicalKey::Code(KeyCode::KeyD)
+                                | PhysicalKey::Code(KeyCode::ArrowRight) => {
+                                    camera.pan(Vec2::new(pan_speed, 0.0));
+                                }
+                                PhysicalKey::Code(KeyCode::Equal)
+                                | PhysicalKey::Code(KeyCode::NumpadAdd) => {
+                                    camera.zoom_by(0.9);
+                                }
+                                PhysicalKey::Code(KeyCode::Minus)
+                                | PhysicalKey::Code(KeyCode::NumpadSubtract) => {
+                                    camera.zoom_by(1.1);
+                                }
+                                PhysicalKey::Code(KeyCode::Escape) => {
+                                    elwt.exit();
+                                }
+                                _ => {}
                             }
-                            PhysicalKey::Code(KeyCode::KeyS)
-                            | PhysicalKey::Code(KeyCode::ArrowDown) => {
-                                camera.pan(Vec2::new(0.0, -pan_speed));
+                        }
+                    }
+
+                    WindowEvent::MouseWheel { delta, .. } => {
+                        let zoom_factor = match delta {
+                            MouseScrollDelta::LineDelta(_, y) => {
+                                if y > 0.0 {
+                                    0.9
+                                } else {
+                                    1.1
+                                }
                             }
-                            PhysicalKey::Code(KeyCode::KeyA)
-                            | PhysicalKey::Code(KeyCode::ArrowLeft) => {
-                                camera.pan(Vec2::new(-pan_speed, 0.0));
+                            MouseScrollDelta::PixelDelta(pos) => {
+                                if pos.y > 0.0 {
+                                    0.95
+                                } else {
+                                    1.05
+                                }
                             }
-                            PhysicalKey::Code(KeyCode::KeyD)
-                            | PhysicalKey::Code(KeyCode::ArrowRight) => {
-                                camera.pan(Vec2::new(pan_speed, 0.0));
+                        };
+                        camera.zoom_by(zoom_factor);
+                    }
+
+                    WindowEvent::RedrawRequested => {
+                        // Build render state with sprites only (no shape entities)
+                        let state = RenderState {
+                            tick: frame_count,
+                            entities: Vec::new(),
+                            sprites: sprites.clone(),
+                            camera,
+                        };
+
+                        match renderer.render(&state) {
+                            Ok(_) => {}
+                            Err(wgpu::SurfaceError::Lost) => {
+                                let (w, h) = renderer.size();
+                                renderer.resize(w, h);
                             }
-                            PhysicalKey::Code(KeyCode::Equal)
-                            | PhysicalKey::Code(KeyCode::NumpadAdd) => {
-                                camera.zoom_by(0.9);
-                            }
-                            PhysicalKey::Code(KeyCode::Minus)
-                            | PhysicalKey::Code(KeyCode::NumpadSubtract) => {
-                                camera.zoom_by(1.1);
-                            }
-                            PhysicalKey::Code(KeyCode::Escape) => {
+                            Err(wgpu::SurfaceError::OutOfMemory) => {
+                                tracing::error!("Out of GPU memory!");
                                 elwt.exit();
                             }
-                            _ => {}
-                        }
-                    }
-                }
-
-                WindowEvent::MouseWheel { delta, .. } => {
-                    let zoom_factor = match delta {
-                        MouseScrollDelta::LineDelta(_, y) => {
-                            if y > 0.0 {
-                                0.9
-                            } else {
-                                1.1
+                            Err(e) => {
+                                tracing::warn!("Render error: {:?}", e);
                             }
                         }
-                        MouseScrollDelta::PixelDelta(pos) => {
-                            if pos.y > 0.0 {
-                                0.95
-                            } else {
-                                1.05
-                            }
-                        }
-                    };
-                    camera.zoom_by(zoom_factor);
-                }
 
-                WindowEvent::RedrawRequested => {
-                    // Build render state with sprites only (no shape entities)
-                    let state = RenderState {
-                        tick: frame_count,
-                        entities: Vec::new(),
-                        sprites: sprites.clone(),
-                        camera,
-                    };
-
-                    match renderer.render(&state) {
-                        Ok(_) => {}
-                        Err(wgpu::SurfaceError::Lost) => {
-                            let (w, h) = renderer.size();
-                            renderer.resize(w, h);
-                        }
-                        Err(wgpu::SurfaceError::OutOfMemory) => {
-                            tracing::error!("Out of GPU memory!");
-                            elwt.exit();
-                        }
-                        Err(e) => {
-                            tracing::warn!("Render error: {:?}", e);
+                        // Update title with FPS
+                        frame_count += 1;
+                        let elapsed = last_fps_time.elapsed().as_secs_f32();
+                        if elapsed >= 1.0 {
+                            let metrics = renderer.metrics();
+                            window.set_title(&format!(
+                                "Arc Citadel - Sprite Test | {} sprites | {:.1} FPS | zoom {:.2}",
+                                sprites.len(),
+                                metrics.fps(),
+                                camera.zoom,
+                            ));
+                            frame_count = 0;
+                            last_fps_time = Instant::now();
                         }
                     }
 
-                    // Update title with FPS
-                    frame_count += 1;
-                    let elapsed = last_fps_time.elapsed().as_secs_f32();
-                    if elapsed >= 1.0 {
-                        let metrics = renderer.metrics();
-                        window.set_title(&format!(
-                            "Arc Citadel - Sprite Test | {} sprites | {:.1} FPS | zoom {:.2}",
-                            sprites.len(),
-                            metrics.fps(),
-                            camera.zoom,
-                        ));
-                        frame_count = 0;
-                        last_fps_time = Instant::now();
-                    }
+                    _ => {}
+                },
+
+                Event::AboutToWait => {
+                    window.request_redraw();
                 }
 
                 _ => {}
-            },
-
-            Event::AboutToWait => {
-                window.request_redraw();
             }
-
-            _ => {}
-        }
-    }).expect("Event loop error");
+        })
+        .expect("Event loop error");
 }

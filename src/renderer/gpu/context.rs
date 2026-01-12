@@ -21,7 +21,8 @@ impl GpuContext {
         });
 
         // Create surface from window
-        let surface = instance.create_surface(window.clone())
+        let surface = instance
+            .create_surface(window.clone())
             .expect("Failed to create surface");
 
         // Request adapter (prefer low power for integrated graphics)
@@ -36,11 +37,7 @@ impl GpuContext {
 
         // Log adapter info
         let info = adapter.get_info();
-        tracing::info!(
-            "Using GPU: {} ({:?})",
-            info.name,
-            info.backend
-        );
+        tracing::info!("Using GPU: {} ({:?})", info.name, info.backend);
 
         // Request device with conservative limits for integrated graphics
         let (device, queue) = adapter
@@ -61,7 +58,9 @@ impl GpuContext {
         let surface_caps = surface.get_capabilities(&adapter);
 
         // Prefer sRGB format
-        let format = surface_caps.formats.iter()
+        let format = surface_caps
+            .formats
+            .iter()
             .find(|f| f.is_srgb())
             .copied()
             .unwrap_or(surface_caps.formats[0]);

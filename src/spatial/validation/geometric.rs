@@ -82,12 +82,7 @@ impl GeometricValidator {
     }
 
     /// Check if two line segments intersect (proper intersection, not touching)
-    fn segments_intersect(
-        a1: (f64, f64),
-        a2: (f64, f64),
-        b1: (f64, f64),
-        b2: (f64, f64),
-    ) -> bool {
+    fn segments_intersect(a1: (f64, f64), a2: (f64, f64), b1: (f64, f64), b2: (f64, f64)) -> bool {
         let d1 = Self::cross_product_sign(b1, b2, a1);
         let d2 = Self::cross_product_sign(b1, b2, a2);
         let d3 = Self::cross_product_sign(a1, a2, b1);

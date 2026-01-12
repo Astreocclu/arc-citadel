@@ -5,7 +5,6 @@
 //! conditionals, and function calls.
 
 use nom::{
-    IResult, Parser,
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1, char, multispace0},
@@ -13,6 +12,7 @@ use nom::{
     multi::{fold_many0, many0, separated_list0},
     number::complete::float,
     sequence::{delimited, pair, preceded},
+    IResult, Parser,
 };
 use std::collections::HashMap;
 
@@ -55,10 +55,7 @@ pub enum Expr {
         right: Box<Expr>,
     },
     /// A unary operation (e.g., -x, !condition)
-    UnaryOp {
-        op: UnaryOp,
-        operand: Box<Expr>,
-    },
+    UnaryOp { op: UnaryOp, operand: Box<Expr> },
     /// A conditional expression (if condition then true_expr else false_expr)
     Conditional {
         condition: Box<Expr>,
@@ -66,10 +63,7 @@ pub enum Expr {
         false_expr: Box<Expr>,
     },
     /// A function call (e.g., min(a, b))
-    Function {
-        name: String,
-        args: Vec<Expr>,
-    },
+    Function { name: String, args: Vec<Expr> },
 }
 
 /// Error type for expression evaluation
@@ -174,10 +168,8 @@ fn parse_function_call(input: &str) -> IResult<&str, Expr> {
     let (rest, _) = multispace0(rest)?;
     let (rest, _) = char('(').parse(rest)?;
     let (rest, _) = multispace0(rest)?;
-    let (rest, args) = separated_list0(
-        delimited(multispace0, char(','), multispace0),
-        parse_expr,
-    ).parse(rest)?;
+    let (rest, args) =
+        separated_list0(delimited(multispace0, char(','), multispace0), parse_expr).parse(rest)?;
     let (rest, _) = multispace0(rest)?;
     let (rest, _) = char(')').parse(rest)?;
     Ok((rest, Expr::Function { name, args }))
@@ -199,7 +191,8 @@ fn parse_atom(input: &str) -> IResult<&str, Expr> {
         parse_param,
         // Numeric literal
         parse_literal,
-    )).parse(input)
+    ))
+    .parse(input)
 }
 
 /// Parse unary operators: -, !
@@ -218,7 +211,8 @@ fn parse_unary(input: &str) -> IResult<&str, Expr> {
         }),
         // Or just an atom
         parse_atom,
-    )).parse(input)
+    ))
+    .parse(input)
 }
 
 /// Parse multiplicative operators: *, /, %
@@ -227,7 +221,11 @@ fn parse_factor(input: &str) -> IResult<&str, Expr> {
 
     fold_many0(
         pair(
-            delimited(multispace0, alt((char('*'), char('/'), char('%'))), multispace0),
+            delimited(
+                multispace0,
+                alt((char('*'), char('/'), char('%'))),
+                multispace0,
+            ),
             parse_unary,
         ),
         move || init.clone(),
@@ -244,7 +242,8 @@ fn parse_factor(input: &str) -> IResult<&str, Expr> {
                 right: Box::new(val),
             }
         },
-    ).parse(input)
+    )
+    .parse(input)
 }
 
 /// Parse additive operators: +, -
@@ -269,7 +268,8 @@ fn parse_term(input: &str) -> IResult<&str, Expr> {
                 right: Box::new(val),
             }
         },
-    ).parse(input)
+    )
+    .parse(input)
 }
 
 /// Parse comparison operators: >, <, >=, <=, ==, !=
@@ -298,7 +298,8 @@ fn parse_comparison(input: &str) -> IResult<&str, Expr> {
             left: Box::new(acc),
             right: Box::new(val),
         },
-    ).parse(input)
+    )
+    .parse(input)
 }
 
 /// Parse logical AND: &&
@@ -306,14 +307,18 @@ fn parse_and(input: &str) -> IResult<&str, Expr> {
     let (input, init) = parse_comparison(input)?;
 
     fold_many0(
-        preceded(delimited(multispace0, tag("&&"), multispace0), parse_comparison),
+        preceded(
+            delimited(multispace0, tag("&&"), multispace0),
+            parse_comparison,
+        ),
         move || init.clone(),
         |acc, val| Expr::BinOp {
             op: BinOp::And,
             left: Box::new(acc),
             right: Box::new(val),
         },
-    ).parse(input)
+    )
+    .parse(input)
 }
 
 /// Parse logical OR: ||
@@ -328,7 +333,8 @@ fn parse_or(input: &str) -> IResult<&str, Expr> {
             left: Box::new(acc),
             right: Box::new(val),
         },
-    ).parse(input)
+    )
+    .parse(input)
 }
 
 /// Parse conditional: condition ? true_expr : false_expr
@@ -421,9 +427,7 @@ impl Expr {
         let trimmed = input.trim();
         match parse_expr(trimmed) {
             Ok(("", expr)) => Ok(expr),
-            Ok((remaining, _)) => {
-                Err(ParseError::new(format!("Unparsed input: '{}'", remaining)))
-            }
+            Ok((remaining, _)) => Err(ParseError::new(format!("Unparsed input: '{}'", remaining))),
             Err(e) => Err(ParseError::new(format!("Parse error: {:?}", e))),
         }
     }
@@ -457,14 +461,62 @@ impl Expr {
                         }
                         l % r
                     }
-                    BinOp::Gt => if l > r { 1.0 } else { 0.0 },
-                    BinOp::Lt => if l < r { 1.0 } else { 0.0 },
-                    BinOp::Gte => if l >= r { 1.0 } else { 0.0 },
-                    BinOp::Lte => if l <= r { 1.0 } else { 0.0 },
-                    BinOp::Eq => if (l - r).abs() < f32::EPSILON { 1.0 } else { 0.0 },
-                    BinOp::Neq => if (l - r).abs() >= f32::EPSILON { 1.0 } else { 0.0 },
-                    BinOp::And => if l != 0.0 && r != 0.0 { 1.0 } else { 0.0 },
-                    BinOp::Or => if l != 0.0 || r != 0.0 { 1.0 } else { 0.0 },
+                    BinOp::Gt => {
+                        if l > r {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Lt => {
+                        if l < r {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Gte => {
+                        if l >= r {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Lte => {
+                        if l <= r {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Eq => {
+                        if (l - r).abs() < f32::EPSILON {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Neq => {
+                        if (l - r).abs() >= f32::EPSILON {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::And => {
+                        if l != 0.0 && r != 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Or => {
+                        if l != 0.0 || r != 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
                 })
             }
 
@@ -472,7 +524,13 @@ impl Expr {
                 let val = operand.evaluate(params)?;
                 Ok(match op {
                     UnaryOp::Neg => -val,
-                    UnaryOp::Not => if val == 0.0 { 1.0 } else { 0.0 },
+                    UnaryOp::Not => {
+                        if val == 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
                 })
             }
 

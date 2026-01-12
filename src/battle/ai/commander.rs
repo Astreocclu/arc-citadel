@@ -311,16 +311,18 @@ mod tests {
         // Setup armies
         let mut own_army = Army::new(ArmyId::new(), EntityId::new());
         let mut own_formation = BattleFormation::new(FormationId::new(), EntityId::new());
-        own_formation
-            .units
-            .push(create_test_unit_at(BattleHexCoord::new(5, 5), UnitStance::Formed));
+        own_formation.units.push(create_test_unit_at(
+            BattleHexCoord::new(5, 5),
+            UnitStance::Formed,
+        ));
         own_army.formations.push(own_formation);
 
         let mut enemy_army = Army::new(ArmyId::new(), EntityId::new());
         let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
-        enemy_formation
-            .units
-            .push(create_test_unit_at(BattleHexCoord::new(10, 5), UnitStance::Formed));
+        enemy_formation.units.push(create_test_unit_at(
+            BattleHexCoord::new(10, 5),
+            UnitStance::Formed,
+        ));
         enemy_army.formations.push(enemy_formation);
 
         // Full visibility (ignores fog)
@@ -349,7 +351,9 @@ mod tests {
         let mut own_formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut small_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         small_unit.position = BattleHexCoord::new(10, 10);
-        small_unit.elements.push(Element::new(vec![EntityId::new(); 20]));
+        small_unit
+            .elements
+            .push(Element::new(vec![EntityId::new(); 20]));
         small_unit.stance = UnitStance::Formed;
         own_formation.units.push(small_unit);
         own_army.formations.push(own_formation);
@@ -392,16 +396,18 @@ mod tests {
 
         let mut own_army = Army::new(ArmyId::new(), EntityId::new());
         let mut own_formation = BattleFormation::new(FormationId::new(), EntityId::new());
-        own_formation
-            .units
-            .push(create_test_unit_at(BattleHexCoord::new(5, 5), UnitStance::Formed));
+        own_formation.units.push(create_test_unit_at(
+            BattleHexCoord::new(5, 5),
+            UnitStance::Formed,
+        ));
         own_army.formations.push(own_formation);
 
         let mut enemy_army = Army::new(ArmyId::new(), EntityId::new());
         let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
-        enemy_formation
-            .units
-            .push(create_test_unit_at(BattleHexCoord::new(10, 5), UnitStance::Formed));
+        enemy_formation.units.push(create_test_unit_at(
+            BattleHexCoord::new(10, 5),
+            UnitStance::Formed,
+        ));
         enemy_army.formations.push(enemy_formation);
 
         let visibility = ArmyVisibility::new();
@@ -445,7 +451,7 @@ mod tests {
 
     #[test]
     fn test_set_phase_manager() {
-        use crate::battle::ai::phase_plans::{PhasePlan, PhaseTransition, PhasePlanManager};
+        use crate::battle::ai::phase_plans::{PhasePlan, PhasePlanManager, PhaseTransition};
 
         let personality = AiPersonality::default();
         let mut commander = AiCommander::new(personality);
@@ -476,16 +482,18 @@ mod tests {
         // Setup armies
         let mut own_army = Army::new(ArmyId::new(), EntityId::new());
         let mut own_formation = BattleFormation::new(FormationId::new(), EntityId::new());
-        own_formation
-            .units
-            .push(create_test_unit_at(BattleHexCoord::new(0, 0), UnitStance::Formed));
+        own_formation.units.push(create_test_unit_at(
+            BattleHexCoord::new(0, 0),
+            UnitStance::Formed,
+        ));
         own_army.formations.push(own_formation);
 
         let mut enemy_army = Army::new(ArmyId::new(), EntityId::new());
         let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
-        enemy_formation
-            .units
-            .push(create_test_unit_at(BattleHexCoord::new(10, 0), UnitStance::Formed));
+        enemy_formation.units.push(create_test_unit_at(
+            BattleHexCoord::new(10, 0),
+            UnitStance::Formed,
+        ));
         enemy_army.formations.push(enemy_formation);
 
         let visibility = ArmyVisibility::new();

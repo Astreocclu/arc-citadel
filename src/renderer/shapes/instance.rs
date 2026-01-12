@@ -8,26 +8,20 @@ use bytemuck::{Pod, Zeroable};
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct ShapeInstance {
     /// World position (x, y).
-    pub position: [f32; 2],   // 8 bytes
+    pub position: [f32; 2], // 8 bytes
     /// Rotation in radians.
-    pub rotation: f32,        // 4 bytes
+    pub rotation: f32, // 4 bytes
     /// Uniform scale factor.
-    pub scale: f32,           // 4 bytes
+    pub scale: f32, // 4 bytes
     /// Packed RGBA color (see Color::to_u32).
-    pub color: u32,           // 4 bytes
+    pub color: u32, // 4 bytes
     /// Shape type (0=Circle, 1=Rectangle, 2=Triangle, 3=Hexagon).
-    pub shape_type: u32,      // 4 bytes
+    pub shape_type: u32, // 4 bytes
 }
 
 impl ShapeInstance {
     /// Create a new shape instance.
-    pub fn new(
-        position: [f32; 2],
-        rotation: f32,
-        scale: f32,
-        color: u32,
-        shape_type: u32,
-    ) -> Self {
+    pub fn new(position: [f32; 2], rotation: f32, scale: f32, color: u32, shape_type: u32) -> Self {
         Self {
             position,
             rotation,

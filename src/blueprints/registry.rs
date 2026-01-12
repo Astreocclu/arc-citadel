@@ -13,7 +13,9 @@ use super::instance::{
     BlueprintInstance, CivilianProperties, EvaluatedGeometry, InstanceId, MilitaryProperties,
     PlacedBy, ResolvedAnchor,
 };
-use super::schema::{AnchorDef, Blueprint, BlueprintCategory, BlueprintId, OriginType, ParameterType};
+use super::schema::{
+    AnchorDef, Blueprint, BlueprintCategory, BlueprintId, OriginType, ParameterType,
+};
 use super::EvalError;
 
 /// Error type for blueprint operations
@@ -154,7 +156,9 @@ impl BlueprintRegistry {
 
     /// Get a blueprint by name
     pub fn get_by_name(&self, name: &str) -> Option<&Blueprint> {
-        self.by_name.get(name).and_then(|id| self.blueprints.get(id))
+        self.by_name
+            .get(name)
+            .and_then(|id| self.blueprints.get(id))
     }
 
     /// Get blueprint ID by name
@@ -223,7 +227,10 @@ impl BlueprintRegistry {
                     errors.push(constraint.error_message.clone());
                 }
                 Err(e) => {
-                    errors.push(format!("Constraint '{}' error: {}", constraint.description, e));
+                    errors.push(format!(
+                        "Constraint '{}' error: {}",
+                        constraint.description, e
+                    ));
                 }
                 _ => {}
             }
@@ -283,8 +290,7 @@ impl BlueprintRegistry {
             eval_expr_str_or(&blueprint.stats.military.movement_cost, &full_params, 1.0)?;
         let flammable =
             eval_expr_str_or(&blueprint.stats.military.flammable, &full_params, 0.0)? != 0.0;
-        let elevation =
-            eval_expr_str_or(&blueprint.stats.military.elevation, &full_params, 0.0)?;
+        let elevation = eval_expr_str_or(&blueprint.stats.military.elevation, &full_params, 0.0)?;
 
         let military = MilitaryProperties {
             max_hp,
@@ -303,11 +309,8 @@ impl BlueprintRegistry {
             &full_params,
             0.0,
         )? as u32;
-        let cart_accessible = eval_expr_str_or(
-            &blueprint.stats.civilian.cart_accessible,
-            &full_params,
-            0.0,
-        )? != 0.0;
+        let cart_accessible =
+            eval_expr_str_or(&blueprint.stats.civilian.cart_accessible, &full_params, 0.0)? != 0.0;
         let worker_capacity =
             eval_expr_str_or(&blueprint.stats.civilian.worker_capacity, &full_params, 0.0)? as u32;
         let storage_capacity = eval_expr_str_or(
@@ -670,10 +673,7 @@ mod tests {
 
         // Verify construction state (Constructed with stages = 0.0 progress)
         assert_eq!(instance.construction_progress, 0.0);
-        assert_eq!(
-            instance.construction_stage,
-            Some("foundation".to_string())
-        );
+        assert_eq!(instance.construction_stage, Some("foundation".to_string()));
 
         // HP should be 0 since construction_progress is 0
         assert_eq!(instance.current_hp, 0.0);
@@ -965,9 +965,7 @@ mod tests {
         assert!(result.is_err());
         match result {
             Err(BlueprintError::ValidationError(errors)) => {
-                assert!(errors
-                    .iter()
-                    .any(|e| e.contains("must exceed height")));
+                assert!(errors.iter().any(|e| e.contains("must exceed height")));
             }
             _ => panic!("Expected ValidationError"),
         }

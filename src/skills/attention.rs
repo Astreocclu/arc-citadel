@@ -16,9 +16,9 @@ pub fn calculate_attention_budget(fatigue: f32, pain: f32, stress: f32) -> f32 {
     let base = 1.0;
 
     // Penalties stack but multiplicatively to prevent going negative
-    let fatigue_mult = 1.0 - (fatigue * 0.3);  // Max -30%
-    let pain_mult = 1.0 - (pain * 0.4);        // Max -40%
-    let stress_mult = 1.0 - (stress * 0.2);    // Max -20%
+    let fatigue_mult = 1.0 - (fatigue * 0.3); // Max -30%
+    let pain_mult = 1.0 - (pain * 0.4); // Max -40%
+    let stress_mult = 1.0 - (stress * 0.2); // Max -20%
 
     let budget = base * fatigue_mult * pain_mult * stress_mult;
 

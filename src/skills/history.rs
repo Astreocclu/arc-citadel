@@ -199,11 +199,8 @@ pub fn generate_chunks_from_history(
             chunk_depths.insert(chunk_id, combine_encoding(existing, contribution));
 
             // Accumulate repetitions
-            let reps = estimate_repetitions(
-                experience.duration_years,
-                experience.intensity,
-                &chunk_id,
-            );
+            let reps =
+                estimate_repetitions(experience.duration_years, experience.intensity, &chunk_id);
             *chunk_reps.entry(chunk_id).or_insert(0) += reps;
         }
     }
@@ -236,11 +233,7 @@ pub fn generate_chunks_from_history(
 ///
 /// This is a convenience function for mass spawning. For important NPCs,
 /// construct history explicitly.
-pub fn generate_history_for_role(
-    role: Role,
-    age: u32,
-    rng: &mut impl Rng,
-) -> Vec<LifeExperience> {
+pub fn generate_history_for_role(role: Role, age: u32, rng: &mut impl Rng) -> Vec<LifeExperience> {
     let mut history = Vec::new();
 
     // Everyone has childhood (general life until age 12)
@@ -367,7 +360,9 @@ pub fn generate_history_for_role(
                     let battles = (post_training * rng.gen_range(0.0..0.5)) as u32;
                     if battles > 0 {
                         history.push(LifeExperience {
-                            activity: ActivityType::CombatExperience { battles_fought: battles },
+                            activity: ActivityType::CombatExperience {
+                                battles_fought: battles,
+                            },
                             duration_years: post_training,
                             intensity: 0.3, // Combat is intermittent
                             training_quality: 1.0,
@@ -770,9 +765,9 @@ pub fn get_chunks_for_activity(activity: &ActivityType) -> Vec<(ChunkId, f32)> {
             (ChunkId::KnowResearchSource, 0.3),
         ],
 
-        ActivityType::Apprenticeship { master_skill: _ } => vec![
-            (ChunkId::SocialActiveListening, 0.8),
-        ],
+        ActivityType::Apprenticeship { master_skill: _ } => {
+            vec![(ChunkId::SocialActiveListening, 0.8)]
+        }
 
         ActivityType::Research => vec![
             (ChunkId::KnowResearchSource, 1.0),
@@ -810,8 +805,12 @@ mod tests {
 
     #[test]
     fn test_military_training_variants() {
-        let infantry = ActivityType::MilitaryTraining { unit_type: UnitType::Infantry };
-        let cavalry = ActivityType::MilitaryTraining { unit_type: UnitType::Cavalry };
+        let infantry = ActivityType::MilitaryTraining {
+            unit_type: UnitType::Infantry,
+        };
+        let cavalry = ActivityType::MilitaryTraining {
+            unit_type: UnitType::Cavalry,
+        };
         assert_ne!(infantry, cavalry);
     }
 
@@ -837,46 +836,62 @@ mod tests {
     #[test]
     fn test_farming_produces_labor_chunks() {
         let chunks = get_chunks_for_activity(&ActivityType::Farming);
-        assert!(chunks.iter().any(|(id, _)| *id == ChunkId::PhysSustainedLabor));
-        assert!(chunks.iter().any(|(id, _)| *id == ChunkId::PhysHeavyLifting));
+        assert!(chunks
+            .iter()
+            .any(|(id, _)| *id == ChunkId::PhysSustainedLabor));
+        assert!(chunks
+            .iter()
+            .any(|(id, _)| *id == ChunkId::PhysHeavyLifting));
     }
 
     #[test]
     fn test_smithing_produces_craft_chunks() {
         let chunks = get_chunks_for_activity(&ActivityType::Smithing);
-        assert!(chunks.iter().any(|(id, _)| *id == ChunkId::CraftBasicHeatCycle));
-        assert!(chunks.iter().any(|(id, _)| *id == ChunkId::CraftBasicHammerWork));
+        assert!(chunks
+            .iter()
+            .any(|(id, _)| *id == ChunkId::CraftBasicHeatCycle));
+        assert!(chunks
+            .iter()
+            .any(|(id, _)| *id == ChunkId::CraftBasicHammerWork));
     }
 
     #[test]
     fn test_military_training_varies_by_unit_type() {
         let infantry = get_chunks_for_activity(&ActivityType::MilitaryTraining {
-            unit_type: UnitType::Infantry
+            unit_type: UnitType::Infantry,
         });
         let cavalry = get_chunks_for_activity(&ActivityType::MilitaryTraining {
-            unit_type: UnitType::Cavalry
+            unit_type: UnitType::Cavalry,
         });
 
-        assert!(infantry.iter().any(|(id, _)| *id == ChunkId::AttackSequence));
-        assert!(cavalry.iter().any(|(id, _)| *id == ChunkId::PhysHorseControl));
-        assert!(!infantry.iter().any(|(id, _)| *id == ChunkId::PhysHorseControl));
+        assert!(infantry
+            .iter()
+            .any(|(id, _)| *id == ChunkId::AttackSequence));
+        assert!(cavalry
+            .iter()
+            .any(|(id, _)| *id == ChunkId::PhysHorseControl));
+        assert!(!infantry
+            .iter()
+            .any(|(id, _)| *id == ChunkId::PhysHorseControl));
     }
 
     #[test]
     fn test_combat_experience_scales_with_battles() {
-        let few_battles = get_chunks_for_activity(&ActivityType::CombatExperience {
-            battles_fought: 2
-        });
-        let many_battles = get_chunks_for_activity(&ActivityType::CombatExperience {
-            battles_fought: 20
-        });
+        let few_battles =
+            get_chunks_for_activity(&ActivityType::CombatExperience { battles_fought: 2 });
+        let many_battles =
+            get_chunks_for_activity(&ActivityType::CombatExperience { battles_fought: 20 });
 
-        let few_rate = few_battles.iter()
+        let few_rate = few_battles
+            .iter()
             .find(|(id, _)| *id == ChunkId::EngageMelee)
-            .map(|(_, r)| *r).unwrap();
-        let many_rate = many_battles.iter()
+            .map(|(_, r)| *r)
+            .unwrap();
+        let many_rate = many_battles
+            .iter()
             .find(|(id, _)| *id == ChunkId::EngageMelee)
-            .map(|(_, r)| *r).unwrap();
+            .map(|(_, r)| *r)
+            .unwrap();
 
         assert!(many_rate > few_rate);
     }
@@ -953,23 +968,19 @@ mod tests {
 
     #[test]
     fn test_longer_experience_deeper_chunks() {
-        let short_history = vec![
-            LifeExperience {
-                activity: ActivityType::Smithing,
-                duration_years: 2.0,
-                intensity: 1.0,
-                training_quality: 0.7,
-            },
-        ];
+        let short_history = vec![LifeExperience {
+            activity: ActivityType::Smithing,
+            duration_years: 2.0,
+            intensity: 1.0,
+            training_quality: 0.7,
+        }];
 
-        let long_history = vec![
-            LifeExperience {
-                activity: ActivityType::Smithing,
-                duration_years: 20.0,
-                intensity: 1.0,
-                training_quality: 0.7,
-            },
-        ];
+        let long_history = vec![LifeExperience {
+            activity: ActivityType::Smithing,
+            duration_years: 20.0,
+            intensity: 1.0,
+            training_quality: 0.7,
+        }];
 
         let mut rng1 = ChaCha8Rng::seed_from_u64(42);
         let mut rng2 = ChaCha8Rng::seed_from_u64(42);
@@ -977,10 +988,14 @@ mod tests {
         let short_chunks = generate_chunks_from_history(&short_history, 0, &mut rng1);
         let long_chunks = generate_chunks_from_history(&long_history, 0, &mut rng2);
 
-        let short_depth = short_chunks.get_chunk(ChunkId::CraftBasicHammerWork)
-            .unwrap().encoding_depth;
-        let long_depth = long_chunks.get_chunk(ChunkId::CraftBasicHammerWork)
-            .unwrap().encoding_depth;
+        let short_depth = short_chunks
+            .get_chunk(ChunkId::CraftBasicHammerWork)
+            .unwrap()
+            .encoding_depth;
+        let long_depth = long_chunks
+            .get_chunk(ChunkId::CraftBasicHammerWork)
+            .unwrap()
+            .encoding_depth;
 
         assert!(long_depth > short_depth + 0.1);
     }
@@ -995,7 +1010,9 @@ mod tests {
                 training_quality: 0.5,
             },
             LifeExperience {
-                activity: ActivityType::MilitaryTraining { unit_type: UnitType::Infantry },
+                activity: ActivityType::MilitaryTraining {
+                    unit_type: UnitType::Infantry,
+                },
                 duration_years: 3.0,
                 intensity: 1.0,
                 training_quality: 0.7,
@@ -1016,8 +1033,12 @@ mod tests {
         let history = generate_history_for_role(Role::Farmer, 30, &mut rng);
 
         // Should have general life and farming
-        assert!(history.iter().any(|e| matches!(e.activity, ActivityType::GeneralLife)));
-        assert!(history.iter().any(|e| matches!(e.activity, ActivityType::Farming)));
+        assert!(history
+            .iter()
+            .any(|e| matches!(e.activity, ActivityType::GeneralLife)));
+        assert!(history
+            .iter()
+            .any(|e| matches!(e.activity, ActivityType::Farming)));
     }
 
     #[test]
@@ -1026,10 +1047,9 @@ mod tests {
         let history = generate_history_for_role(Role::Soldier, 30, &mut rng);
 
         // Should have military training
-        assert!(history.iter().any(|e| matches!(
-            e.activity,
-            ActivityType::MilitaryTraining { .. }
-        )));
+        assert!(history
+            .iter()
+            .any(|e| matches!(e.activity, ActivityType::MilitaryTraining { .. })));
     }
 
     #[test]
@@ -1053,10 +1073,14 @@ mod tests {
         let young_chunks = generate_chunks_from_history(&young_history, 0, &mut rng1);
         let old_chunks = generate_chunks_from_history(&old_history, 0, &mut rng2);
 
-        let young_farming = young_chunks.get_chunk(ChunkId::PhysSustainedLabor)
-            .unwrap().encoding_depth;
-        let old_farming = old_chunks.get_chunk(ChunkId::PhysSustainedLabor)
-            .unwrap().encoding_depth;
+        let young_farming = young_chunks
+            .get_chunk(ChunkId::PhysSustainedLabor)
+            .unwrap()
+            .encoding_depth;
+        let old_farming = old_chunks
+            .get_chunk(ChunkId::PhysSustainedLabor)
+            .unwrap()
+            .encoding_depth;
 
         assert!(old_farming > young_farming);
     }

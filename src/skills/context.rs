@@ -99,8 +99,7 @@ mod tests {
 
     #[test]
     fn test_match_quality_partial() {
-        let ctx = CombatContext::new()
-            .with_tag(ContextTag::InMelee);
+        let ctx = CombatContext::new().with_tag(ContextTag::InMelee);
 
         let reqs = &[ContextTag::InMelee, ContextTag::HasSword];
         assert_eq!(ctx.match_quality(reqs), 0.5);

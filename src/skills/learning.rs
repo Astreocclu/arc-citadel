@@ -3,7 +3,9 @@
 //! Entities develop chunks through practice. Encoding depth increases
 //! logarithmically with repetitions. Unused chunks rust over time.
 
-use crate::skills::{get_chunk_definition, ChunkId, ChunkLibrary, PersonalChunkState, CHUNK_LIBRARY};
+use crate::skills::{
+    get_chunk_definition, ChunkId, ChunkLibrary, PersonalChunkState, CHUNK_LIBRARY,
+};
 
 /// Learning rate constant (higher = faster learning)
 const LEARNING_RATE: f32 = 0.01;
@@ -72,7 +74,9 @@ fn check_chunk_formation(library: &mut ChunkLibrary, chunk_id: ChunkId, tick: u6
 
     // Check all prerequisites met with sufficient depth
     let prereqs_met = def.prerequisite_chunks.iter().all(|prereq| {
-        library.get_chunk(*prereq).map_or(false, |s| s.encoding_depth > 0.3)
+        library
+            .get_chunk(*prereq)
+            .map_or(false, |s| s.encoding_depth > 0.3)
     });
 
     if prereqs_met {
@@ -144,12 +148,15 @@ mod tests {
         // Use consistent values: encoding_depth should match what calculate_encoding_depth(100) returns
         let initial_reps = 100;
         let initial_depth = calculate_encoding_depth(initial_reps);
-        lib.set_chunk(ChunkId::BasicSwing, PersonalChunkState {
-            encoding_depth: initial_depth,
-            repetition_count: initial_reps,
-            last_used_tick: 0,
-            formation_tick: 0,
-        });
+        lib.set_chunk(
+            ChunkId::BasicSwing,
+            PersonalChunkState {
+                encoding_depth: initial_depth,
+                repetition_count: initial_reps,
+                last_used_tick: 0,
+                formation_tick: 0,
+            },
+        );
 
         let old_depth = lib.get_chunk(ChunkId::BasicSwing).unwrap().encoding_depth;
 
@@ -170,18 +177,24 @@ mod tests {
         let mut lib = ChunkLibrary::new();
 
         // Add prerequisites with sufficient depth
-        lib.set_chunk(ChunkId::BasicStance, PersonalChunkState {
-            encoding_depth: 0.5,
-            repetition_count: 50,
-            last_used_tick: 0,
-            formation_tick: 0,
-        });
-        lib.set_chunk(ChunkId::BasicSwing, PersonalChunkState {
-            encoding_depth: 0.5,
-            repetition_count: 50,
-            last_used_tick: 0,
-            formation_tick: 0,
-        });
+        lib.set_chunk(
+            ChunkId::BasicStance,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 50,
+                last_used_tick: 0,
+                formation_tick: 0,
+            },
+        );
+        lib.set_chunk(
+            ChunkId::BasicSwing,
+            PersonalChunkState {
+                encoding_depth: 0.5,
+                repetition_count: 50,
+                last_used_tick: 0,
+                formation_tick: 0,
+            },
+        );
 
         // Should not have AttackSequence yet
         assert!(!lib.has_chunk(ChunkId::AttackSequence));
@@ -195,12 +208,15 @@ mod tests {
     #[test]
     fn test_rust_decay() {
         let mut lib = ChunkLibrary::new();
-        lib.set_chunk(ChunkId::BasicSwing, PersonalChunkState {
-            encoding_depth: 0.8,
-            repetition_count: 200,
-            last_used_tick: 0,
-            formation_tick: 0,
-        });
+        lib.set_chunk(
+            ChunkId::BasicSwing,
+            PersonalChunkState {
+                encoding_depth: 0.8,
+                repetition_count: 200,
+                last_used_tick: 0,
+                formation_tick: 0,
+            },
+        );
 
         // Advance time past rust threshold
         process_learning(&mut lib, RUST_THRESHOLD + 5000);

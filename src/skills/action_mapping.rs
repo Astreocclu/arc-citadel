@@ -21,10 +21,23 @@ pub fn get_chunks_for_action(action: ActionId) -> &'static [ChunkId] {
         ActionId::Rest | ActionId::Eat | ActionId::SeekSafety => &[],
 
         // === WORK ===
-        ActionId::Build => &[ChunkId::PhysSustainedLabor, ChunkId::CraftBasicMeasure],
-        ActionId::Craft => &[ChunkId::CraftBasicMeasure, ChunkId::CraftBasicCut],
+        // Build/Craft/Repair include multiple chunks so specialists outperform generalists
+        // Peasants have: PhysSustainedLabor, CraftBasicCut
+        // Laborers also have: CraftBasicMeasure, CraftBasicJoin
+        // Craftsmen have all at higher levels
+        ActionId::Build => &[
+            ChunkId::PhysSustainedLabor,
+            ChunkId::CraftBasicMeasure,
+            ChunkId::CraftBasicCut,
+            ChunkId::CraftBasicJoin,
+        ],
+        ActionId::Craft => &[
+            ChunkId::CraftBasicMeasure,
+            ChunkId::CraftBasicCut,
+            ChunkId::CraftBasicJoin,
+        ],
         ActionId::Gather => &[ChunkId::PhysSustainedLabor],
-        ActionId::Repair => &[ChunkId::CraftBasicMeasure],
+        ActionId::Repair => &[ChunkId::CraftBasicMeasure, ChunkId::CraftBasicCut],
 
         // === SOCIAL ===
         ActionId::TalkTo => &[ChunkId::SocialActiveListening, ChunkId::SocialBuildRapport],

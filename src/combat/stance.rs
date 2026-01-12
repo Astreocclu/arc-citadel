@@ -172,11 +172,13 @@ mod tests {
         let transitions = StanceTransitions::new();
 
         // Critical head wound -> Broken
-        let stance = transitions.apply(CombatStance::Pressing, TransitionTrigger::CriticalWoundHead);
+        let stance =
+            transitions.apply(CombatStance::Pressing, TransitionTrigger::CriticalWoundHead);
         assert_eq!(stance, CombatStance::Broken);
 
         // Critical torso wound -> Broken
-        let stance = transitions.apply(CombatStance::Neutral, TransitionTrigger::CriticalWoundTorso);
+        let stance =
+            transitions.apply(CombatStance::Neutral, TransitionTrigger::CriticalWoundTorso);
         assert_eq!(stance, CombatStance::Broken);
 
         // Morale break -> Broken
@@ -184,8 +186,10 @@ mod tests {
         assert_eq!(stance, CombatStance::Broken);
 
         // Wound threshold exceeded -> Broken
-        let stance =
-            transitions.apply(CombatStance::Recovering, TransitionTrigger::WoundThresholdExceeded);
+        let stance = transitions.apply(
+            CombatStance::Recovering,
+            TransitionTrigger::WoundThresholdExceeded,
+        );
         assert_eq!(stance, CombatStance::Broken);
     }
 }

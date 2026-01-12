@@ -574,7 +574,13 @@ mod tests {
         let unit_positions = vec![(target_unit_id, waypoint_position)];
 
         // Should NOT be waiting anymore
-        assert!(!is_waiting_with_context(&plan, 0, &unit_positions, &[], &[]));
+        assert!(!is_waiting_with_context(
+            &plan,
+            0,
+            &unit_positions,
+            &[],
+            &[]
+        ));
     }
 
     #[test]
@@ -654,9 +660,10 @@ mod tests {
     #[test]
     fn test_no_wait_condition_with_context() {
         let mut plan = WaypointPlan::new(UnitId::new());
-        plan.add_waypoint(
-            Waypoint::new(BattleHexCoord::new(0, 0), WaypointBehavior::HoldAt),
-        );
+        plan.add_waypoint(Waypoint::new(
+            BattleHexCoord::new(0, 0),
+            WaypointBehavior::HoldAt,
+        ));
 
         // No wait condition - should not be waiting
         assert!(!is_waiting_with_context(&plan, 0, &[], &[], &[]));

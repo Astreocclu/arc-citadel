@@ -1632,10 +1632,7 @@ pub static CHUNK_LIBRARY: &[ChunkDefinition] = &[
         id: ChunkId::PhysRockClimbing,
         name: "Rock Climbing",
         level: 2,
-        components: ChunkComponents::Composite(&[
-            ChunkId::PhysClimbGrip,
-            ChunkId::PhysPowerStance,
-        ]),
+        components: ChunkComponents::Composite(&[ChunkId::PhysClimbGrip, ChunkId::PhysPowerStance]),
         context_requirements: &[],
         prerequisite_chunks: &[ChunkId::PhysClimbGrip, ChunkId::PhysPowerStance],
         base_repetitions: 50,

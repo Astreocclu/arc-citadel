@@ -159,7 +159,10 @@ impl std::fmt::Debug for BattleState {
             .field("active_combats", &self.active_combats)
             .field("routing_units", &self.routing_units)
             .field("battle_log", &self.battle_log)
-            .field("enemy_ai", &self.enemy_ai.as_ref().map(|_| "<AI Controller>"))
+            .field(
+                "enemy_ai",
+                &self.enemy_ai.as_ref().map(|_| "<AI Controller>"),
+            )
             .finish()
     }
 }
@@ -331,13 +334,12 @@ impl BattleState {
                 crate::battle::courier::OrderTarget::Unit(unit_id) => {
                     self.enemy_army.get_unit(*unit_id).map(|u| u.position)
                 }
-                crate::battle::courier::OrderTarget::Formation(formation_id) => {
-                    self.enemy_army
-                        .formations
-                        .iter()
-                        .find(|f| f.id == *formation_id)
-                        .and_then(|f| f.commander_position())
-                }
+                crate::battle::courier::OrderTarget::Formation(formation_id) => self
+                    .enemy_army
+                    .formations
+                    .iter()
+                    .find(|f| f.id == *formation_id)
+                    .and_then(|f| f.commander_position()),
             };
 
             if let Some(dest) = destination {
@@ -590,9 +592,19 @@ impl BattleState {
                     }
                 }
                 crate::battle::courier::OrderTarget::Formation(formation_id) => {
-                    if self.friendly_army.formations.iter().any(|f| f.id == *formation_id) {
+                    if self
+                        .friendly_army
+                        .formations
+                        .iter()
+                        .any(|f| f.id == *formation_id)
+                    {
                         apply_order(order, &mut self.friendly_army, &mut self.friendly_plan);
-                    } else if self.enemy_army.formations.iter().any(|f| f.id == *formation_id) {
+                    } else if self
+                        .enemy_army
+                        .formations
+                        .iter()
+                        .any(|f| f.id == *formation_id)
+                    {
                         apply_order(order, &mut self.enemy_army, &mut self.enemy_plan);
                     }
                 }
@@ -1101,7 +1113,9 @@ mod tests {
         let mut enemy = Army::new(ArmyId::new(), EntityId::new());
         let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        enemy_unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        enemy_unit
+            .elements
+            .push(Element::new(vec![EntityId::new(); 50]));
         enemy_unit.position = BattleHexCoord::new(15, 15); // Far from friendly unit
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);
@@ -1119,7 +1133,11 @@ mod tests {
         );
 
         // Verify courier was dispatched
-        assert_eq!(state.courier_system.in_flight.len(), 1, "Courier should be in flight");
+        assert_eq!(
+            state.courier_system.in_flight.len(),
+            1,
+            "Courier should be in flight"
+        );
 
         // Run multiple ticks - COURIER_SPEED is 0.30, so we need ~4 ticks for courier to arrive
         // (progress needs to reach 1.0 to drain the single-element path)
@@ -1133,7 +1151,10 @@ mod tests {
 
         // Check that waypoint plan was created by the order application
         let wp_plan = state.friendly_plan.get_waypoint_plan(unit_id);
-        assert!(wp_plan.is_some(), "Waypoint plan should be created after courier arrives");
+        assert!(
+            wp_plan.is_some(),
+            "Waypoint plan should be created after courier arrives"
+        );
         assert_eq!(wp_plan.unwrap().waypoints[0].position, destination);
     }
 
@@ -1310,14 +1331,18 @@ mod tests {
 
         // Enemy patrol unit capable of courier interception
         let mut enemy_patrol = BattleUnit::new(UnitId::new(), UnitType::LightCavalry);
-        enemy_patrol.elements.push(Element::new(vec![EntityId::new(); 20]));
+        enemy_patrol
+            .elements
+            .push(Element::new(vec![EntityId::new(); 20]));
         enemy_patrol.position = BattleHexCoord::new(15, 15); // In patrol area
         enemy_patrol.stance = UnitStance::Patrol; // Can intercept couriers
         enemy_formation.units.push(enemy_patrol);
 
         // Enemy unit far away (to prevent instant battle end)
         let mut enemy_distant = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        enemy_distant.elements.push(Element::new(vec![EntityId::new(); 50]));
+        enemy_distant
+            .elements
+            .push(Element::new(vec![EntityId::new(); 50]));
         enemy_distant.position = BattleHexCoord::new(25, 25);
         enemy_distant.stance = UnitStance::Formed;
         enemy_formation.units.push(enemy_distant);
@@ -1392,8 +1417,8 @@ mod tests {
         state.courier_system.dispatch(
             EntityId::new(),
             Order::move_to(unit3_id, courier_destination),
-            BattleHexCoord::new(0, 0),  // Source
-            BattleHexCoord::new(0, 0),  // Same position = fast delivery
+            BattleHexCoord::new(0, 0), // Source
+            BattleHexCoord::new(0, 0), // Same position = fast delivery
         );
 
         // ===== TRACKING VARIABLES =====
@@ -1561,7 +1586,9 @@ mod tests {
         let mut enemy = Army::new(ArmyId::new(), EntityId::new());
         let mut enemy_formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        enemy_unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        enemy_unit
+            .elements
+            .push(Element::new(vec![EntityId::new(); 50]));
         enemy_unit.position = BattleHexCoord::new(15, 15);
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);

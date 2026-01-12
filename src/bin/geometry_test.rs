@@ -48,7 +48,11 @@ fn parse_args() -> Args {
         i += 1;
     }
 
-    Args { model, output, prompt_file }
+    Args {
+        model,
+        output,
+        prompt_file,
+    }
 }
 
 const DEFAULT_PROMPT: &str = r#"Generate geometry components for a tactical strategy game. Output valid JSON matching the schemas exactly.
@@ -89,10 +93,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = LlmClient::from_env()?;
 
     println!("\nSending generation request to LLM...");
-    let response = client.complete(
-        "You are a geometry generator for a tactical strategy game. Output only valid JSON.",
-        &prompt,
-    ).await?;
+    let response = client
+        .complete(
+            "You are a geometry generator for a tactical strategy game. Output only valid JSON.",
+            &prompt,
+        )
+        .await?;
 
     println!("Received response ({} chars)", response.len());
 
@@ -125,11 +131,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Helper to process validation report
     let mut process_report = |id: &str, report: ValidationReport| {
         total += 1;
-        if report.passed_geometric { passed_geometric += 1; }
-        if report.passed_tactical { passed_tactical += 1; }
-        if report.passed_connection { passed_connection += 1; }
-        if report.passed_physical { passed_physical += 1; }
-        if report.passed_civilian { passed_civilian += 1; }
+        if report.passed_geometric {
+            passed_geometric += 1;
+        }
+        if report.passed_tactical {
+            passed_tactical += 1;
+        }
+        if report.passed_connection {
+            passed_connection += 1;
+        }
+        if report.passed_physical {
+            passed_physical += 1;
+        }
+        if report.passed_civilian {
+            passed_civilian += 1;
+        }
         if !report.is_valid {
             failed.push(FailedComponent {
                 id: id.to_string(),
@@ -152,7 +168,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Validate trenches
     for trench in &result.trenches {
-        let report = CompositeValidator::validate_component(&Component::TrenchSegment(trench.clone()));
+        let report =
+            CompositeValidator::validate_component(&Component::TrenchSegment(trench.clone()));
         process_report(&trench.variant_id, report);
     }
 
@@ -164,7 +181,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Validate streets
     for street in &result.street_segments {
-        let report = CompositeValidator::validate_component(&Component::StreetSegment(street.clone()));
+        let report =
+            CompositeValidator::validate_component(&Component::StreetSegment(street.clone()));
         process_report(&street.variant_id, report);
     }
 
@@ -204,11 +222,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Print summary
     println!("\n=== Validation Results ===");
     println!("Total components: {}", total);
-    println!("Passed geometric: {} ({:.1}%)", passed_geometric, 100.0 * passed_geometric as f64 / total as f64);
-    println!("Passed tactical:  {} ({:.1}%)", passed_tactical, 100.0 * passed_tactical as f64 / total as f64);
-    println!("Passed connection: {} ({:.1}%)", passed_connection, 100.0 * passed_connection as f64 / total as f64);
-    println!("Passed physical:  {} ({:.1}%)", passed_physical, 100.0 * passed_physical as f64 / total as f64);
-    println!("Passed civilian:  {} ({:.1}%)", passed_civilian, 100.0 * passed_civilian as f64 / total as f64);
+    println!(
+        "Passed geometric: {} ({:.1}%)",
+        passed_geometric,
+        100.0 * passed_geometric as f64 / total as f64
+    );
+    println!(
+        "Passed tactical:  {} ({:.1}%)",
+        passed_tactical,
+        100.0 * passed_tactical as f64 / total as f64
+    );
+    println!(
+        "Passed connection: {} ({:.1}%)",
+        passed_connection,
+        100.0 * passed_connection as f64 / total as f64
+    );
+    println!(
+        "Passed physical:  {} ({:.1}%)",
+        passed_physical,
+        100.0 * passed_physical as f64 / total as f64
+    );
+    println!(
+        "Passed civilian:  {} ({:.1}%)",
+        passed_civilian,
+        100.0 * passed_civilian as f64 / total as f64
+    );
 
     let _all_passed = final_results.failed_components.is_empty();
     let pass_rate = if total > 0 {

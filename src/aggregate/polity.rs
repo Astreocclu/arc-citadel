@@ -69,11 +69,11 @@ pub enum PolityType {
 /// How this polity was founded - immutable formative context
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FoundingConditions {
-    pub terrain_harshness: f32,   // 0.0-1.0: how difficult the environment was
-    pub initial_isolation: f32,   // 0.0-1.0: how cut off from others
+    pub terrain_harshness: f32, // 0.0-1.0: how difficult the environment was
+    pub initial_isolation: f32, // 0.0-1.0: how cut off from others
     pub founding_context: FoundingType,
-    pub neighbor_pressure: f32,   // 0.0-1.0: threat level at founding
-    pub resource_scarcity: f32,   // 0.0-1.0: how scarce resources were
+    pub neighbor_pressure: f32, // 0.0-1.0: threat level at founding
+    pub resource_scarcity: f32, // 0.0-1.0: how scarce resources were
 }
 
 impl Default for FoundingConditions {
@@ -91,12 +91,12 @@ impl Default for FoundingConditions {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub enum FoundingType {
     #[default]
-    Organic,    // Natural growth from settlement
-    Refugee,    // Fled from disaster/conquest
-    Colony,     // Deliberate expansion from parent
-    Conquest,   // Founded by military victory
-    Religious,  // Founded around sacred site/mission
-    Exile,      // Outcasts forming new society
+    Organic, // Natural growth from settlement
+    Refugee,   // Fled from disaster/conquest
+    Colony,    // Deliberate expansion from parent
+    Conquest,  // Founded by military victory
+    Religious, // Founded around sacred site/mission
+    Exile,     // Outcasts forming new society
 }
 
 /// Cultural drift from species baseline - species-specific value emphasis
@@ -118,39 +118,39 @@ impl Default for CulturalDrift {
 /// Human cultural drift - emphasis within human value vocabulary
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct HumanCulturalDrift {
-    pub martial_tradition: f32,    // -0.5 to 0.5: emphasis on military
-    pub merchant_culture: f32,     // -0.5 to 0.5: emphasis on trade
-    pub piety_emphasis: f32,       // -0.5 to 0.5: emphasis on religion
-    pub expansionist_drive: f32,   // -0.5 to 0.5: emphasis on growth
-    pub honor_culture: f32,        // -0.5 to 0.5: emphasis on reputation
+    pub martial_tradition: f32,  // -0.5 to 0.5: emphasis on military
+    pub merchant_culture: f32,   // -0.5 to 0.5: emphasis on trade
+    pub piety_emphasis: f32,     // -0.5 to 0.5: emphasis on religion
+    pub expansionist_drive: f32, // -0.5 to 0.5: emphasis on growth
+    pub honor_culture: f32,      // -0.5 to 0.5: emphasis on reputation
 }
 
 /// Dwarf cultural drift - emphasis within dwarf value vocabulary
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct DwarfCulturalDrift {
-    pub grudge_threshold: f32,     // -0.5 to 0.5: quicker/slower to take offense
-    pub craft_pride: f32,          // -0.5 to 0.5: emphasis on craftsmanship
-    pub hold_loyalty: f32,         // -0.5 to 0.5: attachment to home
-    pub stone_debt: f32,           // -0.5 to 0.5: obligation to ancestral sites
-    pub ancestor_weight: f32,      // -0.5 to 0.5: importance of tradition
+    pub grudge_threshold: f32, // -0.5 to 0.5: quicker/slower to take offense
+    pub craft_pride: f32,      // -0.5 to 0.5: emphasis on craftsmanship
+    pub hold_loyalty: f32,     // -0.5 to 0.5: attachment to home
+    pub stone_debt: f32,       // -0.5 to 0.5: obligation to ancestral sites
+    pub ancestor_weight: f32,  // -0.5 to 0.5: importance of tradition
 }
 
 /// Elf cultural drift - emphasis within elf value vocabulary
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ElfCulturalDrift {
-    pub memory_weight: f32,        // -0.5 to 0.5: how much past defines present
-    pub change_tolerance: f32,     // -0.5 to 0.5: acceptance of change
-    pub forest_attachment: f32,    // -0.5 to 0.5: bond to natural territory
-    pub mortal_patience: f32,      // -0.5 to 0.5: tolerance of shorter-lived species
-    pub pattern_focus: f32,        // -0.5 to 0.5: attention to historical cycles
+    pub memory_weight: f32,     // -0.5 to 0.5: how much past defines present
+    pub change_tolerance: f32,  // -0.5 to 0.5: acceptance of change
+    pub forest_attachment: f32, // -0.5 to 0.5: bond to natural territory
+    pub mortal_patience: f32,   // -0.5 to 0.5: tolerance of shorter-lived species
+    pub pattern_focus: f32,     // -0.5 to 0.5: attention to historical cycles
 }
 
 /// Generic drift for species without specific cultural dimensions
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GenericCulturalDrift {
-    pub aggression: f32,           // -0.5 to 0.5
-    pub isolationism: f32,         // -0.5 to 0.5
-    pub traditionalism: f32,       // -0.5 to 0.5
+    pub aggression: f32,     // -0.5 to 0.5
+    pub isolationism: f32,   // -0.5 to 0.5
+    pub traditionalism: f32, // -0.5 to 0.5
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

@@ -2,8 +2,7 @@
 
 use arc_citadel::actions::catalog::ActionId;
 use arc_citadel::skills::{
-    generate_chunks_from_history, generate_history_for_role,
-    skill_check, spend_attention,
+    generate_chunks_from_history, generate_history_for_role, skill_check, spend_attention,
     ActivityType, CraftSpecialty, LifeExperience, Role,
 };
 use rand::SeedableRng;
@@ -32,11 +31,8 @@ fn test_carpenter_builds_better_than_farmer() {
     farmer.attention_budget = 1.0;
 
     let mut rng = ChaCha8Rng::seed_from_u64(42);
-    let carpenter_history = generate_history_for_role(
-        Role::Craftsman(CraftSpecialty::Carpentry),
-        30,
-        &mut rng,
-    );
+    let carpenter_history =
+        generate_history_for_role(Role::Craftsman(CraftSpecialty::Carpentry), 30, &mut rng);
     let mut carpenter = generate_chunks_from_history(&carpenter_history, 0, &mut rng);
     carpenter.attention_budget = 1.0;
 
@@ -190,8 +186,5 @@ fn test_chunking_affects_actions() {
 
     spend_attention(&mut library, result.attention_cost);
 
-    assert!(
-        library.attention_spent > 0.0,
-        "Should have spent attention"
-    );
+    assert!(library.attention_spent > 0.0, "Should have spent attention");
 }

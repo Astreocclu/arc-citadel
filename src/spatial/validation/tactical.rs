@@ -11,7 +11,9 @@ impl TacticalValidator {
         let mut errors = Vec::new();
 
         if positions.is_empty() {
-            errors.push(ValidationError::FiringArcGap { missing_degrees: 360.0 });
+            errors.push(ValidationError::FiringArcGap {
+                missing_degrees: 360.0,
+            });
             return errors;
         }
 
@@ -87,7 +89,10 @@ impl TacticalValidator {
     }
 
     /// Validate chokepoint width (should be < 8m for tactical advantage)
-    pub fn validate_chokepoint_width(width: f32, is_marked_chokepoint: bool) -> Vec<ValidationError> {
+    pub fn validate_chokepoint_width(
+        width: f32,
+        is_marked_chokepoint: bool,
+    ) -> Vec<ValidationError> {
         let mut errors = Vec::new();
 
         if is_marked_chokepoint && width >= 8.0 {
@@ -103,7 +108,7 @@ impl TacticalValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::spatial::geometry_schema::{FiringArc, CoverLevel};
+    use crate::spatial::geometry_schema::{CoverLevel, FiringArc};
 
     #[test]
     fn test_interval_merging() {
@@ -116,19 +121,17 @@ mod tests {
     #[test]
     fn test_wraparound_arc() {
         // Arc centered at 0 (north) with 90 width: covers 315-45
-        let intervals = TacticalValidator::arcs_to_intervals(&[
-            FiringPosition {
-                id: "north".into(),
-                position: [0.0, 0.0, 0.0],
-                firing_arc: FiringArc {
-                    center_angle: 0.0,
-                    arc_width: 90.0,
-                },
-                elevation: 8.0,
-                cover_value: CoverLevel::Full,
-                capacity: 1,
-            }
-        ]);
+        let intervals = TacticalValidator::arcs_to_intervals(&[FiringPosition {
+            id: "north".into(),
+            position: [0.0, 0.0, 0.0],
+            firing_arc: FiringArc {
+                center_angle: 0.0,
+                arc_width: 90.0,
+            },
+            elevation: 8.0,
+            cover_value: CoverLevel::Full,
+            capacity: 1,
+        }]);
         // Should produce two intervals: [315, 360) and [0, 45)
         assert_eq!(intervals.len(), 2);
     }

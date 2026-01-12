@@ -299,7 +299,10 @@ fn test_full_blueprint_lifecycle() {
     );
 
     // HP calculated correctly: length * height * 80 = 10 * 2.5 * 80 = 2000
-    assert_eq!(wall.max_hp, 2000.0, "Wall max HP should be length * height * 80");
+    assert_eq!(
+        wall.max_hp, 2000.0,
+        "Wall max HP should be length * height * 80"
+    );
     // Current HP is 0 at 0% construction progress
     assert_eq!(
         wall.current_hp, 0.0,
@@ -309,9 +312,17 @@ fn test_full_blueprint_lifecycle() {
     // Check material requirements
     let materials = get_required_materials(&wall_blueprint, &wall_params);
     // stone = length * height * 10 = 10 * 2.5 * 10 = 250
-    assert_eq!(materials.get("stone"), Some(&250), "Stone cost should be 250");
+    assert_eq!(
+        materials.get("stone"),
+        Some(&250),
+        "Stone cost should be 250"
+    );
     // mortar = length * height * 2 = 10 * 2.5 * 2 = 50
-    assert_eq!(materials.get("mortar"), Some(&50), "Mortar cost should be 50");
+    assert_eq!(
+        materials.get("mortar"),
+        Some(&50),
+        "Mortar cost should be 50"
+    );
 
     // Check labor cap: ceil(length / 2) = ceil(10 / 2) = 5
     let labor_cap = get_labor_cap(&wall_blueprint, &wall_params);
@@ -353,12 +364,7 @@ fn test_full_blueprint_lifecycle() {
 
     // Apply damage to wall
     // Wall has 2000 HP, damage to 60% (damage 800 HP, leaving 1200)
-    let result = apply_damage(
-        &mut wall,
-        800.0,
-        Vec2::new(55.0, 50.0),
-        &wall_blueprint,
-    );
+    let result = apply_damage(&mut wall, 800.0, Vec2::new(55.0, 50.0), &wall_blueprint);
 
     // At 60% HP (above 0.5 threshold), should be "damaged" state
     assert_eq!(
@@ -374,12 +380,7 @@ fn test_full_blueprint_lifecycle() {
     assert!(result.new_breach.is_none(), "No breach at damaged state");
 
     // Damage to 30% (damage another 600 HP, leaving 600)
-    let result = apply_damage(
-        &mut wall,
-        600.0,
-        Vec2::new(55.0, 50.0),
-        &wall_blueprint,
-    );
+    let result = apply_damage(&mut wall, 600.0, Vec2::new(55.0, 50.0), &wall_blueprint);
 
     // At 30% HP (above 0.25 threshold), should be "breached" state
     assert_eq!(
@@ -436,22 +437,14 @@ fn test_full_blueprint_lifecycle() {
 
     // Damage tree to fallen state (damage enough to get below 25% HP)
     // Below 25% = below 75 HP, so damage at least 225 HP
-    let result = apply_damage(
-        &mut damaged_tree,
-        250.0,
-        Vec2::ZERO,
-        &tree_blueprint,
-    );
+    let result = apply_damage(&mut damaged_tree, 250.0, Vec2::ZERO, &tree_blueprint);
 
     // At ~16.7% HP, should be in "fallen" state
     assert_eq!(
         damaged_tree.damage_state, "fallen",
         "Tree should be in fallen state"
     );
-    assert!(
-        result.rubble_produced,
-        "Fallen tree should produce rubble"
-    );
+    assert!(result.rubble_produced, "Fallen tree should produce rubble");
 
     // Verify blocks_movement override - fallen tree no longer blocks
     assert!(
@@ -536,9 +529,17 @@ fn test_unified_spatial_concept() {
     );
 
     // Tree has circular footprint (16 vertices)
-    assert_eq!(tree.geometry.footprint.len(), 16, "Tree has circle footprint");
+    assert_eq!(
+        tree.geometry.footprint.len(),
+        16,
+        "Tree has circle footprint"
+    );
     // Wall has rectangular footprint (4 vertices)
-    assert_eq!(wall.geometry.footprint.len(), 4, "Wall has rectangle footprint");
+    assert_eq!(
+        wall.geometry.footprint.len(),
+        4,
+        "Wall has rectangle footprint"
+    );
 
     // ========================================
     // Same interface for provenance tracking
@@ -610,7 +611,10 @@ fn test_load_from_directory_if_available() {
         assert!(loaded.is_ok(), "Directory loading should succeed");
 
         let ids = loaded.unwrap();
-        assert!(ids.len() >= 2, "Should load at least oak_tree and stone_wall");
+        assert!(
+            ids.len() >= 2,
+            "Should load at least oak_tree and stone_wall"
+        );
 
         // Verify specific blueprints
         assert!(
@@ -681,14 +685,7 @@ fn test_anchors() {
     params.insert("thickness".to_string(), 0.6);
 
     let wall = registry
-        .instantiate(
-            wall_id,
-            params,
-            Vec2::ZERO,
-            0.0,
-            PlacedBy::TerrainGen,
-            None,
-        )
+        .instantiate(wall_id, params, Vec2::ZERO, 0.0, PlacedBy::TerrainGen, None)
         .unwrap();
 
     // Wall should have anchors
