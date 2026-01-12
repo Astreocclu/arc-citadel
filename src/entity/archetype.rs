@@ -1,8 +1,17 @@
 //! Entity archetype definitions for spawn loadout generation
+//!
+//! DEPRECATED: Use Role and LifeExperience from skills::history instead.
+//! This module is kept for backwards compatibility but will be removed.
 
 use serde::{Deserialize, Serialize};
 
 /// High-level entity role determining spawn chunk loadout
+///
+/// DEPRECATED: Use `skills::Role` with `generate_history_for_role()` instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use skills::Role with generate_history_for_role() instead"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EntityArchetype {
     /// Rural farmer/villager - basic physical labor, no specialization
@@ -24,6 +33,9 @@ pub enum EntityArchetype {
 }
 
 /// Craft specialization for craftsmen
+///
+/// DEPRECATED: Use `skills::CraftSpecialty` instead.
+#[deprecated(since = "0.2.0", note = "Use skills::CraftSpecialty instead")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CraftSpecialty {
     Smithing,
@@ -35,6 +47,12 @@ pub enum CraftSpecialty {
 }
 
 /// Military training level
+///
+/// DEPRECATED: Use explicit combat experience in LifeExperience instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use ActivityType::CombatExperience { battles_fought } instead"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TrainingLevel {
     /// Farmers with spears
