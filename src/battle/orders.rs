@@ -3,11 +3,10 @@
 //! Translates courier-delivered orders into waypoint plan modifications.
 
 use crate::battle::courier::{Order, OrderTarget, OrderType};
-use crate::battle::hex::BattleHexCoord;
 use crate::battle::planning::{
     BattlePlan, EngagementRule, MovementPace, Waypoint, WaypointBehavior, WaypointPlan,
 };
-use crate::battle::units::{Army, FormationShape, UnitId, UnitStance};
+use crate::battle::units::{Army, UnitId, UnitStance};
 
 /// Result of applying an order
 #[derive(Debug, Clone)]

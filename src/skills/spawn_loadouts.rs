@@ -2,7 +2,10 @@
 //!
 //! Every entity spawns with chunks appropriate to their archetype and age.
 //! No entity should ever have an empty ChunkLibrary.
+//!
+//! DEPRECATED: Use generate_history_for_role() + generate_chunks_from_history() instead.
 
+#[allow(deprecated)]
 use crate::entity::{CraftSpecialty, EntityArchetype, TrainingLevel};
 use crate::skills::{ChunkId, ChunkLibrary, PersonalChunkState};
 use rand::Rng;

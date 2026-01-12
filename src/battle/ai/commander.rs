@@ -9,7 +9,7 @@ use crate::battle::ai::decision_context::DecisionContext;
 use crate::battle::ai::personality::AiPersonality;
 use crate::battle::ai::phase_plans::PhasePlanManager;
 use crate::battle::ai::BattleAI;
-use crate::battle::courier::{Order, OrderType};
+use crate::battle::courier::Order;
 use crate::battle::execution::BattleEventLog;
 use crate::battle::units::{BattleUnit, UnitId, UnitStance};
 use crate::core::types::Tick;

@@ -5,7 +5,7 @@
 
 use crate::combat::{
     combine_results, resolve_penetration, resolve_trauma, ArmorProperties, BodyZone, CombatSkill,
-    CombatStance, SkillLevel, WeaponProperties, WeaponSpecial, Wound, WoundSeverity,
+    CombatStance, SkillLevel, WeaponProperties, WeaponSpecial, Wound,
 };
 
 /// A combatant in an exchange

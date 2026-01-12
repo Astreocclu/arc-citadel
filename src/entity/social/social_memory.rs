@@ -1,8 +1,6 @@
 use super::event_types::{EventType, Valence};
 use super::expectations::{BehaviorPattern, PatternType, MAX_PATTERNS_PER_SLOT, SALIENCE_FLOOR};
 use super::memory::RelationshipMemory;
-use super::service_types::{ServiceType, TraitIndicator};
-use crate::core::calendar::TimePeriod;
 use crate::core::types::EntityId;
 use serde::{Deserialize, Serialize};
 

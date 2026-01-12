@@ -8,6 +8,7 @@ use crate::entity::needs::Needs;
 use crate::entity::social::{EventBuffer, SocialMemory};
 use crate::entity::tasks::TaskQueue;
 use crate::entity::thoughts::ThoughtBuffer;
+#[allow(deprecated)]
 use crate::entity::EntityArchetype;
 use crate::skills::{
     generate_chunks_from_history, generate_history_for_role, generate_spawn_chunks, LifeExperience,
