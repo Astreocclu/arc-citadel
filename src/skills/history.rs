@@ -27,6 +27,52 @@ pub enum UnitType {
     Archer,
 }
 
+/// Current occupation (used to generate plausible history)
+///
+/// Role is a label for convenience. What matters is the generated history.
+/// A Role::Farmer at age 50 has 40 years of farming experience.
+/// A Role::Farmer at age 18 has 6 years.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Role {
+    Farmer,
+    Miner,
+    Craftsman(CraftSpecialty),
+    Soldier,
+    Guard,
+    Noble,
+    Merchant,
+    Scholar,
+    Priest,
+    Servant,
+    Child,
+    Unemployed,
+}
+
+/// Craft specialization (kept from old system)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CraftSpecialty {
+    Smithing,
+    Carpentry,
+    Masonry,
+    Cooking,
+    Tailoring,
+    Leatherwork,
+}
+
+impl CraftSpecialty {
+    /// Convert to the corresponding ActivityType
+    pub fn to_activity(self) -> ActivityType {
+        match self {
+            Self::Smithing => ActivityType::Smithing,
+            Self::Carpentry => ActivityType::Carpentry,
+            Self::Masonry => ActivityType::Masonry,
+            Self::Cooking => ActivityType::Cooking,
+            Self::Tailoring => ActivityType::Tailoring,
+            Self::Leatherwork => ActivityType::Leatherworking,
+        }
+    }
+}
+
 /// Activities that generate skill chunks over time
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ActivityType {
@@ -93,5 +139,24 @@ mod tests {
         let infantry = ActivityType::MilitaryTraining { unit_type: UnitType::Infantry };
         let cavalry = ActivityType::MilitaryTraining { unit_type: UnitType::Cavalry };
         assert_ne!(infantry, cavalry);
+    }
+
+    #[test]
+    fn test_craft_specialty_to_activity() {
+        assert_eq!(
+            CraftSpecialty::Smithing.to_activity(),
+            ActivityType::Smithing
+        );
+        assert_eq!(
+            CraftSpecialty::Carpentry.to_activity(),
+            ActivityType::Carpentry
+        );
+    }
+
+    #[test]
+    fn test_role_with_specialty() {
+        let smith = Role::Craftsman(CraftSpecialty::Smithing);
+        let carpenter = Role::Craftsman(CraftSpecialty::Carpentry);
+        assert_ne!(smith, carpenter);
     }
 }
