@@ -25,7 +25,8 @@ use arc_citadel::core::types::Vec2 as SimVec2;
 use arc_citadel::ecs::world::{Abundance, World};
 use arc_citadel::renderer::{CameraState, Color, RenderEntity, RenderState, Renderer, ShapeType};
 use arc_citadel::simulation::tick::run_simulation_tick;
-use arc_citadel::ui::GameUI;
+use arc_citadel::simulation::SimulationEvent;
+use arc_citadel::ui::{GameUI, LogCategory};
 
 /// Convert simulation Vec2 to renderer Vec2
 fn to_render_pos(v: SimVec2) -> Vec2 {
@@ -253,8 +254,27 @@ fn main() {
                     if let WindowEvent::RedrawRequested = event {
                         // Run simulation tick if not paused
                         if !paused {
-                            run_simulation_tick(&mut world);
+                            let events = run_simulation_tick(&mut world);
                             sim_ticks += 1;
+
+                            // Log simulation events to the action log
+                            for event in events {
+                                let (msg, category) = match event {
+                                    SimulationEvent::TaskStarted { entity_name, action } => {
+                                        (format!("{} started {:?}", entity_name, action), LogCategory::Action)
+                                    }
+                                    SimulationEvent::TaskCompleted { entity_name, action } => {
+                                        (format!("{} completed {:?}", entity_name, action), LogCategory::Action)
+                                    }
+                                    SimulationEvent::CombatHit { attacker, defender } => {
+                                        (format!("{} hit {}", attacker, defender), LogCategory::Combat)
+                                    }
+                                    SimulationEvent::ProductionComplete { recipe, .. } => {
+                                        (format!("Produced: {}", recipe), LogCategory::Production)
+                                    }
+                                };
+                                game_ui.log(sim_ticks, msg, category);
+                            }
                         }
 
                         // Extract entities for rendering

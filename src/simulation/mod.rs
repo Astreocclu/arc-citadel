@@ -18,6 +18,7 @@ pub use expectation_formation::{
 };
 pub use resource_zone::{ResourceType, ResourceZone};
 pub use rule_eval::{evaluate_action_rules, select_idle_behavior};
+pub use tick::SimulationEvent;
 pub use value_dynamics::{apply_event, apply_tick_dynamics};
 pub use violation_detection::{
     check_pattern_violation, check_violations, process_violations, ViolationType,

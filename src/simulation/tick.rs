@@ -8,6 +8,33 @@
 //! Uses rayon for parallel processing where safe.
 
 use crate::actions::catalog::ActionId;
+
+/// Events generated during simulation tick
+///
+/// These events are returned by `run_simulation_tick` for display in the UI action log.
+#[derive(Debug, Clone)]
+pub enum SimulationEvent {
+    /// An entity started a new task
+    TaskStarted {
+        entity_name: String,
+        action: ActionId,
+    },
+    /// An entity completed a task
+    TaskCompleted {
+        entity_name: String,
+        action: ActionId,
+    },
+    /// Combat: attacker hit defender
+    CombatHit {
+        attacker: String,
+        defender: String,
+    },
+    /// A building produced something
+    ProductionComplete {
+        building_idx: usize,
+        recipe: String,
+    },
+}
 use crate::city::construction::{
     apply_construction_work, calculate_worker_contribution, ContributionResult,
 };
@@ -56,7 +83,11 @@ use rayon::prelude::*;
 /// 12. Run daily systems (once per day: housing assignment, food consumption, population growth)
 /// 13. Decay social memories (once per day, after tick advances)
 /// 14. Decay expectations (once per day, after tick advances)
-pub fn run_simulation_tick(world: &mut World) {
+///
+/// Returns a list of events that occurred during this tick for UI display.
+pub fn run_simulation_tick(world: &mut World) -> Vec<SimulationEvent> {
+    let mut events = Vec::new();
+
     // Advance astronomical state (time, moons, celestial events)
     world.astronomy.advance_tick();
 
@@ -68,21 +99,25 @@ pub fn run_simulation_tick(world: &mut World) {
     process_violations(world, &perceptions);
     convert_thoughts_to_memories(world);
     decay_thoughts(world);
-    select_actions(world);
-    execute_tasks(world);
+    select_actions(world, &mut events);
+    execute_tasks(world, &mut events);
     regenerate_food_zones(world);
 
     // Run production tick for buildings
     let recipes = RecipeCatalog::with_defaults(); // TODO: Load from config
     let production_results = tick_production(&mut world.buildings, &recipes, &mut world.stockpile);
 
-    // Log production completions
+    // Log production completions and generate events
     for result in production_results {
         tracing::debug!(
             "Production complete: building {} produced {}",
             result.building_idx,
             result.recipe_id
         );
+        events.push(SimulationEvent::ProductionComplete {
+            building_idx: result.building_idx,
+            recipe: result.recipe_id.clone(),
+        });
     }
 
     world.tick();
@@ -96,6 +131,8 @@ pub fn run_simulation_tick(world: &mut World) {
 
     decay_social_memories(world);
     decay_expectations(world);
+
+    events
 }
 
 /// Update all entity needs based on time passage
@@ -436,7 +473,9 @@ pub const TICKS_PER_DAY: u64 = 1000;
 ///
 /// Builds a spatial grid to find nearby entities and looks up their dispositions
 /// from social memory for disposition-aware action selection.
-fn select_actions(world: &mut World) {
+///
+/// Generates TaskStarted events for new tasks.
+fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     let current_tick = world.current_tick;
 
@@ -513,6 +552,10 @@ fn select_actions(world: &mut World) {
 
         for (i, task_opt) in selected_actions {
             if let Some(task) = task_opt {
+                events.push(SimulationEvent::TaskStarted {
+                    entity_name: world.humans.names[i].clone(),
+                    action: task.action,
+                });
                 world.humans.task_queues[i].push(task);
             }
         }
@@ -569,6 +612,10 @@ fn select_actions(world: &mut World) {
                 nearest_building_site,
             };
             if let Some(task) = select_action_human(&ctx) {
+                events.push(SimulationEvent::TaskStarted {
+                    entity_name: world.humans.names[i].clone(),
+                    action: task.action,
+                });
                 world.humans.task_queues[i].push(task);
             }
         }
@@ -661,7 +708,9 @@ fn select_orc_actions(world: &mut World, current_tick: u64) {
 /// This creates meaningful time investment:
 /// - Rest action: 0.3 × 0.05 × 50 ticks = 0.75 total satisfaction
 /// - Eat action: consumes from food zone, satisfies at `consumed * 0.5`
-fn execute_tasks(world: &mut World) {
+///
+/// Generates TaskCompleted and CombatHit events.
+fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
     // Collect indices first to avoid borrow conflicts
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
     for i in living_indices {
@@ -1420,6 +1469,8 @@ fn execute_tasks(world: &mut World) {
                                     world.current_tick,
                                 );
 
+                                // Return hit info for event generation outside closure
+                                // We'll check combat_target_info and success outside
                                 true // Mark complete
                             }
                         }
@@ -1512,6 +1563,17 @@ fn execute_tasks(world: &mut World) {
             continue;
         };
 
+        // Generate CombatHit event if this was an attack action that hit
+        if action == ActionId::Attack && is_complete {
+            if let Some((_, defender_idx)) = combat_target_info {
+                // Attack completed with a target - generate combat hit event
+                events.push(SimulationEvent::CombatHit {
+                    attacker: world.humans.names[i].clone(),
+                    defender: world.humans.names[defender_idx].clone(),
+                });
+            }
+        }
+
         // Handle Eat action specially: consume from food zone
         if action == ActionId::Eat {
             let pos = world.humans.positions[i];
@@ -1579,6 +1641,12 @@ fn execute_tasks(world: &mut World) {
             if let Some(target_id) = target_entity {
                 create_social_memory_from_task(world, i, action, target_id, world.current_tick);
             }
+
+            // Generate TaskCompleted event
+            events.push(SimulationEvent::TaskCompleted {
+                entity_name: world.humans.names[i].clone(),
+                action,
+            });
 
             world.humans.task_queues[i].complete_current();
         }
