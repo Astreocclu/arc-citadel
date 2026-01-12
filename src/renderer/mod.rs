@@ -44,6 +44,21 @@ pub struct Renderer {
 }
 
 impl Renderer {
+    /// Get a reference to the GPU device.
+    pub fn device(&self) -> &wgpu::Device {
+        &self.ctx.device
+    }
+
+    /// Get a reference to the GPU queue.
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.ctx.queue
+    }
+
+    /// Get the surface texture format.
+    pub fn surface_format(&self) -> wgpu::TextureFormat {
+        self.ctx.format()
+    }
+
     /// Create a new renderer for the given window.
     pub async fn new(window: Arc<Window>) -> Self {
         let ctx = GpuContext::new(window).await;
@@ -280,6 +295,209 @@ impl Renderer {
                 self.metrics.record_draw_call();
             }
         }
+
+        self.ctx.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
+
+        self.metrics.end_frame();
+
+        Ok(())
+    }
+
+    /// Render a frame with egui overlay support.
+    ///
+    /// The callback receives the device, queue, encoder, and view to render egui on top.
+    /// The callback should add egui rendering commands to the encoder.
+    pub fn render_with_egui<F>(
+        &mut self,
+        state: &RenderState,
+        egui_callback: F,
+    ) -> Result<(), wgpu::SurfaceError>
+    where
+        F: FnOnce(&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder, &wgpu::TextureView),
+    {
+        self.metrics.begin_frame();
+        self.metrics.entity_count = state.entities.len();
+
+        // Update camera uniform for both pipelines
+        let view_proj = state.camera.view_projection_matrix();
+        self.pipeline.update_camera(&self.ctx.queue, view_proj);
+        self.sprite_pipeline
+            .update_camera(&self.ctx.queue, view_proj);
+
+        // Batch entities by shape type
+        self.circle_instances.clear();
+        self.rectangle_instances.clear();
+        self.triangle_instances.clear();
+        self.hexagon_instances.clear();
+
+        for entity in &state.entities {
+            let instance = ShapeInstance::new(
+                [entity.position.x, entity.position.y],
+                entity.facing,
+                entity.scale,
+                entity.color.to_u32(),
+                entity.shape as u32,
+            );
+
+            match entity.shape {
+                ShapeType::Circle => self.circle_instances.push(instance),
+                ShapeType::Rectangle => self.rectangle_instances.push(instance),
+                ShapeType::Triangle => self.triangle_instances.push(instance),
+                ShapeType::Hexagon => self.hexagon_instances.push(instance),
+            }
+        }
+
+        // Single batched upload for all instances
+        let batched = self.buffers.upload_batched(
+            &self.ctx,
+            &self.circle_instances,
+            &self.rectangle_instances,
+            &self.triangle_instances,
+            &self.hexagon_instances,
+        );
+        self.metrics.record_buffer_upload();
+
+        // Get surface texture
+        let output = self.ctx.surface.get_current_texture()?;
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Main Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.1,
+                            g: 0.1,
+                            b: 0.15,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            render_pass.set_pipeline(&self.pipeline.render_pipeline);
+            render_pass.set_bind_group(0, &self.pipeline.camera_bind_group, &[]);
+
+            // All shapes share the same instance buffer, use ranges from batched upload
+            render_pass.set_vertex_buffer(1, self.buffers.instance_buffer.slice(..));
+
+            // Draw circles (indexed)
+            if !batched.circle_range.is_empty() {
+                render_pass.set_vertex_buffer(0, self.buffers.circle.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(
+                    self.buffers.circle.index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint16,
+                );
+                render_pass.draw_indexed(
+                    0..self.buffers.circle.index_count,
+                    0,
+                    batched.circle_range.clone(),
+                );
+                self.metrics.record_draw_call();
+            }
+
+            // Draw hexagons (indexed)
+            if !batched.hexagon_range.is_empty() {
+                render_pass.set_vertex_buffer(0, self.buffers.hexagon.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(
+                    self.buffers.hexagon.index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint16,
+                );
+                render_pass.draw_indexed(
+                    0..self.buffers.hexagon.index_count,
+                    0,
+                    batched.hexagon_range.clone(),
+                );
+                self.metrics.record_draw_call();
+            }
+
+            // Draw triangles (indexed)
+            if !batched.triangle_range.is_empty() {
+                render_pass.set_vertex_buffer(0, self.buffers.triangle.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(
+                    self.buffers.triangle.index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint16,
+                );
+                render_pass.draw_indexed(
+                    0..self.buffers.triangle.index_count,
+                    0,
+                    batched.triangle_range.clone(),
+                );
+                self.metrics.record_draw_call();
+            }
+
+            // Draw rectangles (indexed)
+            if !batched.rectangle_range.is_empty() {
+                render_pass.set_vertex_buffer(0, self.buffers.rectangle.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(
+                    self.buffers.rectangle.index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint16,
+                );
+                render_pass.draw_indexed(
+                    0..self.buffers.rectangle.index_count,
+                    0,
+                    batched.rectangle_range.clone(),
+                );
+                self.metrics.record_draw_call();
+            }
+
+            // Render sprites
+            if !state.sprites.is_empty() {
+                self.sprite_instances.clear();
+                for sprite in &state.sprites {
+                    self.sprite_instances.push(SpriteInstance::new(
+                        [sprite.position.x, sprite.position.y],
+                        [sprite.uv_rect[0], sprite.uv_rect[1]],
+                        [sprite.uv_rect[2], sprite.uv_rect[3]],
+                        sprite.color,
+                        sprite.rotation,
+                        sprite.scale,
+                        sprite.flip_x,
+                        sprite.flip_y,
+                    ));
+                }
+
+                self.sprite_buffers
+                    .upload_instances(&self.ctx, &self.sprite_instances);
+                self.metrics.record_buffer_upload();
+
+                render_pass.set_pipeline(&self.sprite_pipeline.render_pipeline);
+                render_pass.set_bind_group(0, &self.sprite_pipeline.camera_bind_group, &[]);
+                render_pass.set_bind_group(1, &self.default_texture_bind_group, &[]);
+                render_pass.set_vertex_buffer(0, self.sprite_buffers.quad_vertex_buffer.slice(..));
+                render_pass.set_vertex_buffer(1, self.sprite_buffers.instance_buffer.slice(..));
+                render_pass.set_index_buffer(
+                    self.sprite_buffers.quad_index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint16,
+                );
+                render_pass.draw_indexed(
+                    0..self.sprite_buffers.quad_index_count,
+                    0,
+                    0..self.sprite_instances.len() as u32,
+                );
+                self.metrics.record_draw_call();
+            }
+        }
+
+        // Call egui rendering callback
+        egui_callback(&self.ctx.device, &self.ctx.queue, &mut encoder, &view);
 
         self.ctx.queue.submit(std::iter::once(encoder.finish()));
         output.present();
