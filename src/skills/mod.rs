@@ -16,6 +16,8 @@ pub mod integration;
 pub mod learning;
 pub mod library;
 pub mod resolution;
+pub mod spawn_loadouts;
+pub mod history;
 
 pub use action_mapping::{action_requires_skill, get_chunks_for_action};
 pub use attention::{calculate_attention_budget, can_afford_attention, risks_fumble, FUMBLE_ATTENTION_THRESHOLD};
@@ -33,3 +35,4 @@ pub use integration::{
     record_action_experience, refresh_attention, skill_check, spend_attention, SkillCheckResult,
     SkillFailure,
 };
+pub use spawn_loadouts::generate_spawn_chunks;
