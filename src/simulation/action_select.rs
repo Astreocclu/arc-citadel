@@ -38,6 +38,34 @@ use crate::entity::thoughts::ThoughtBuffer;
 use crate::rules::SpeciesRules;
 use crate::simulation::rule_eval::{evaluate_action_rules, select_idle_behavior};
 
+/// Pick a talk target from perceived entities with disposition preference (E5)
+///
+/// Preference order: Friendly/Favorable > Neutral > Unknown > (avoid Hostile/Suspicious)
+/// This enables E1 (positive relationship formation) by allowing first contact with Unknown,
+/// and E5 (disposition-aware selection) by preferring friendly entities.
+fn pick_talk_target(perceived_dispositions: &[(EntityId, Disposition)]) -> Option<EntityId> {
+    // First try to find a Friendly/Favorable target
+    for (id, disposition) in perceived_dispositions {
+        if matches!(disposition, Disposition::Friendly | Disposition::Favorable) {
+            return Some(*id);
+        }
+    }
+    // Then try Neutral
+    for (id, disposition) in perceived_dispositions {
+        if matches!(disposition, Disposition::Neutral) {
+            return Some(*id);
+        }
+    }
+    // Then try Unknown (first contact - this enables relationship formation)
+    for (id, disposition) in perceived_dispositions {
+        if matches!(disposition, Disposition::Unknown) {
+            return Some(*id);
+        }
+    }
+    // Avoid Hostile/Suspicious - don't talk to enemies
+    None
+}
+
 /// Generic action selection using runtime-loaded rules
 ///
 /// This function evaluates species-specific rules loaded from TOML files,
@@ -384,24 +412,36 @@ fn check_disposition_response(ctx: &SelectionContext) -> Option<Task> {
     }
 
     // Check for approachable entities when social need is elevated
-    // Threshold: social need > 0.35 triggers desire to interact
-    // Include Unknown (strangers) - talking to them is how relationships form
+    // Threshold is modulated by love/loyalty values - social entities seek interaction more readily
+    // Base threshold: 0.55, but high love/loyalty lowers it significantly
+    // Very social entities (avg love+loyalty > 0.7) will chat even at low social need
+    let social_modifier = (ctx.values.love + ctx.values.loyalty) / 2.0;
+    let social_threshold = 0.55 - (social_modifier * 0.5); // 0.55 down to 0.05 for max social values
+
+    // Only Friendly/Favorable - strangers (Unknown) require moderate need handler
     let friendly_target = ctx
         .perceived_dispositions
         .iter()
-        .find(|(_, d)| matches!(d, Disposition::Friendly | Disposition::Favorable | Disposition::Unknown))
+        .find(|(_, d)| matches!(d, Disposition::Friendly | Disposition::Favorable))
         .map(|(id, _)| *id);
 
     if let Some(target_id) = friendly_target {
-        if ctx.needs.social > 0.35 {
+        if ctx.needs.social > social_threshold {
             // Friendly entity nearby and we want company - talk to them!
-            // Threshold lowered from 0.5 to 0.35 to trigger social interactions earlier
+            // Priority scales with how much we actually need social interaction
+            // Value-driven (low need, high values) = Low priority (casual)
+            // Need-driven (high need) = Normal priority (seeking connection)
+            let priority = if ctx.needs.social > 0.5 {
+                TaskPriority::Normal
+            } else {
+                TaskPriority::Low
+            };
             return Some(Task {
                 action: ActionId::TalkTo,
                 target_position: None,
                 target_entity: Some(target_id),
                 target_building: None,
-                priority: TaskPriority::Normal,
+                priority,
                 created_tick: ctx.current_tick,
                 progress: 0.0,
                 source: TaskSource::Autonomous,
@@ -502,7 +542,18 @@ fn address_moderate_need(ctx: &SelectionContext) -> Option<Task> {
             Some(Task::new(ActionId::Rest, TaskPriority::Normal, ctx.current_tick))
         }
         NeedType::Social if ctx.entity_nearby => {
-            Some(Task::new(ActionId::TalkTo, TaskPriority::Normal, ctx.current_tick))
+            // E5: Pick target with disposition preference: Friendly > Unknown > avoid Hostile
+            let talk_target = pick_talk_target(&ctx.perceived_dispositions);
+            talk_target.map(|target_id| Task {
+                action: ActionId::TalkTo,
+                target_position: None,
+                target_entity: Some(target_id),
+                target_building: None,
+                priority: TaskPriority::Normal,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
         }
         NeedType::Purpose => {
             Some(Task::new(ActionId::Gather, TaskPriority::Normal, ctx.current_tick))
@@ -555,28 +606,48 @@ fn should_seek_building_work(ctx: &SelectionContext) -> Option<Task> {
 ///
 /// Different values lead to different idle behaviors:
 /// - High curiosity (> 0.6): observe surroundings (E5 behavior)
-/// - High love/loyalty (social values): talk to nearby entities
-/// - High comfort: stay put
+/// - High ambition/purpose: gather resources or work
+/// - High comfort: stay put and observe
+/// - High social + entity nearby + social need > 0.4: talk
 /// - Default: wander
 fn select_idle_action(ctx: &SelectionContext) -> Task {
     // E5: High curiosity entities (> 0.6) should strongly prefer IdleObserve
     // This creates clear correlation between curiosity and exploration
-    let action = if ctx.values.curiosity > 0.6 {
-        ActionId::IdleObserve
-    } else {
-        // Use love + loyalty as social tendency proxy
-        let social_tendency = (ctx.values.love + ctx.values.loyalty) / 2.0;
+    if ctx.values.curiosity > 0.6 {
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    }
 
-        if social_tendency > ctx.values.comfort && ctx.entity_nearby {
-            ActionId::TalkTo
-        } else if ctx.values.comfort > 0.7 {
-            ActionId::IdleObserve // Stay put, observe
-        } else {
-            ActionId::IdleWander
+    if ctx.values.ambition > 0.6 {
+        // High ambition leads to productive idle behavior
+        return Task::new(ActionId::Gather, TaskPriority::Low, ctx.current_tick);
+    }
+
+    if ctx.values.comfort > 0.7 {
+        // High comfort leads to staying put
+        return Task::new(ActionId::IdleObserve, TaskPriority::Low, ctx.current_tick);
+    }
+
+    // Use love + loyalty as social tendency proxy
+    let social_tendency = (ctx.values.love + ctx.values.loyalty) / 2.0;
+
+    // Only talk if social tendency is high, entity nearby, AND social need elevated
+    if social_tendency > 0.6 && ctx.entity_nearby && ctx.needs.social > 0.4 {
+        // E5: Pick target with disposition preference: Friendly > Unknown > avoid Hostile
+        if let Some(target_id) = pick_talk_target(&ctx.perceived_dispositions) {
+            return Task {
+                action: ActionId::TalkTo,
+                target_position: None,
+                target_entity: Some(target_id),
+                target_building: None,
+                priority: TaskPriority::Low,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            };
         }
-    };
+    }
 
-    Task::new(action, TaskPriority::Low, ctx.current_tick)
+    Task::new(ActionId::IdleWander, TaskPriority::Low, ctx.current_tick)
 }
 
 // ============================================================================
@@ -5114,7 +5185,8 @@ mod tests {
             entity_nearby: true, // Someone to talk to
             current_tick: 0,
             nearest_food_zone: None,
-            perceived_dispositions: vec![],
+            // TalkTo requires perceived targets; use a neutral disposition
+            perceived_dispositions: vec![(EntityId::new(), Disposition::Neutral)],
             building_skill: 0.0,
             nearest_building_site: None,
         };
@@ -5184,7 +5256,8 @@ mod tests {
             entity_nearby: true,
             current_tick: 0,
             nearest_food_zone: None,
-            perceived_dispositions: vec![],
+            // TalkTo requires perceived targets; use a friendly disposition for social entity
+            perceived_dispositions: vec![(EntityId::new(), Disposition::Friendly)],
             building_skill: 0.0,
             nearest_building_site: None,
         };
