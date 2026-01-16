@@ -18,6 +18,12 @@ pub enum SimulationEvent {
     TaskStarted {
         entity_name: String,
         action: ActionId,
+        /// Curiosity value for correlating IdleObserve with personality (0.0-1.0)
+        curiosity: f32,
+        /// Social need for correlating TalkTo with elevated social need (0.0-1.0)
+        social_need: f32,
+        /// Honor value for correlating Attack with high-honor defense behavior (0.0-1.0)
+        honor: f32,
     },
     /// An entity completed a task
     TaskCompleted {
@@ -46,7 +52,7 @@ use crate::combat::{
 };
 use crate::ecs::world::World;
 use crate::entity::needs::NeedType;
-use crate::entity::social::EventType;
+use crate::entity::social::{Disposition, EventType};
 use crate::entity::tasks::Task;
 use crate::entity::thoughts::{CauseType, Thought, Valence};
 use crate::simulation::action_select::{
@@ -480,14 +486,26 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
     let current_tick = world.current_tick;
 
     // Build spatial grid for nearby entity queries
+    // Include BOTH humans and orcs so cross-species perception works
     let mut grid = SparseHashGrid::new(10.0);
-    let positions: Vec<_> = world.humans.positions.iter().cloned().collect();
-    let ids: Vec<_> = world.humans.ids.iter().cloned().collect();
-    grid.rebuild(ids.iter().cloned().zip(positions.iter().cloned()));
+    let human_positions: Vec<_> = world.humans.positions.iter().cloned().collect();
+    let human_ids: Vec<_> = world.humans.ids.iter().cloned().collect();
+    let orc_positions: Vec<_> = world.orcs.positions.iter().cloned().collect();
+    let orc_ids: Vec<_> = world.orcs.ids.iter().cloned().collect();
 
-    // Build O(1) lookup map for entity indices
-    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
-        ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+    // Combine all entities into single spatial grid
+    let all_entities: Vec<_> = human_ids.iter().cloned().zip(human_positions.iter().cloned())
+        .chain(orc_ids.iter().cloned().zip(orc_positions.iter().cloned()))
+        .collect();
+    grid.rebuild(all_entities.into_iter());
+
+    // Build O(1) lookup map for human entity indices
+    let id_to_human_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+        human_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+
+    // Track which IDs are orcs (for species-based hostility)
+    let orc_id_set: ahash::AHashSet<crate::core::types::EntityId> =
+        orc_ids.iter().cloned().collect();
 
     let perception_range = 50.0;
 
@@ -497,7 +515,7 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
             .par_iter()
             .filter_map(|&i| {
                 // Check if entity has a task that should NOT be interrupted
-                // Idle tasks (IdleWander, IdleObserve) CAN be interrupted by critical needs
+                // Idle tasks (IdleWander, IdleObserve) CAN be interrupted by critical needs OR threats
                 let has_non_interruptible_task = world.humans.task_queues[i]
                     .current()
                     .map(|t| !matches!(t.action, ActionId::IdleWander | ActionId::IdleObserve))
@@ -508,17 +526,38 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                     return None;
                 }
 
-                // For idle tasks, only interrupt if there's a critical need
-                let has_idle_task = world.humans.task_queues[i].current().is_some();
-                let has_critical_need = world.humans.needs[i].has_critical().is_some();
-
-                // If entity has idle task but no critical need, skip action selection
-                if has_idle_task && !has_critical_need {
-                    return None;
-                }
-
                 let pos = world.humans.positions[i];
                 let observer_id = world.humans.ids[i];
+
+                // Early threat detection - check for nearby orcs BEFORE skip condition
+                // This ensures entities can react to threats even during idle tasks
+                let threat_detected = grid
+                    .query_neighbors(pos)
+                    .filter(|&e| e != observer_id)
+                    .any(|entity| {
+                        if orc_id_set.contains(&entity) {
+                            let orc_idx = orc_ids.iter().position(|&id| id == entity);
+                            if let Some(idx) = orc_idx {
+                                let entity_pos = orc_positions[idx];
+                                pos.distance(&entity_pos) <= perception_range
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    });
+
+                // For idle tasks, interrupt if there's a critical need, elevated social need, OR nearby threat
+                let has_idle_task = world.humans.task_queues[i].current().is_some();
+                let has_critical_need = world.humans.needs[i].has_critical().is_some();
+                // Social needs can interrupt idle tasks at the same threshold as TalkTo triggers
+                let has_elevated_social = world.humans.needs[i].social > 0.35;
+
+                // If entity has idle task but no need to interrupt (including threats), skip action selection
+                if has_idle_task && !has_critical_need && !has_elevated_social && !threat_detected {
+                    return None;
+                }
 
                 // Check if entity is AT a food zone
                 let food_available = world.food_zones.iter().any(|zone| zone.contains(pos));
@@ -527,19 +566,35 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                     find_nearest_food_zone(pos, perception_range, &world.food_zones);
 
                 // Query nearby entities and build dispositions list
+                // Includes both humans and orcs - orcs are perceived as Hostile by default
                 let perceived_dispositions: Vec<_> = grid
                     .query_neighbors(pos)
                     .filter(|&e| e != observer_id)
                     .filter_map(|entity| {
-                        let entity_idx = *id_to_idx.get(&entity)?;
-                        let entity_pos = positions[entity_idx];
-                        let distance = pos.distance(&entity_pos);
-                        if distance <= perception_range {
-                            let disposition =
-                                world.humans.social_memories[i].get_disposition(entity);
-                            Some((entity, disposition))
+                        // Check if entity is an orc (species-based hostility)
+                        if orc_id_set.contains(&entity) {
+                            // Find orc position for distance check
+                            let orc_idx = orc_ids.iter().position(|&id| id == entity)?;
+                            let entity_pos = orc_positions[orc_idx];
+                            let distance = pos.distance(&entity_pos);
+                            if distance <= perception_range {
+                                // Orcs are always perceived as Hostile by humans
+                                Some((entity, Disposition::Hostile))
+                            } else {
+                                None
+                            }
                         } else {
-                            None
+                            // Human entity - use social memory
+                            let entity_idx = *id_to_human_idx.get(&entity)?;
+                            let entity_pos = human_positions[entity_idx];
+                            let distance = pos.distance(&entity_pos);
+                            if distance <= perception_range {
+                                let disposition =
+                                    world.humans.social_memories[i].get_disposition(entity);
+                                Some((entity, disposition))
+                            } else {
+                                None
+                            }
                         }
                     })
                     .collect();
@@ -554,7 +609,8 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                     thoughts: &world.humans.thoughts[i],
                     values: &world.humans.values[i],
                     has_current_task: false,
-                    threat_nearby: world.humans.needs[i].safety > 0.5,
+                    // Threat nearby if hostile entity detected OR safety need high
+                    threat_nearby: threat_detected || world.humans.needs[i].safety > 0.5,
                     food_available,
                     safe_location: world.humans.needs[i].safety < 0.3,
                     entity_nearby: !perceived_dispositions.is_empty(),
@@ -579,6 +635,9 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                 events.push(SimulationEvent::TaskStarted {
                     entity_name: world.humans.names[i].clone(),
                     action: task.action,
+                    curiosity: world.humans.values[i].curiosity,
+                    social_need: world.humans.needs[i].social,
+                    honor: world.humans.values[i].honor,
                 });
                 world.humans.task_queues[i].push(task);
             }
@@ -587,7 +646,7 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
         // Sequential path for small entity counts (avoids thread overhead)
         for i in living_indices {
             // Check if entity has a task that should NOT be interrupted
-            // Idle tasks (IdleWander, IdleObserve) CAN be interrupted by critical needs
+            // Idle tasks (IdleWander, IdleObserve) CAN be interrupted by critical needs OR threats
             let has_non_interruptible_task = world.humans.task_queues[i]
                 .current()
                 .map(|t| !matches!(t.action, ActionId::IdleWander | ActionId::IdleObserve))
@@ -598,17 +657,38 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                 continue;
             }
 
-            // For idle tasks, only interrupt if there's a critical need
-            let has_idle_task = world.humans.task_queues[i].current().is_some();
-            let has_critical_need = world.humans.needs[i].has_critical().is_some();
-
-            // If entity has idle task but no critical need, skip action selection
-            if has_idle_task && !has_critical_need {
-                continue;
-            }
-
             let pos = world.humans.positions[i];
             let observer_id = world.humans.ids[i];
+
+            // Early threat detection - check for nearby orcs BEFORE skip condition
+            // This ensures entities can react to threats even during idle tasks
+            let threat_detected = grid
+                .query_neighbors(pos)
+                .filter(|&e| e != observer_id)
+                .any(|entity| {
+                    if orc_id_set.contains(&entity) {
+                        let orc_idx = orc_ids.iter().position(|&id| id == entity);
+                        if let Some(idx) = orc_idx {
+                            let entity_pos = orc_positions[idx];
+                            pos.distance(&entity_pos) <= perception_range
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                });
+
+            // For idle tasks, interrupt if there's a critical need, elevated social need, OR nearby threat
+            let has_idle_task = world.humans.task_queues[i].current().is_some();
+            let has_critical_need = world.humans.needs[i].has_critical().is_some();
+            // Social needs can interrupt idle tasks at the same threshold as TalkTo triggers
+            let has_elevated_social = world.humans.needs[i].social > 0.35;
+
+            // If entity has idle task but no need to interrupt (including threats), skip action selection
+            if has_idle_task && !has_critical_need && !has_elevated_social && !threat_detected {
+                continue;
+            }
 
             // Check if entity is AT a food zone
             let food_available = world.food_zones.iter().any(|zone| zone.contains(pos));
@@ -617,18 +697,32 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                 find_nearest_food_zone(pos, perception_range, &world.food_zones);
 
             // Query nearby entities and build dispositions list
+            // Includes orcs perceived as Hostile for cross-species threat detection
             let perceived_dispositions: Vec<_> = grid
                 .query_neighbors(pos)
                 .filter(|&e| e != observer_id)
                 .filter_map(|entity| {
-                    let entity_idx = *id_to_idx.get(&entity)?;
-                    let entity_pos = positions[entity_idx];
-                    let distance = pos.distance(&entity_pos);
-                    if distance <= perception_range {
-                        let disposition = world.humans.social_memories[i].get_disposition(entity);
-                        Some((entity, disposition))
+                    // Check if entity is an orc (species-based hostility)
+                    if orc_id_set.contains(&entity) {
+                        let orc_idx = orc_ids.iter().position(|&id| id == entity)?;
+                        let entity_pos = orc_positions[orc_idx];
+                        let distance = pos.distance(&entity_pos);
+                        if distance <= perception_range {
+                            Some((entity, Disposition::Hostile))
+                        } else {
+                            None
+                        }
                     } else {
-                        None
+                        // Human entity - use social memory
+                        let entity_idx = *id_to_human_idx.get(&entity)?;
+                        let entity_pos = human_positions[entity_idx];
+                        let distance = pos.distance(&entity_pos);
+                        if distance <= perception_range {
+                            let disposition = world.humans.social_memories[i].get_disposition(entity);
+                            Some((entity, disposition))
+                        } else {
+                            None
+                        }
                     }
                 })
                 .collect();
@@ -643,7 +737,7 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                 thoughts: &world.humans.thoughts[i],
                 values: &world.humans.values[i],
                 has_current_task: false,
-                threat_nearby: world.humans.needs[i].safety > 0.5,
+                threat_nearby: threat_detected || world.humans.needs[i].safety > 0.5,
                 food_available,
                 safe_location: world.humans.needs[i].safety < 0.3,
                 entity_nearby: !perceived_dispositions.is_empty(),
@@ -661,6 +755,9 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                 events.push(SimulationEvent::TaskStarted {
                     entity_name: world.humans.names[i].clone(),
                     action: task.action,
+                    curiosity: world.humans.values[i].curiosity,
+                    social_need: world.humans.needs[i].social,
+                    honor: world.humans.values[i].honor,
                 });
                 world.humans.task_queues[i].push(task);
             }

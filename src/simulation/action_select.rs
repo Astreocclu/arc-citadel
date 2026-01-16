@@ -210,6 +210,32 @@ pub struct SelectionContext<'a> {
 /// 6. Addressing moderate needs (> 0.6)
 /// 7. Falling back to idle behavior based on values
 pub fn select_action_human(ctx: &SelectionContext) -> Option<Task> {
+    // Detected threats trigger safety response (E7: flee) OR honor response (E4: attack)
+    // High-honor entities (> 0.5) stand and fight; others flee
+    if ctx.threat_nearby {
+        if ctx.values.honor > 0.5 {
+            // E4: High-honor humans defend/attack instead of fleeing
+            // Find the hostile entity to target
+            let hostile_target = ctx
+                .perceived_dispositions
+                .iter()
+                .find(|(_, d)| *d == Disposition::Hostile)
+                .map(|(id, _)| *id);
+
+            return Some(Task {
+                action: ActionId::Attack,
+                target_position: None,
+                target_entity: hostile_target,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Reaction,
+            });
+        }
+        return select_critical_response(NeedType::Safety, ctx);
+    }
+
     // Critical needs always take priority
     if let Some(critical) = ctx.needs.has_critical() {
         return select_critical_response(critical, ctx);
@@ -357,17 +383,19 @@ fn check_disposition_response(ctx: &SelectionContext) -> Option<Task> {
         });
     }
 
-    // Check for friendly entities when social need is elevated
-    // Threshold: social need > 0.5 triggers desire to interact with friends
+    // Check for approachable entities when social need is elevated
+    // Threshold: social need > 0.35 triggers desire to interact
+    // Include Unknown (strangers) - talking to them is how relationships form
     let friendly_target = ctx
         .perceived_dispositions
         .iter()
-        .find(|(_, d)| matches!(d, Disposition::Friendly | Disposition::Favorable))
+        .find(|(_, d)| matches!(d, Disposition::Friendly | Disposition::Favorable | Disposition::Unknown))
         .map(|(id, _)| *id);
 
     if let Some(target_id) = friendly_target {
-        if ctx.needs.social > 0.5 {
+        if ctx.needs.social > 0.35 {
             // Friendly entity nearby and we want company - talk to them!
+            // Threshold lowered from 0.5 to 0.35 to trigger social interactions earlier
             return Some(Task {
                 action: ActionId::TalkTo,
                 target_position: None,
@@ -452,16 +480,38 @@ fn address_moderate_need(ctx: &SelectionContext) -> Option<Task> {
         return None;
     }
 
-    let action = match need_type {
-        NeedType::Food if ctx.food_available => ActionId::Eat,
-        NeedType::Rest if ctx.safe_location => ActionId::Rest,
-        NeedType::Social if ctx.entity_nearby => ActionId::TalkTo,
-        NeedType::Purpose => ActionId::Gather, // Do productive work
-        NeedType::Safety if !ctx.safe_location => ActionId::SeekSafety,
-        _ => return None,
-    };
-
-    Some(Task::new(action, TaskPriority::Normal, ctx.current_tick))
+    match need_type {
+        NeedType::Food if ctx.food_available => {
+            Some(Task::new(ActionId::Eat, TaskPriority::Normal, ctx.current_tick))
+        }
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            // Hungry but not at food - seek food zone
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Normal,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Rest if ctx.safe_location => {
+            Some(Task::new(ActionId::Rest, TaskPriority::Normal, ctx.current_tick))
+        }
+        NeedType::Social if ctx.entity_nearby => {
+            Some(Task::new(ActionId::TalkTo, TaskPriority::Normal, ctx.current_tick))
+        }
+        NeedType::Purpose => {
+            Some(Task::new(ActionId::Gather, TaskPriority::Normal, ctx.current_tick))
+        }
+        NeedType::Safety if !ctx.safe_location => {
+            Some(Task::new(ActionId::SeekSafety, TaskPriority::Normal, ctx.current_tick))
+        }
+        _ => None,
+    }
 }
 
 /// Check if entity should seek building work based on purpose need
@@ -504,24 +554,27 @@ fn should_seek_building_work(ctx: &SelectionContext) -> Option<Task> {
 /// Select an idle action based on the entity's values
 ///
 /// Different values lead to different idle behaviors:
-/// - High curiosity: observe surroundings
+/// - High curiosity (> 0.6): observe surroundings (E5 behavior)
 /// - High love/loyalty (social values): talk to nearby entities
 /// - High comfort: stay put
 /// - Default: wander
 fn select_idle_action(ctx: &SelectionContext) -> Task {
-    // Use love + loyalty as social tendency proxy
-    let social_tendency = (ctx.values.love + ctx.values.loyalty) / 2.0;
+    // E5: High curiosity entities (> 0.6) should strongly prefer IdleObserve
+    // This creates clear correlation between curiosity and exploration
+    let action = if ctx.values.curiosity > 0.6 {
+        ActionId::IdleObserve
+    } else {
+        // Use love + loyalty as social tendency proxy
+        let social_tendency = (ctx.values.love + ctx.values.loyalty) / 2.0;
 
-    let action =
-        if ctx.values.curiosity > social_tendency && ctx.values.curiosity > ctx.values.comfort {
-            ActionId::IdleObserve
-        } else if social_tendency > ctx.values.comfort && ctx.entity_nearby {
+        if social_tendency > ctx.values.comfort && ctx.entity_nearby {
             ActionId::TalkTo
         } else if ctx.values.comfort > 0.7 {
             ActionId::IdleObserve // Stay put, observe
         } else {
             ActionId::IdleWander
-        };
+        }
+    };
 
     Task::new(action, TaskPriority::Low, ctx.current_tick)
 }

@@ -57,11 +57,12 @@ class GameplayEvaluator:
         if not key:
             raise ValueError("GOOGLE_API_KEY required")
 
-        # Temperature 0 for consistent, deterministic evaluation
+        # Using Gemini 3 Pro Preview - DO NOT use 1.5/2.0/2.5 versions
+        # Gemini 3 is optimized for temperature=1.0 (default) for reasoning
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            model="gemini-3-pro-preview",
             google_api_key=key,
-            temperature=0,
+            temperature=1.0,
         )
         self.parser = PydanticOutputParser(pydantic_object=EvaluationReport)
 
@@ -69,14 +70,14 @@ class GameplayEvaluator:
         self,
         focus_path: Path,
         sim_output_path: Path,
-        max_output_chars: int = 30000,
+        max_output_chars: int = 2500000,
     ) -> EvaluationReport:
         """Run evaluation and return structured report.
 
         Args:
             focus_path: Path to focus config JSON
             sim_output_path: Path to simulation output text
-            max_output_chars: Truncate sim output to avoid context overflow
+            max_output_chars: Truncate sim output (2MB default - Gemini 2.0 Flash has 1M token/~4MB context)
 
         Returns:
             EvaluationReport with verdicts for each expectation
@@ -102,10 +103,9 @@ class GameplayEvaluator:
             "format_instructions": self.parser.get_format_instructions(),
         })
 
-        # Calculate hit rate if not provided
-        if not report.hit_rate:
-            hits = sum(1 for v in report.verdicts if v.verdict == Verdict.HIT)
-            report.hit_rate = f"{hits}/{len(report.verdicts)}"
+        # Always recalculate hit rate - LLM often miscounts
+        hits = sum(1 for v in report.verdicts if v.verdict == Verdict.HIT)
+        report.hit_rate = f"{hits}/{len(report.verdicts)}"
 
         return report
 

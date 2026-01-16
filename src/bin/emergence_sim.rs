@@ -4,7 +4,7 @@
 use arc_citadel::actions::catalog::ActionId;
 use arc_citadel::core::types::Vec2;
 use arc_citadel::ecs::world::{Abundance, World};
-use arc_citadel::simulation::tick::run_simulation_tick;
+use arc_citadel::simulation::tick::{run_simulation_tick, SimulationEvent};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -31,17 +31,20 @@ fn main() {
     for i in 0..count {
         world.spawn_human(generate_name(i, &mut rng_seed));
 
-        // Spread across a large world (2000x2000)
-        let x = (i % 100) as f32 * 20.0;
-        let y = (i / 100) as f32 * 20.0;
+        // Spread across world - 10-unit spacing ensures neighbors within 50-unit perception
+        // This creates density where entities can perceive ~25 neighbors for social interactions
+        let x = (i % 100) as f32 * 10.0;
+        let y = (i / 100) as f32 * 10.0;
         world.humans.positions[i] = Vec2::new(x, y);
 
-        // Diverse starting needs
-        world.humans.needs[i].food = pseudo_random(&mut rng_seed, 0.1, 0.6);
-        world.humans.needs[i].rest = pseudo_random(&mut rng_seed, 0.1, 0.5);
+        // Diverse starting needs - some entities start hungry/tired for observable behaviors
+        world.humans.needs[i].food = pseudo_random(&mut rng_seed, 0.3, 0.7); // Higher food need
+        world.humans.needs[i].rest = pseudo_random(&mut rng_seed, 0.3, 0.7); // Higher rest need
         world.humans.needs[i].safety = pseudo_random(&mut rng_seed, 0.0, 0.3);
-        world.humans.needs[i].social = pseudo_random(&mut rng_seed, 0.2, 0.7);
-        world.humans.needs[i].purpose = pseudo_random(&mut rng_seed, 0.1, 0.5);
+        // Social range 0.3..0.8 ensures ~60% start above 0.35 threshold for immediate TalkTo
+        // Combined with denser spacing, this creates observable social interactions from tick 1
+        world.humans.needs[i].social = pseudo_random(&mut rng_seed, 0.3, 0.8);
+        world.humans.needs[i].purpose = pseudo_random(&mut rng_seed, 0.2, 0.6);
 
         // Diverse values (creates different "personality types")
         world.humans.values[i].honor = pseudo_random(&mut rng_seed, 0.0, 1.0);
@@ -56,27 +59,27 @@ fn main() {
         world.humans.values[i].piety = pseudo_random(&mut rng_seed, 0.0, 1.0);
     }
 
-    // Create food zones
+    // Create food zones - spread across the ENTIRE map so entities can find food
+    // Entities are placed in a 100x100 grid with spacing of 20 units (0,0) to (1980, 1980)
+    // Perception range is 50 units, so food zones every 80 units ensures coverage
     println!("Creating food zones...\n");
 
-    // Abundant zones (4 corners)
-    world.add_food_zone(Vec2::new(200.0, 200.0), 100.0, Abundance::Unlimited);
-    world.add_food_zone(Vec2::new(1800.0, 200.0), 100.0, Abundance::Unlimited);
-    world.add_food_zone(Vec2::new(200.0, 1800.0), 100.0, Abundance::Unlimited);
-    world.add_food_zone(Vec2::new(1800.0, 1800.0), 100.0, Abundance::Unlimited);
-
-    // Scarce zones (center area - creates competition)
-    for x in (600..=1400).step_by(200) {
-        for y in (600..=1400).step_by(200) {
-            world.add_food_zone(
-                Vec2::new(x as f32, y as f32),
-                50.0,
+    // Grid of food zones to match entity distribution
+    // With 80-unit spacing and 40-unit radius, there's overlap for good coverage
+    for x in (0..=2000).step_by(80) {
+        for y in (0..=2000).step_by(80) {
+            let abundance = if (x < 200 || x > 1800) && (y < 200 || y > 1800) {
+                // Corner zones are abundant
+                Abundance::Unlimited
+            } else {
+                // Inner zones are scarce to create competition
                 Abundance::Scarce {
-                    current: 500.0,
-                    max: 500.0,
+                    current: 100.0,
+                    max: 100.0,
                     regen: 5.0,
-                },
-            );
+                }
+            };
+            world.add_food_zone(Vec2::new(x as f32, y as f32), 40.0, abundance);
         }
     }
 
@@ -85,6 +88,24 @@ fn main() {
         world.food_zones.len(),
         world.food_zones.len() - 4
     );
+
+    // Spawn hostile orcs scattered across the map for E4/E7 testing
+    // These create threat scenarios that trigger safety and honor behaviors
+    let orc_count = 100; // 1% of human population
+    println!("Spawning {} hostile orcs...\n", orc_count);
+    for i in 0..orc_count {
+        let orc_name = format!("Orc_{}", i);
+        world.spawn_orc(orc_name);
+
+        // Scatter orcs within human population area (0-990 range matches human grid)
+        // This ensures orcs are within perception range (50 units) of humans
+        let x = pseudo_random(&mut rng_seed, 0.0, 990.0);
+        let y = pseudo_random(&mut rng_seed, 0.0, 990.0);
+        world.orcs.positions[i] = Vec2::new(x, y);
+
+        // Orcs have high aggression - they will attack nearby humans
+        world.orcs.needs[i].safety = 0.1; // Low safety need = aggressive
+    }
 
     // Track emergence
     let mut tracker = EmergenceTracker::new();
@@ -97,9 +118,28 @@ fn main() {
     println!("---------|---------|---------|--------------------------------------------------");
 
     while start_time.elapsed() < duration {
-        // Run simulation tick
-        run_simulation_tick(&mut world);
+        // Run simulation tick and capture events
+        let events = run_simulation_tick(&mut world);
         tick_count += 1;
+
+        // Log action events for evaluation (includes curiosity for E5, social for E6)
+        for event in &events {
+            match event {
+                SimulationEvent::TaskStarted { entity_name, action, curiosity, social_need, honor } => {
+                    // Include curiosity for IdleObserve (E5), social_need for TalkTo (E6), honor for Attack (E4)
+                    println!("[ACTION] {} (curiosity={:.2}, social={:.2}, honor={:.2}) started {:?}", entity_name, curiosity, social_need, honor, action);
+                }
+                SimulationEvent::TaskCompleted { entity_name, action } => {
+                    println!("[COMPLETE] {} finished {:?}", entity_name, action);
+                }
+                SimulationEvent::CombatHit { attacker, defender } => {
+                    println!("[COMBAT] {} hit {}", attacker, defender);
+                }
+                SimulationEvent::ProductionComplete { building_idx, recipe } => {
+                    println!("[PRODUCTION] Building {} produced {}", building_idx, recipe);
+                }
+            }
+        }
 
         // Sample state every 100 ticks
         if tick_count % 100 == 0 {
@@ -443,7 +483,8 @@ impl EmergenceTracker {
 
 fn pseudo_random(seed: &mut u64, min: f32, max: f32) -> f32 {
     *seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
-    let t = ((*seed >> 33) as f32) / (u32::MAX as f32);
+    // Extract upper 32 bits (not 31!) and divide by u32::MAX for 0.0-1.0 range
+    let t = ((*seed >> 32) as u32 as f32) / (u32::MAX as f32);
     min + t * (max - min)
 }
 
