@@ -1,0 +1,67 @@
+{
+  "name": "need-satisfaction",
+  "description": "How entities pursue and satisfy their needs over time",
+
+  "systems": [
+    "src/entity/needs.rs",
+    "src/simulation/action_select.rs",
+    "src/actions/catalog.rs"
+  ],
+
+  "setup": {
+    "description": "Run simulation for 2000+ ticks, track need levels and satisfaction events",
+    "command": "cargo run"
+  },
+
+  "expectations": [
+    {
+      "id": "E1",
+      "behavior": "Needs decay at reasonable rates - rest becomes pressing around 800 ticks of activity",
+      "eval_hint": "Track rest need over time for active entity - should approach 0.8 around tick 800",
+      "weight": 1.0
+    },
+    {
+      "id": "E2",
+      "behavior": "Entities proactively address needs before they become critical (0.8+), not just reactively",
+      "eval_hint": "Count how many times entities satisfy needs at 0.5-0.7 vs 0.8+ - should see proactive behavior",
+      "weight": 1.2
+    },
+    {
+      "id": "E3",
+      "behavior": "No entity dies from starvation or exhaustion if food/rest actions are available - system works",
+      "eval_hint": "If entity has food need at 1.0 and food_available=true, they should be eating",
+      "weight": 1.5
+    },
+    {
+      "id": "E4",
+      "behavior": "Safety need recovers when no threats present - entities don't stay permanently scared",
+      "eval_hint": "After threat removed, safety need should decay toward 0.0 at ~0.01/tick",
+      "weight": 1.0
+    },
+    {
+      "id": "E5",
+      "behavior": "Social and purpose needs build slowly - entities can go 2000+ ticks without crisis",
+      "eval_hint": "Social/purpose should be the last needs to hit critical, not the first",
+      "weight": 0.8
+    },
+    {
+      "id": "E6",
+      "behavior": "Actions actually satisfy needs - eating reduces food need, resting reduces rest need",
+      "eval_hint": "Before/after need values when action completes - should see meaningful reduction",
+      "weight": 1.0
+    },
+    {
+      "id": "E7",
+      "behavior": "Busy ant colony feel - entities always doing something, needs create natural activity cycles",
+      "eval_hint": "Population should show mix of activities at any snapshot - not all resting or all working",
+      "weight": 1.0
+    }
+  ],
+
+  "tunable_constants": [
+    {"file": "src/entity/needs.rs", "name": "rest decay rate", "current": 0.001, "range": [0.0005, 0.002]},
+    {"file": "src/entity/needs.rs", "name": "food decay rate", "current": 0.0005, "range": [0.0002, 0.001]},
+    {"file": "src/entity/needs.rs", "name": "safety recovery rate", "current": 0.01, "range": [0.005, 0.02]},
+    {"file": "src/entity/needs.rs", "name": "activity multiplier", "current": 1.5, "range": [1.2, 2.0]}
+  ]
+}

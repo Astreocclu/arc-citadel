@@ -1,0 +1,72 @@
+{
+  "name": "thought-quality",
+  "description": "Are thoughts meaningful, varied, and driving good decisions",
+
+  "systems": [
+    "src/simulation/thought_gen.rs",
+    "src/entity/thoughts.rs",
+    "src/simulation/perception.rs"
+  ],
+
+  "setup": {
+    "description": "Run simulation with varied environment, inspect ThoughtBuffer contents over time",
+    "command": "cargo run"
+  },
+
+  "expectations": [
+    {
+      "id": "E1",
+      "behavior": "Thoughts are generated from perceptions - seeing a threat creates a negative thought, seeing food when hungry creates positive thought",
+      "eval_hint": "Correlate perception events with thought creation - perceptions should yield thoughts",
+      "weight": 1.2
+    },
+    {
+      "id": "E2",
+      "behavior": "Thought intensity varies meaningfully - high-value-aligned perceptions create intense thoughts, low-relevance creates weak ones",
+      "eval_hint": "High-beauty human seeing aesthetic object should have higher intensity thought than low-beauty human",
+      "weight": 1.0
+    },
+    {
+      "id": "E3",
+      "behavior": "Thoughts decay over time - a 1.0 intensity thought fades to 0.0 in ~100 ticks (decay_rate 0.01)",
+      "eval_hint": "Track thought intensity over ticks - should decay linearly at default rate",
+      "weight": 0.8
+    },
+    {
+      "id": "E4",
+      "behavior": "ThoughtBuffer stays bounded at 20 thoughts, evicting weakest when new stronger thought arrives",
+      "eval_hint": "When buffer is full and new intense thought added, weakest should be evicted",
+      "weight": 0.8
+    },
+    {
+      "id": "E5",
+      "behavior": "Thoughts influence action selection - strongest thought biases action choice toward addressing it",
+      "eval_hint": "Entity with strong negative threat-thought should be more likely to Flee/SeekSafety",
+      "weight": 1.2
+    },
+    {
+      "id": "E6",
+      "behavior": "Different entities have different thoughts in same situation - values filter what generates thoughts",
+      "eval_hint": "10 entities in same location should not all have identical ThoughtBuffers",
+      "weight": 1.0
+    },
+    {
+      "id": "E7",
+      "behavior": "Thoughts have meaningful cause descriptions - not generic, but specific to what triggered them",
+      "eval_hint": "cause_description should be readable and specific like 'saw enemy orc nearby' not just 'perception'",
+      "weight": 0.8
+    },
+    {
+      "id": "E8",
+      "behavior": "Faded thoughts (intensity < 0.1) are removed from buffer - old thoughts don't accumulate",
+      "eval_hint": "After 150 ticks without reinforcement, initial thought should be gone from buffer",
+      "weight": 0.8
+    }
+  ],
+
+  "tunable_constants": [
+    {"file": "src/entity/thoughts.rs", "name": "default decay_rate", "current": 0.01, "range": [0.005, 0.02]},
+    {"file": "src/entity/thoughts.rs", "name": "faded threshold", "current": 0.1, "range": [0.05, 0.2]},
+    {"file": "src/entity/thoughts.rs", "name": "max_thoughts in buffer", "current": 20, "range": [10, 30]}
+  ]
+}

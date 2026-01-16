@@ -1,0 +1,73 @@
+{
+  "name": "social-behavior",
+  "description": "How entities form relationships, interact socially, respond to others",
+
+  "systems": [
+    "src/entity/social/social_memory.rs",
+    "src/simulation/perception.rs",
+    "src/actions/social.rs"
+  ],
+
+  "setup": {
+    "description": "Run simulation with 20+ entities for 2000+ ticks, tracking relationship formation and social interactions",
+    "command": "cargo run"
+  },
+
+  "expectations": [
+    {
+      "id": "E1",
+      "behavior": "Entities form relationships over time - after repeated positive interactions, disposition shifts from Unknown to Friendly",
+      "eval_hint": "Track disposition changes for entity pairs over ticks - should see progression from Unknown → Neutral → Friendly",
+      "weight": 1.2
+    },
+    {
+      "id": "E2",
+      "behavior": "Negative interactions create hostility - HarmReceived memories shift disposition toward Hostile",
+      "eval_hint": "After combat/harm events between entities, check that disposition becomes Suspicious or Hostile",
+      "weight": 1.0
+    },
+    {
+      "id": "E3",
+      "behavior": "Memories decay over time - old grudges fade if no reinforcement",
+      "eval_hint": "Track salience of old negative memories - should decay at ~2% per day toward floor",
+      "weight": 0.8
+    },
+    {
+      "id": "E4",
+      "behavior": "Social memory is bounded - entities don't remember everyone, only significant relationships",
+      "eval_hint": "Verify slots.len() stays under max_relationship_slots (200 for humans), weakest evicted when full",
+      "weight": 0.8
+    },
+    {
+      "id": "E5",
+      "behavior": "Disposition affects action selection - entities seek out Friendly dispositions for TalkTo, avoid Hostile",
+      "eval_hint": "When choosing TalkTo target, entity should prefer Friendly/Favorable over Unknown/Hostile",
+      "weight": 1.2
+    },
+    {
+      "id": "E6",
+      "behavior": "Species-specific social parameters create different social patterns - gnolls have fewer relationship slots than humans",
+      "eval_hint": "Compare max_relationship_slots across species - should vary meaningfully",
+      "weight": 1.0
+    },
+    {
+      "id": "E7",
+      "behavior": "Emergent family/group dynamics - entities with high interaction_count should have richer memories",
+      "eval_hint": "Entities who interact frequently should have more memories per slot (up to 5 cap)",
+      "weight": 1.0
+    },
+    {
+      "id": "E8",
+      "behavior": "Social need drives interaction seeking - high social need increases TalkTo/Help action probability",
+      "eval_hint": "Compare action selection at social need 0.3 vs 0.7 - higher need should bias toward social actions",
+      "weight": 1.0
+    }
+  ],
+
+  "tunable_constants": [
+    {"file": "src/entity/social/social_memory.rs", "name": "max_relationship_slots (humans)", "current": 200, "range": [50, 300]},
+    {"file": "src/entity/social/social_memory.rs", "name": "slot_allocation_threshold", "current": 0.3, "range": [0.1, 0.5]},
+    {"file": "src/entity/social/social_memory.rs", "name": "memory_salience_decay", "current": 0.02, "range": [0.01, 0.05]},
+    {"file": "src/entity/social/social_memory.rs", "name": "memory_importance_floor", "current": 0.2, "range": [0.1, 0.3]}
+  ]
+}

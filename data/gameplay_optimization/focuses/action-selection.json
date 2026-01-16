@@ -1,0 +1,80 @@
+{
+  "name": "action-selection",
+  "description": "Do chosen actions make sense given entity values, needs, and context",
+
+  "mvp_species": ["Human", "Elf", "Dwarf"],
+  "post_mvp_species": ["Orc", "Kobold", "Goblin", "etc"],
+
+  "known_hallucination_patterns": {
+    "note": "Gemini analysis has produced these errors - evaluator should watch for them",
+    "patterns": [
+      {"type": "inflated_counts", "example": "Claimed 53 tests when only 43 exist", "fix": "Verify with grep -c"},
+      {"type": "inverted_architecture", "example": "Said species are code-first when they are TOML-first", "fix": "Check species/*.toml exists"},
+      {"type": "missing_existing_systems", "example": "Proposed TOML migration that already exists", "fix": "Search before proposing"},
+      {"type": "round_number_estimates", "example": "Said ~5800 lines when actually 6019", "fix": "Use wc -l for exact counts"}
+    ]
+  },
+
+  "systems": [
+    "src/simulation/action_select.rs",
+    "src/actions/catalog.rs",
+    "src/entity/tasks.rs",
+    "src/entity/species/human.rs"
+  ],
+
+  "setup": {
+    "description": "Run simulation with human population, observe action choices over 500+ ticks",
+    "command": "cargo run"
+  },
+
+  "expectations": [
+    {
+      "id": "E1",
+      "behavior": "Entities don't all pick the same action in the same situation - values create variety",
+      "eval_hint": "When 10 humans face same context, at least 3 different actions should be chosen across them",
+      "weight": 1.5
+    },
+    {
+      "id": "E2",
+      "behavior": "Critical needs (>0.8) override value-driven preferences - a starving human eats rather than socializes",
+      "eval_hint": "When food need hits critical, entity should select Eat/Gather regardless of other values",
+      "weight": 1.5
+    },
+    {
+      "id": "E3",
+      "behavior": "Idle entities do something plausible, not just stand still - wander, observe, or work based on values",
+      "eval_hint": "No entity should have 50+ consecutive ticks with no task - idle behaviors should fill gaps",
+      "weight": 1.0
+    },
+    {
+      "id": "E4",
+      "behavior": "High-honor humans defend allies or respond to perceived injustice",
+      "eval_hint": "Check that honor value influences action selection when witnessing conflict",
+      "weight": 1.0
+    },
+    {
+      "id": "E5",
+      "behavior": "High-curiosity humans explore and observe more than low-curiosity ones",
+      "eval_hint": "Curious entities should select IdleObserve or exploration actions more frequently",
+      "weight": 1.0
+    },
+    {
+      "id": "E6",
+      "behavior": "Social need drives interaction - humans with high social need seek out TalkTo actions",
+      "eval_hint": "Elevated social need + nearby friendly entity = TalkTo selection",
+      "weight": 1.0
+    },
+    {
+      "id": "E7",
+      "behavior": "Safety-focused humans flee or seek safety when threats perceived",
+      "eval_hint": "High safety value + hostile nearby = Flee or SeekSafety action",
+      "weight": 1.0
+    }
+  ],
+
+  "tunable_constants": [
+    {"file": "src/entity/needs.rs", "name": "has_critical threshold", "current": 0.8, "range": [0.6, 0.95]},
+    {"file": "src/simulation/action_select.rs", "name": "social need threshold for TalkTo", "current": 0.5, "range": [0.3, 0.7]},
+    {"file": "src/simulation/action_select.rs", "name": "safety flee threshold", "current": 0.6, "range": [0.4, 0.8]}
+  ]
+}

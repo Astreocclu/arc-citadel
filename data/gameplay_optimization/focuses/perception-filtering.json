@@ -1,0 +1,66 @@
+{
+  "name": "perception-filtering",
+  "description": "Do entities notice the right things based on their values and context",
+
+  "systems": [
+    "src/simulation/perception.rs",
+    "src/entity/species/human.rs",
+    "src/spatial/sparse_hash.rs"
+  ],
+
+  "setup": {
+    "description": "Run simulation with varied environment (threats, objects with aesthetic/sacred properties), observe what entities notice",
+    "command": "cargo run"
+  },
+
+  "expectations": [
+    {
+      "id": "E1",
+      "behavior": "All entities notice threats regardless of values - survival trumps aesthetics",
+      "eval_hint": "Even low-safety-value entities should perceive threat-tagged objects",
+      "weight": 1.5
+    },
+    {
+      "id": "E2",
+      "behavior": "High-beauty humans notice aesthetic objects that low-beauty humans filter out",
+      "eval_hint": "Compare perceived_objects for high vs low beauty value entities in same location",
+      "weight": 1.0
+    },
+    {
+      "id": "E3",
+      "behavior": "High-piety humans notice sacred objects that secular humans ignore",
+      "eval_hint": "Sacred-tagged objects should appear in perception only when piety > 0.5",
+      "weight": 1.0
+    },
+    {
+      "id": "E4",
+      "behavior": "Fatigue reduces perception range - tired entities notice less",
+      "eval_hint": "Compare visual_range at fatigue 0.3 vs 0.8 - high fatigue should reduce by ~20%",
+      "weight": 0.8
+    },
+    {
+      "id": "E5",
+      "behavior": "Food zones are noticed when hungry, less salient when full",
+      "eval_hint": "Entity with food need 0.7 should perceive food_zone, entity at 0.1 might not prioritize it",
+      "weight": 1.0
+    },
+    {
+      "id": "E6",
+      "behavior": "Social memory affects perception - known hostile entity flagged as threat even at distance",
+      "eval_hint": "Entity with negative disposition in SocialMemory should get higher threat_level in PerceivedEntity",
+      "weight": 1.2
+    },
+    {
+      "id": "E7",
+      "behavior": "Perception creates variety - 10 entities in same spot don't all notice the same things",
+      "eval_hint": "Different value profiles should produce different perceived_objects lists",
+      "weight": 1.0
+    }
+  ],
+
+  "tunable_constants": [
+    {"file": "src/simulation/perception.rs", "name": "visual_base range", "current": 50.0, "range": [30.0, 80.0]},
+    {"file": "src/simulation/perception.rs", "name": "fatigue perception penalty", "current": 0.8, "range": [0.6, 0.95]},
+    {"file": "src/simulation/perception.rs", "name": "value threshold for noticing", "current": 0.5, "range": [0.3, 0.7]}
+  ]
+}
