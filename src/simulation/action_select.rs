@@ -348,7 +348,7 @@ fn select_critical_response(need: NeedType, ctx: &SelectionContext) -> Option<Ta
             })
         }
         NeedType::Food => Some(Task {
-            action: ActionId::IdleWander, // No food known, wander to find some
+            action: ActionId::Gather, // No food known, actively forage/search for food
             target_position: None,
             target_entity: None,
             target_building: None,
