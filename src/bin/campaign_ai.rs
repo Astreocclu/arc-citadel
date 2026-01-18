@@ -148,28 +148,74 @@ impl FactionAI {
         let mut orders = Vec::new();
 
         for army in &world.my_armies {
-            if army.supplies_days < 3.0 {
-                orders.push(AIOrder::Retreat { army: army.id });
-                continue;
-            }
-
             let nearest_enemy = world
                 .known_enemies
                 .iter()
                 .min_by_key(|e| army.position.distance(&e.position));
 
+            // CRITICAL: Check for adjacent enemies BEFORE supply check
+            // If enemy is right next to us, we fight regardless of supplies
             if let Some(enemy) = nearest_enemy {
                 let distance = army.position.distance(&enemy.position);
 
-                // If enemy is close enough to engage (same hex or adjacent)
+                // Adjacent or same hex - always engage (no retreat from contact)
+                // We MOVE TO the enemy position to enter the same hex and trigger battle
                 if distance <= 1 {
-                    // We're adjacent or on same hex - engage!
-                    orders.push(AIOrder::Attack { army: army.id });
+                    orders.push(AIOrder::MoveTo {
+                        army: army.id,
+                        target: enemy.position,
+                    });
                     continue;
                 }
 
-                // If we have advantage OR enemy is very close, chase them
-                if has_advantage(army, enemy) || distance <= 3 {
+                // PURSUIT: If enemy is routed (low morale), chase aggressively within 6 hexes
+                // This is how battles become decisive - destroy retreating armies
+                if enemy_is_routed(enemy) && distance <= 6 {
+                    orders.push(AIOrder::MoveTo {
+                        army: army.id,
+                        target: enemy.position,
+                    });
+                    continue;
+                }
+
+                // Chase weak enemies (low unit count or morale) within 4 hexes
+                if enemy_is_weak(enemy) && distance <= 4 && army.morale > 0.4 {
+                    orders.push(AIOrder::MoveTo {
+                        army: army.id,
+                        target: enemy.position,
+                    });
+                    continue;
+                }
+
+                // Enemy is close (2-3 hexes) - chase them if we have any advantage
+                // or if we have reasonable supplies
+                if distance <= 3 && (has_advantage(army, enemy) || army.supplies_days > 2.0) {
+                    orders.push(AIOrder::MoveTo {
+                        army: army.id,
+                        target: enemy.position,
+                    });
+                    continue;
+                }
+            }
+
+            // Now check supplies - only retreat if critically low AND not in contact
+            // Threshold lowered from 3.0 to 1.5 days
+            if army.supplies_days < 1.5 {
+                // Only retreat if depot is reachable (within reasonable distance)
+                let depot_distance = army.position.distance(&self.depot);
+                if depot_distance <= 10 {
+                    orders.push(AIOrder::Retreat { army: army.id });
+                    continue;
+                }
+                // If depot too far, keep fighting - we'll die anyway
+            }
+
+            // Check if enemy visible but not adjacent (handled above)
+            if let Some(enemy) = nearest_enemy {
+                let distance = army.position.distance(&enemy.position);
+
+                // If we have advantage, pursue even at medium distance
+                if has_advantage(army, enemy) && distance <= 5 {
                     orders.push(AIOrder::MoveTo {
                         army: army.id,
                         target: enemy.position,
@@ -295,6 +341,16 @@ fn has_advantage(my_army: &ArmyInfo, enemy: &ArmyInfo) -> bool {
     let my_strength = my_army.unit_count as f32 * my_army.morale;
     let enemy_strength = enemy.unit_count as f32 * enemy.morale;
     my_strength > enemy_strength * 1.2
+}
+
+/// Check if enemy is routed (broken morale) and should be pursued
+fn enemy_is_routed(enemy: &ArmyInfo) -> bool {
+    enemy.morale < 0.3
+}
+
+/// Check if enemy is weak and vulnerable to attack
+fn enemy_is_weak(enemy: &ArmyInfo) -> bool {
+    enemy.unit_count < 100 || enemy.morale < 0.5
 }
 
 fn find_scout_target(
@@ -537,16 +593,18 @@ fn main() {
         let red_world = red_ai.perceive(&state, &visibility, &supply, blue_depot);
 
         if args.verbose {
-            // Print army positions
+            // Print army positions with morale
             for army_info in &blue_world.my_armies {
-                println!("  Blue {}: at ({}, {}), {} units",
+                let morale = state.get_army(army_info.id).map(|a| a.morale).unwrap_or(0.0);
+                println!("  Blue {}: at ({}, {}), {} units, morale {:.2}",
                     state.get_army(army_info.id).map(|a| a.name.as_str()).unwrap_or("?"),
-                    army_info.position.q, army_info.position.r, army_info.unit_count);
+                    army_info.position.q, army_info.position.r, army_info.unit_count, morale);
             }
             for army_info in &red_world.my_armies {
-                println!("  Red {}: at ({}, {}), {} units",
+                let morale = state.get_army(army_info.id).map(|a| a.morale).unwrap_or(0.0);
+                println!("  Red {}: at ({}, {}), {} units, morale {:.2}",
                     state.get_army(army_info.id).map(|a| a.name.as_str()).unwrap_or("?"),
-                    army_info.position.q, army_info.position.r, army_info.unit_count);
+                    army_info.position.q, army_info.position.r, army_info.unit_count, morale);
             }
 
             if !blue_world.known_enemies.is_empty() || !red_world.known_enemies.is_empty() {
@@ -569,7 +627,129 @@ fn main() {
 
         supply.tick(&mut state.armies, &map, 1.0);
         scouts.tick(&state.armies, &map, 1.0, state.current_day);
+
+        // Morale recovery: armies recover 0.05 morale per day, faster at depot (0.15)
+        const MORALE_RECOVERY_RATE: f32 = 0.05;
+        const DEPOT_MORALE_BONUS: f32 = 0.10;
+        for army in &mut state.armies {
+            let at_depot = (army.faction == PolityId(1) && army.position == blue_depot)
+                || (army.faction == PolityId(2) && army.position == red_depot);
+            let recovery = if at_depot {
+                MORALE_RECOVERY_RATE + DEPOT_MORALE_BONUS
+            } else {
+                MORALE_RECOVERY_RATE
+            };
+            army.morale = (army.morale + recovery).min(1.0);
+        }
+
         let events = campaign_tick(&mut state, 1.0);
+
+        // Also check for armies already at same position that should fight
+        // This handles the case where armies are already co-located
+        let mut pending_battles: Vec<(ArmyId, ArmyId, HexCoord)> = Vec::new();
+        let positions: std::collections::HashSet<_> = state.armies.iter().map(|a| a.position).collect();
+        for position in &positions {
+            let armies_here: Vec<_> = state.armies.iter()
+                .filter(|a| a.position == *position)
+                .collect();
+            for (i, a) in armies_here.iter().enumerate() {
+                for b in armies_here.iter().skip(i + 1) {
+                    // Different factions and both have reasonable morale
+                    if a.faction != b.faction && a.morale > 0.2 && b.morale > 0.2 {
+                        // Check they're not already marked as engaged
+                        if a.engaged_with != Some(b.id) && b.engaged_with != Some(a.id) {
+                            pending_battles.push((a.id, b.id, *position));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Process pending co-located battles
+        for (army_a, army_b, position) in pending_battles {
+            let a_name = state.get_army(army_a).map(|a| a.name.clone()).unwrap_or_default();
+            let b_name = state.get_army(army_b).map(|a| a.name.clone()).unwrap_or_default();
+
+            println!("BATTLE at ({}, {}): {} vs {}", position.q, position.r, a_name, b_name);
+
+            let (mut attacker, mut defender) = {
+                let a = state.get_army(army_a).unwrap().clone();
+                let b = state.get_army(army_b).unwrap().clone();
+                (a, b)
+            };
+
+            let result = resolve_battle(&mut attacker, &mut defender, &map, current_weather, 10);
+
+            let (blue_cas, red_cas) = if attacker.faction == PolityId(1) {
+                (result.attacker_casualties, result.defender_casualties)
+            } else {
+                (result.defender_casualties, result.attacker_casualties)
+            };
+            stats.record_battle(blue_cas, red_cas);
+
+            println!("  Result: {:?}", result.outcome);
+
+            if let Some(a) = state.get_army_mut(army_a) {
+                a.unit_count = attacker.unit_count;
+                a.morale = attacker.morale;
+            }
+            if let Some(b) = state.get_army_mut(army_b) {
+                b.unit_count = defender.unit_count;
+                b.morale = defender.morale;
+            }
+
+            // Pursuit casualties: 20% on fleeing army
+            const PURSUIT_CASUALTY_RATE: f32 = 0.20;
+
+            match result.outcome {
+                BattleOutcome::AttackerVictory => {
+                    if let Some(b) = state.get_army_mut(army_b) {
+                        let pursuit_cas = (b.unit_count as f32 * PURSUIT_CASUALTY_RATE) as u32;
+                        b.unit_count = b.unit_count.saturating_sub(pursuit_cas);
+                        let (blue, red) = if attacker.faction == PolityId(1) {
+                            (0, pursuit_cas)
+                        } else {
+                            (pursuit_cas, 0)
+                        };
+                        stats.record_battle(blue, red);
+                        apply_retreat(b, position, &map);
+                        println!("  {} retreats (pursuit: -{} units)", b_name, pursuit_cas);
+                    }
+                }
+                BattleOutcome::DefenderVictory => {
+                    if let Some(a) = state.get_army_mut(army_a) {
+                        let pursuit_cas = (a.unit_count as f32 * PURSUIT_CASUALTY_RATE) as u32;
+                        a.unit_count = a.unit_count.saturating_sub(pursuit_cas);
+                        let (blue, red) = if attacker.faction == PolityId(1) {
+                            (pursuit_cas, 0)
+                        } else {
+                            (0, pursuit_cas)
+                        };
+                        stats.record_battle(blue, red);
+                        apply_retreat(a, position, &map);
+                        println!("  {} retreats (pursuit: -{} units)", a_name, pursuit_cas);
+                    }
+                }
+                BattleOutcome::Draw => {
+                    if let Some(a) = state.get_army_mut(army_a) {
+                        apply_retreat(a, position, &map);
+                    }
+                    if let Some(b) = state.get_army_mut(army_b) {
+                        apply_retreat(b, position, &map);
+                    }
+                    println!("  Both armies retreat");
+                }
+                BattleOutcome::Ongoing => {}
+            }
+
+            // Clear engaged_with so armies can fight again
+            if let Some(a) = state.get_army_mut(army_a) {
+                a.disengage();
+            }
+            if let Some(b) = state.get_army_mut(army_b) {
+                b.disengage();
+            }
+        }
 
         for event in events {
             if let arc_citadel::campaign::CampaignEvent::ArmiesEngaged { army_a, army_b, position } = event {
@@ -604,17 +784,38 @@ fn main() {
                     b.morale = defender.morale;
                 }
 
+                // Pursuit casualties: winner inflicts 20% additional casualties on fleeing army
+                const PURSUIT_CASUALTY_RATE: f32 = 0.20;
+
                 match result.outcome {
                     BattleOutcome::AttackerVictory => {
                         if let Some(b) = state.get_army_mut(army_b) {
+                            // Pursuit casualties
+                            let pursuit_cas = (b.unit_count as f32 * PURSUIT_CASUALTY_RATE) as u32;
+                            b.unit_count = b.unit_count.saturating_sub(pursuit_cas);
+                            let (blue, red) = if attacker.faction == PolityId(1) {
+                                (0, pursuit_cas)
+                            } else {
+                                (pursuit_cas, 0)
+                            };
+                            stats.record_battle(blue, red);
                             apply_retreat(b, position, &map);
-                            println!("  {} retreats", b_name);
+                            println!("  {} retreats (pursuit: -{} units)", b_name, pursuit_cas);
                         }
                     }
                     BattleOutcome::DefenderVictory => {
                         if let Some(a) = state.get_army_mut(army_a) {
+                            // Pursuit casualties
+                            let pursuit_cas = (a.unit_count as f32 * PURSUIT_CASUALTY_RATE) as u32;
+                            a.unit_count = a.unit_count.saturating_sub(pursuit_cas);
+                            let (blue, red) = if attacker.faction == PolityId(1) {
+                                (pursuit_cas, 0)
+                            } else {
+                                (0, pursuit_cas)
+                            };
+                            stats.record_battle(blue, red);
                             apply_retreat(a, position, &map);
-                            println!("  {} retreats", a_name);
+                            println!("  {} retreats (pursuit: -{} units)", a_name, pursuit_cas);
                         }
                     }
                     BattleOutcome::Draw => {
@@ -627,6 +828,14 @@ fn main() {
                         println!("  Both armies retreat");
                     }
                     BattleOutcome::Ongoing => {}
+                }
+
+                // CRITICAL: Clear engaged_with so armies can fight again next tick
+                if let Some(a) = state.get_army_mut(army_a) {
+                    a.disengage();
+                }
+                if let Some(b) = state.get_army_mut(army_b) {
+                    b.disengage();
                 }
             }
         }
