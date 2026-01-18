@@ -154,7 +154,7 @@ impl FactionVisibility {
 
 /// Calculate visibility range for an army
 pub fn calculate_visibility_range(
-    army: &Army,
+    _army: &Army,
     terrain: CampaignTerrain,
     weather: Weather,
     has_scouts: bool,

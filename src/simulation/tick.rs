@@ -2510,7 +2510,7 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                                     };
 
                                     // Build defender based on target type
-                                    let (defender, defender_hit) = match target {
+                                    let (_defender, defender_hit) = match target {
                                         CombatTarget::Human(defender_idx) => {
                                             let defender_skill = CombatSkill::from_chunk_library(
                                                 &world.humans.chunk_libraries[defender_idx],
@@ -3008,7 +3008,7 @@ fn execute_orc_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                     skill: CombatSkill::novice(),
                     stance: CombatStance::Neutral,
                 },
-                CombatTarget::Orc(idx) => Combatant {
+                CombatTarget::Orc(_idx) => Combatant {
                     weapon: WeaponProperties::axe(),
                     armor: ArmorProperties::none(),
                     skill: CombatSkill::novice(),
@@ -3089,7 +3089,7 @@ fn execute_orc_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
 }
 
 /// Execute current tasks for dwarf entities
-fn execute_dwarf_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
+fn execute_dwarf_tasks(world: &mut World, _events: &mut Vec<SimulationEvent>) {
     let dwarf_indices: Vec<usize> = world.dwarves.iter_living().collect();
 
     for i in dwarf_indices.iter().cloned() {
@@ -3185,7 +3185,7 @@ fn execute_dwarf_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
 }
 
 /// Execute current tasks for elf entities
-fn execute_elf_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
+fn execute_elf_tasks(world: &mut World, _events: &mut Vec<SimulationEvent>) {
     let elf_indices: Vec<usize> = world.elves.iter_living().collect();
 
     for i in elf_indices.iter().cloned() {

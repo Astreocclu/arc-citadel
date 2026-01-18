@@ -251,19 +251,20 @@ fn create_test_army(name: &str, base_position: BattleHexCoord, _rng: &mut StdRng
     // Unit 1: center
     let mut unit1 = BattleUnit::new(UnitId::new(), UnitType::Infantry);
     unit1.position = base_position;
-    unit1.elements.push(Element::new(vec![EntityId::new(); 50]));
+    // Create 50 UNIQUE entity IDs (not copies of the same one)
+    unit1.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
     formation.units.push(unit1);
 
     // Unit 2: offset north
     let mut unit2 = BattleUnit::new(UnitId::new(), UnitType::Infantry);
     unit2.position = BattleHexCoord::new(base_position.q, base_position.r - 2);
-    unit2.elements.push(Element::new(vec![EntityId::new(); 50]));
+    unit2.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
     formation.units.push(unit2);
 
     // Unit 3: offset south
     let mut unit3 = BattleUnit::new(UnitId::new(), UnitType::Infantry);
     unit3.position = BattleHexCoord::new(base_position.q, base_position.r + 2);
-    unit3.elements.push(Element::new(vec![EntityId::new(); 50]));
+    unit3.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
     formation.units.push(unit3);
 
     army.formations.push(formation);

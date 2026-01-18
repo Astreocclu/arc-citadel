@@ -4,13 +4,11 @@
 
 use std::collections::HashMap;
 
-use crate::battle::units::{BattleUnit, UnitId};
+use crate::battle::units::BattleUnit;
 use crate::battle::unit_type::UnitType;
 use crate::combat::resolution::{resolve_exchange, resolve_hit, select_hit_zone, Combatant};
 use crate::combat::state::CombatState;
-use crate::combat::{
-    ArmorProperties, CombatSkill, CombatStance, Edge, Mass, Reach, WeaponProperties, WeaponSpecial, Wound,
-};
+use crate::combat::{CombatStance, Edge, Mass, Reach, WeaponProperties, WeaponSpecial};
 use crate::core::types::EntityId;
 
 /// Level of detail for combat resolution
@@ -408,7 +406,7 @@ fn resolve_ranged_attacks(
 
 /// Resolve a shock attack
 pub fn resolve_shock_attack(
-    attacker: &BattleUnit,
+    _attacker: &BattleUnit,
     defender: &BattleUnit,
     shock_type: crate::combat::ShockType,
 ) -> ShockResult {
@@ -478,24 +476,33 @@ mod tests {
     #[test]
     fn test_resolve_combat_casualties() {
         let mut entity_states = HashMap::new();
-        
+
         // Setup Attacker (Swords)
         let mut attacker = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        attacker.elements.push(Element::new(vec![EntityId::new(); 10]));
-        
+        let att_entities: Vec<EntityId> = (0..10).map(|_| EntityId::new()).collect();
+        attacker.elements.push(Element::new(att_entities));
+
         // Setup Defender (No armor Levy)
         let mut defender = BattleUnit::new(UnitId::new(), UnitType::Levy);
-        defender.elements.push(Element::new(vec![EntityId::new(); 10]));
+        let def_entities: Vec<EntityId> = (0..10).map(|_| EntityId::new()).collect();
+        defender.elements.push(Element::new(def_entities));
+
+        // Debug: check element sizes
+        eprintln!("Attacker elements: {:?}", attacker.elements.len());
+        eprintln!("Attacker element 0 entities: {:?}", attacker.elements[0].entities.len());
+        eprintln!("Defender elements: {:?}", defender.elements.len());
+        eprintln!("Defender element 0 entities: {:?}", defender.elements[0].entities.len());
 
         // Run combat
-        let result = resolve_unit_combat(&attacker, &defender, &mut entity_states);
+        let _result = resolve_unit_combat(&attacker, &defender, &mut entity_states);
 
-        // Expect some casualties (Swords vs Cloth)
-        // Since it's random/skill based, might be 0, but states should be populated
-        assert!(entity_states.len() == 20);
-        
-        // Check if any wounds were inflicted (Levy likely took hits)
+        eprintln!("Entity states after combat: {}", entity_states.len());
+
+        // All entities should have states populated
+        assert_eq!(entity_states.len(), 20, "Expected 20 entities in state map, got {}", entity_states.len());
+
+        // Check wounds - Swords (Sharp) vs Cloth should produce Cut = Serious wounds
         let total_wounds: usize = entity_states.values().map(|s| s.wounds.len()).sum();
-        assert!(total_wounds > 0 || result.attacker_casualties == 0); // At least wounds if no kills?
+        assert!(total_wounds > 0, "Expected some wounds to be inflicted");
     }
 }

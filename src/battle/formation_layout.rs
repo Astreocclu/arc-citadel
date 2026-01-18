@@ -289,7 +289,7 @@ fn compute_wedge_positions(
     // Wedge: leader at front, units spread behind in V shape
     positions.push(center);
 
-    let forward_offset = facing.offset();
+    let _forward_offset = facing.offset();
     let left_dir = perpendicular_direction(facing);
     let right_dir = left_dir.opposite();
 

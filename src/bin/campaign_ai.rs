@@ -48,6 +48,7 @@ struct FactionWorldModel {
 
 /// Orders the AI can issue
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Attack variant reserved for future explicit attack orders
 enum AIOrder {
     MoveTo { army: ArmyId, target: HexCoord },
     Attack { army: ArmyId },

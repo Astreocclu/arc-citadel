@@ -295,13 +295,13 @@ struct EmergenceTracker {
     recent_events: Vec<String>,
     all_events: Vec<(u64, String)>,
 
-    // Track personality clusters
-    personality_clusters: Vec<PersonalityCluster>,
+    // Track personality clusters (reserved for future use)
+    _personality_clusters: Vec<PersonalityCluster>,
 }
 
 #[derive(Clone)]
 struct NeedSnapshot {
-    tick: u64,
+    _tick: u64,
     avg_food: f32,
     avg_rest: f32,
     avg_safety: f32,
@@ -312,9 +312,9 @@ struct NeedSnapshot {
 
 #[derive(Clone)]
 struct PersonalityCluster {
-    dominant_value: String,
-    count: usize,
-    avg_position: Vec2,
+    _dominant_value: String,
+    _count: usize,
+    _avg_position: Vec2,
 }
 
 impl EmergenceTracker {
@@ -324,7 +324,7 @@ impl EmergenceTracker {
             need_snapshots: Vec::new(),
             recent_events: Vec::new(),
             all_events: Vec::new(),
-            personality_clusters: Vec::new(),
+            _personality_clusters: Vec::new(),
         }
     }
 
@@ -373,7 +373,7 @@ impl EmergenceTracker {
         }
 
         let snapshot = NeedSnapshot {
-            tick,
+            _tick: tick,
             avg_food: food_sum / n,
             avg_rest: rest_sum / n,
             avg_safety: safety_sum / n,
