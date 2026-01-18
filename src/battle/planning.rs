@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::battle::formation_layout::FormationLine;
 use crate::battle::hex::{BattleHexCoord, HexDirection};
 use crate::battle::units::{UnitId, UnitStance};
 use crate::core::types::Tick;
@@ -115,6 +116,8 @@ pub struct WaypointPlan {
     pub waypoints: Vec<Waypoint>,
     pub current_waypoint: usize,
     pub wait_start_tick: Option<Tick>, // When waiting started
+    /// Accumulated movement progress toward next hex (0.0 to 1.0)
+    pub movement_progress: f32,
 }
 
 impl WaypointPlan {
@@ -124,6 +127,7 @@ impl WaypointPlan {
             waypoints: Vec::new(),
             current_waypoint: 0,
             wait_start_tick: None,
+            movement_progress: 0.0,
         }
     }
 
@@ -268,6 +272,8 @@ pub struct BattlePlan {
     pub engagement_rules: Vec<(UnitId, EngagementRule)>,
     pub go_codes: Vec<GoCode>,
     pub contingencies: Vec<Contingency>,
+    /// Active formation lines (units moving to assigned slots)
+    pub formation_lines: Vec<FormationLine>,
 }
 
 impl BattlePlan {

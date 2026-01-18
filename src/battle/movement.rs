@@ -145,10 +145,13 @@ pub fn is_waiting_with_context(
 }
 
 /// Advance a unit's movement by one tick
+///
+/// time_scale: Multiplier for sim-seconds per tick (1.0 = normal, 10.0 = fast forward)
 pub fn advance_unit_movement(
     map: &BattleMap,
     unit: &mut BattleUnit,
     plan: &mut WaypointPlan,
+    time_scale: f32,
 ) -> MovementResult {
     let mut result = MovementResult::default();
 
@@ -157,17 +160,20 @@ pub fn advance_unit_movement(
         return result;
     }
 
-    // Get current waypoint
+    // Get current waypoint - copy needed values to avoid borrow conflicts
     let Some(waypoint) = plan.current() else {
         return result;
     };
+    let waypoint_position = waypoint.position;
+    let waypoint_behavior = waypoint.behavior;
+    let waypoint_pace = waypoint.pace;
 
     // Check if already at waypoint
-    if unit.position == waypoint.position {
+    if unit.position == waypoint_position {
         result.reached_waypoint = true;
 
         // Apply waypoint behavior
-        match waypoint.behavior {
+        match waypoint_behavior {
             WaypointBehavior::MoveTo => {
                 plan.advance();
             }
@@ -195,26 +201,35 @@ pub fn advance_unit_movement(
     );
 
     // Find path to waypoint
-    let Some(path) = find_path(map, unit.position, waypoint.position, is_cavalry) else {
+    let Some(path) = find_path(map, unit.position, waypoint_position, is_cavalry) else {
         result.path_blocked = true;
         return result;
     };
 
-    // Get speed
-    let speed = base_speed(unit.unit_type, waypoint.pace);
+    // Get speed (hexes per sim-second)
+    let speed = base_speed(unit.unit_type, waypoint_pace);
     let fatigue_modifier = 1.0 - (unit.fatigue * 0.3); // Fatigue slows movement
-    let effective_speed = speed * fatigue_modifier * waypoint.pace.speed_multiplier();
+    let base_effective_speed = speed * fatigue_modifier * waypoint_pace.speed_multiplier();
 
-    // Move along path (speed is fraction of hex per tick)
-    if path.len() > 1 {
-        // Simple: move to next hex if speed >= threshold, otherwise accumulate
-        // For now, just move one hex if speed allows
-        if effective_speed >= 0.05 {
-            unit.position = path[1];
-            unit.stance = UnitStance::Moving;
-            result.moved = true;
-            result.fatigue_delta = FATIGUE_RATE_MARCH * waypoint.pace.fatigue_multiplier();
-        }
+    // Apply time scale: more sim-seconds per tick = more movement per tick
+    let effective_speed = base_effective_speed * time_scale;
+
+    // Accumulate movement progress
+    plan.movement_progress += effective_speed;
+
+    // Move along path, consuming progress for each hex crossed
+    let mut hexes_moved = 0;
+    while plan.movement_progress >= 1.0 && path.len() > 1 + hexes_moved {
+        plan.movement_progress -= 1.0;
+        unit.position = path[1 + hexes_moved];
+        hexes_moved += 1;
+        result.moved = true;
+    }
+
+    if result.moved {
+        unit.stance = UnitStance::Moving;
+        // Fatigue scales with time (more sim-time = more fatigue)
+        result.fatigue_delta = FATIGUE_RATE_MARCH * waypoint_pace.fatigue_multiplier() * time_scale;
     }
 
     result
@@ -268,7 +283,7 @@ mod tests {
                 .with_pace(MovementPace::Quick),
         );
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan);
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
 
         assert!(result.moved);
         // Unit should have moved closer to waypoint
@@ -288,7 +303,7 @@ mod tests {
             WaypointBehavior::HoldAt,
         ));
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan);
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
 
         assert!(result.reached_waypoint);
         assert_eq!(unit.stance, UnitStance::Formed);
@@ -323,7 +338,7 @@ mod tests {
                 .with_pace(MovementPace::Quick),
         );
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan);
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
 
         assert!(!result.moved);
     }
@@ -341,7 +356,7 @@ mod tests {
                 .with_pace(MovementPace::Quick),
         );
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan);
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
 
         assert!(!result.moved);
     }
@@ -391,7 +406,7 @@ mod tests {
             WaypointBehavior::AttackFrom,
         ));
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan);
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
 
         assert!(result.reached_waypoint);
         assert_eq!(unit.stance, UnitStance::Alert);
@@ -410,7 +425,7 @@ mod tests {
             WaypointBehavior::ScanFrom,
         ));
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan);
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
 
         assert!(result.reached_waypoint);
         assert_eq!(unit.stance, UnitStance::Patrol);
@@ -435,7 +450,7 @@ mod tests {
 
         assert_eq!(plan.current_waypoint, 0);
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan);
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
 
         assert!(result.reached_waypoint);
         assert_eq!(plan.current_waypoint, 1);
@@ -454,7 +469,7 @@ mod tests {
                 .with_pace(MovementPace::Run),
         );
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan);
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
 
         assert!(result.moved);
         assert!(result.fatigue_delta > 0.0);
@@ -484,8 +499,8 @@ mod tests {
                 .with_pace(MovementPace::Charge),
         );
 
-        let result_walk = advance_unit_movement(&map, &mut unit_walk, &mut plan_walk);
-        let result_charge = advance_unit_movement(&map, &mut unit_charge, &mut plan_charge);
+        let result_walk = advance_unit_movement(&map, &mut unit_walk, &mut plan_walk, 1.0);
+        let result_charge = advance_unit_movement(&map, &mut unit_charge, &mut plan_charge, 1.0);
 
         assert!(result_charge.fatigue_delta > result_walk.fatigue_delta);
     }

@@ -46,6 +46,10 @@ struct Args {
     /// Enable verbose battle logging for evaluation
     #[arg(long, short = 'v')]
     verbose: bool,
+
+    /// Disable fog of war for both AIs (they see all enemy units)
+    #[arg(long)]
+    no_fog: bool,
 }
 
 /// JSON output structure
@@ -70,17 +74,23 @@ fn main() {
     let mut rng = StdRng::seed_from_u64(seed);
 
     // Load personalities
-    let friendly_personality = load_personality(&args.friendly).unwrap_or_else(|e| {
+    let mut friendly_personality = load_personality(&args.friendly).unwrap_or_else(|e| {
         eprintln!("Warning: Failed to load friendly personality '{}': {}", args.friendly, e);
         eprintln!("Using default personality");
         AiPersonality::default()
     });
 
-    let enemy_personality = load_personality(&args.enemy).unwrap_or_else(|e| {
+    let mut enemy_personality = load_personality(&args.enemy).unwrap_or_else(|e| {
         eprintln!("Warning: Failed to load enemy personality '{}': {}", args.enemy, e);
         eprintln!("Using default personality");
         AiPersonality::default()
     });
+
+    // Apply --no-fog flag to disable fog of war
+    if args.no_fog {
+        friendly_personality.difficulty.ignores_fog_of_war = true;
+        enemy_personality.difficulty.ignores_fog_of_war = true;
+    }
 
     // Create AIs with seed-based RNG
     let friendly_ai = AiCommander::with_seed(friendly_personality.clone(), seed);
@@ -90,14 +100,16 @@ fn main() {
     let map = BattleMap::new(args.map_size, args.map_size);
 
     // Create test armies with 3 infantry units each (50 entities per unit)
+    // Start armies 10 hexes apart (close enough to see each other with vision range 8)
+    let center_y = (args.map_size / 2) as i32;
     let friendly_army = create_test_army(
         "Friendly",
-        BattleHexCoord::new(5, (args.map_size / 2) as i32),
+        BattleHexCoord::new(10, center_y),
         &mut rng,
     );
     let enemy_army = create_test_army(
         "Enemy",
-        BattleHexCoord::new((args.map_size - 6) as i32, (args.map_size / 2) as i32),
+        BattleHexCoord::new(20, center_y),
         &mut rng,
     );
 
@@ -133,7 +145,7 @@ fn main() {
     // Run battle loop
     while !state.is_finished() && state.tick < args.max_ticks {
         if args.verbose {
-            eprintln!("=== Tick {} ===", state.tick);
+            eprintln!("=== Tick {} (time_scale: {:.1}x) ===", state.tick, state.time_scale);
             eprintln!(
                 "Friendly strength: {}/{}",
                 state.friendly_army.effective_strength(),
@@ -144,6 +156,23 @@ fn main() {
                 state.enemy_army.effective_strength(),
                 state.enemy_army.total_strength()
             );
+            eprintln!(
+                "Couriers in flight: {}, Friendly couriers: {}, Enemy couriers: {}",
+                state.courier_system.in_flight.len(),
+                state.friendly_army.courier_pool.len(),
+                state.enemy_army.courier_pool.len()
+            );
+            // Show unit positions
+            for formation in &state.friendly_army.formations {
+                for unit in &formation.units {
+                    eprintln!("  Friendly unit at ({},{})", unit.position.q, unit.position.r);
+                }
+            }
+            for formation in &state.enemy_army.formations {
+                for unit in &formation.units {
+                    eprintln!("  Enemy unit at ({},{})", unit.position.q, unit.position.r);
+                }
+            }
         }
 
         let events_before = state.battle_log.len();

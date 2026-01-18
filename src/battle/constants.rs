@@ -10,7 +10,15 @@ pub const DEFAULT_BATTLE_HEIGHT: u32 = 40;
 // Time
 pub const BATTLE_TICK_MS: u32 = 100;
 pub const BATTLE_TICK_SIM_SECONDS: f32 = 1.0;
-pub const MAX_BATTLE_TICKS: u64 = 6000; // 10 minutes
+pub const MAX_BATTLE_TICKS: u64 = 3000; // 5 minutes real time at 10 ticks/sec
+
+// Variable time scale - sim-seconds per tick based on battle phase
+// Approach: armies marching toward each other (boring, speed up)
+// Combat: units actively fighting (interesting, normal speed)
+// Rout: one side fleeing (resolution, medium speed)
+pub const TIME_SCALE_APPROACH: f32 = 10.0;  // 1 tick = 10 sim-seconds while marching
+pub const TIME_SCALE_COMBAT: f32 = 1.0;     // 1 tick = 1 sim-second during combat
+pub const TIME_SCALE_ROUT: f32 = 5.0;       // 1 tick = 5 sim-seconds during rout
 
 // Movement (hexes per tick, where 1 tick = 1 second, 1 hex = 20 meters)
 // Real-world reference: infantry march ~5 km/h (1.4 m/s), cavalry trot ~14 km/h (3.9 m/s)

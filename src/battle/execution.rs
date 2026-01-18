@@ -119,6 +119,11 @@ pub struct BattleState {
     pub phase: BattlePhase,
     pub outcome: BattleOutcome,
 
+    /// Current time scale (sim-seconds per tick)
+    /// Higher = time moves faster (approach phase)
+    /// Lower = time moves slower (combat phase)
+    pub time_scale: f32,
+
     // Plans
     pub friendly_plan: BattlePlan,
     pub enemy_plan: BattlePlan,
@@ -155,6 +160,7 @@ impl std::fmt::Debug for BattleState {
             .field("tick", &self.tick)
             .field("phase", &self.phase)
             .field("outcome", &self.outcome)
+            .field("time_scale", &self.time_scale)
             .field("friendly_plan", &self.friendly_plan)
             .field("enemy_plan", &self.enemy_plan)
             .field("courier_system", &self.courier_system)
@@ -184,6 +190,7 @@ impl Clone for BattleState {
             tick: self.tick,
             phase: self.phase,
             outcome: self.outcome,
+            time_scale: self.time_scale,
             friendly_plan: self.friendly_plan.clone(),
             enemy_plan: self.enemy_plan.clone(),
             courier_system: self.courier_system.clone(),
@@ -200,6 +207,7 @@ impl Clone for BattleState {
 
 impl BattleState {
     pub fn new(map: BattleMap, friendly_army: Army, enemy_army: Army) -> Self {
+        use crate::battle::constants::TIME_SCALE_APPROACH;
         Self {
             map,
             friendly_army,
@@ -207,6 +215,7 @@ impl BattleState {
             tick: 0,
             phase: BattlePhase::Planning,
             outcome: BattleOutcome::Undecided,
+            time_scale: TIME_SCALE_APPROACH, // Start in approach phase (fast time)
             friendly_plan: BattlePlan::new(),
             enemy_plan: BattlePlan::new(),
             courier_system: CourierSystem::new(),
@@ -291,6 +300,69 @@ impl BattleState {
         }
     }
 
+    /// Determine the appropriate time scale based on current battle state
+    fn calculate_time_scale(&self) -> f32 {
+        use crate::battle::constants::{TIME_SCALE_APPROACH, TIME_SCALE_COMBAT, TIME_SCALE_ROUT};
+        use crate::battle::units::UnitStance;
+
+        // Count engaged and routing units for each side
+        let mut friendly_engaged = 0;
+        let mut friendly_routing = 0;
+        let mut friendly_total = 0;
+
+        for formation in &self.friendly_army.formations {
+            for unit in &formation.units {
+                friendly_total += 1;
+                match unit.stance {
+                    UnitStance::Engaged => friendly_engaged += 1,
+                    UnitStance::Routing => friendly_routing += 1,
+                    _ => {}
+                }
+            }
+        }
+
+        let mut enemy_engaged = 0;
+        let mut enemy_routing = 0;
+        let mut enemy_total = 0;
+
+        for formation in &self.enemy_army.formations {
+            for unit in &formation.units {
+                enemy_total += 1;
+                match unit.stance {
+                    UnitStance::Engaged => enemy_engaged += 1,
+                    UnitStance::Routing => enemy_routing += 1,
+                    _ => {}
+                }
+            }
+        }
+
+        let total_engaged = friendly_engaged + enemy_engaged;
+
+        // If any units are engaged, we're in combat (slow time)
+        if total_engaged > 0 {
+            return TIME_SCALE_COMBAT;
+        }
+
+        // If one side is mostly routing (>50%) and no combat, we're in rout phase
+        let friendly_rout_ratio = if friendly_total > 0 {
+            friendly_routing as f32 / friendly_total as f32
+        } else {
+            0.0
+        };
+        let enemy_rout_ratio = if enemy_total > 0 {
+            enemy_routing as f32 / enemy_total as f32
+        } else {
+            0.0
+        };
+
+        if friendly_rout_ratio > 0.5 || enemy_rout_ratio > 0.5 {
+            return TIME_SCALE_ROUT;
+        }
+
+        // Otherwise we're in approach phase (fast time)
+        TIME_SCALE_APPROACH
+    }
+
     /// Run a complete battle tick
     pub fn run_tick(&mut self) -> BattleEventLog {
         let mut events = BattleEventLog::new();
@@ -298,6 +370,9 @@ impl BattleState {
         if self.is_finished() {
             return events;
         }
+
+        // Update time scale based on current battle state
+        self.time_scale = self.calculate_time_scale();
 
         // ===== PHASE 0: AI DECISIONS =====
         self.phase_ai(&mut events);
@@ -664,6 +739,7 @@ impl BattleState {
         }
 
         // Move friendly units along waypoints
+        let time_scale = self.time_scale;
         for formation in &mut self.friendly_army.formations {
             for unit in &mut formation.units {
                 if let Some(plan) = self
@@ -672,7 +748,7 @@ impl BattleState {
                     .iter_mut()
                     .find(|p| p.unit_id == unit.id)
                 {
-                    let _result = advance_unit_movement(&self.map, unit, plan);
+                    let _result = advance_unit_movement(&self.map, unit, plan, time_scale);
                 }
             }
         }
@@ -686,7 +762,7 @@ impl BattleState {
                     .iter_mut()
                     .find(|p| p.unit_id == unit.id)
                 {
-                    let _result = advance_unit_movement(&self.map, unit, plan);
+                    let _result = advance_unit_movement(&self.map, unit, plan, time_scale);
                 }
             }
         }
