@@ -204,7 +204,7 @@ impl FactionAI {
             }
 
             // If depot not known, advance toward enemy side of map to explore
-            // Blue (PolityId 1) goes toward (27, 27), Red (PolityId 2) goes toward (2, 2)
+            // Blue (PolityId 1) goes toward (17, 17), Red (PolityId 2) goes toward (2, 2)
             if world.enemy_depot.is_none() && army.supplies_days > 5.0 {
                 // Keep advancing until we find the enemy depot
                 let target = enemy_depot;
