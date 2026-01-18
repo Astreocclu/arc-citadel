@@ -1,7 +1,7 @@
 //! Human-specific archetype with SoA layout
 
 use crate::city::BuildingId;
-use crate::combat::CombatState;
+use crate::combat::{combat_state_for_role, CombatState};
 use crate::core::types::{EntityId, Tick, Vec2};
 use crate::entity::body::BodyState;
 use crate::entity::needs::Needs;
@@ -149,6 +149,7 @@ impl HumanArchetype {
     ///
     /// This is the preferred spawn method. It generates a plausible life
     /// history and derives chunks from that history.
+    /// Equipment is automatically assigned based on role.
     pub fn spawn_with_role(
         &mut self,
         id: EntityId,
@@ -180,7 +181,8 @@ impl HumanArchetype {
         self.social_memories.push(SocialMemory::new());
         self.event_buffers.push(EventBuffer::default());
         self.building_skills.push(0.0);
-        self.combat_states.push(CombatState::default());
+        // Assign equipment based on role
+        self.combat_states.push(combat_state_for_role(role));
         self.assigned_houses.push(None);
         self.chunk_libraries.push(chunks);
     }

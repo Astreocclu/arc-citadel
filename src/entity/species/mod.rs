@@ -3,7 +3,9 @@ pub use value_access::ValueAccessor;
 
 pub mod abyssal_demons;
 pub mod centaur;
+pub mod dwarf;
 pub mod dryad;
+pub mod elf;
 pub mod elemental;
 pub mod fey;
 pub mod gnoll;

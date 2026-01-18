@@ -25,7 +25,7 @@ use crate::entity::thoughts::ThoughtBuffer;
 ///
 /// Orcs prioritize strength, dominance, and clan loyalty over
 /// human concepts like honor, beauty, and piety.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct OrcValues {
     pub rage: f32,
     pub strength: f32,
@@ -34,6 +34,21 @@ pub struct OrcValues {
     pub blood_debt: f32,
     pub territory: f32,
     pub combat_prowess: f32,
+}
+
+impl Default for OrcValues {
+    fn default() -> Self {
+        // Orcs are aggressive by nature - high rage, strength, dominance
+        Self {
+            rage: 0.6,           // High enough to trigger attacks (needs > 0.4)
+            strength: 0.7,       // Strong fighters
+            dominance: 0.5,      // Moderate territorial drive
+            clan_loyalty: 0.5,   // Will defend clan
+            blood_debt: 0.0,     // Starts at 0, increases when allies are hurt
+            territory: 0.4,      // Some territorial behavior
+            combat_prowess: 0.6, // Competent fighters
+        }
+    }
 }
 
 impl OrcValues {

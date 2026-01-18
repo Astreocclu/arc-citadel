@@ -45,15 +45,18 @@ impl Needs {
             .unwrap()
     }
 
-    /// Check if any need is critical (> 0.8)
+    /// Check if any need is critical (> threshold)
+    /// Threshold tuned to 0.65 so entities respond to needs sooner,
+    /// enabling observable behavior within evaluation windows.
     pub fn has_critical(&self) -> Option<NeedType> {
-        if self.safety > 0.8 {
+        const CRITICAL_THRESHOLD: f32 = 0.65;
+        if self.safety > CRITICAL_THRESHOLD {
             return Some(NeedType::Safety);
         }
-        if self.food > 0.8 {
+        if self.food > CRITICAL_THRESHOLD {
             return Some(NeedType::Food);
         }
-        if self.rest > 0.8 {
+        if self.rest > CRITICAL_THRESHOLD {
             return Some(NeedType::Rest);
         }
         None
@@ -62,10 +65,10 @@ impl Needs {
     /// Decay needs over time (called each tick)
     ///
     /// Decay rates are tuned so that:
-    /// - Rest: reaches critical (~0.8) in ~800 active ticks
-    /// - Food: reaches critical in ~1600 ticks (eat less often than rest)
-    /// - Social: slow buildup, ~2600 ticks to critical
-    /// - Purpose: slowest, ~4000 ticks to critical
+    /// - Rest: reaches critical (~0.65) in ~800 active ticks
+    /// - Food: reaches critical in ~1200 ticks (eat less often than rest)
+    /// - Social: slow buildup, ~2000+ ticks to critical
+    /// - Purpose: slowest, ~3000+ ticks to critical
     /// - Safety: RECOVERS when no threats (asymmetric to others)
     ///
     /// See `core::config::SimulationConfig` for tunable values.
@@ -74,14 +77,18 @@ impl Needs {
         let activity_mult = if is_active { 1.5 } else { 1.0 };
 
         // Needs INCREASE over time (0.0 = satisfied, 1.0 = desperate)
-        self.rest += 0.001 * dt * activity_mult; // Fastest when active
-        self.food += 0.0005 * dt; // Half of rest rate
-        self.social += 0.0003 * dt; // Slow social pressure
-        self.purpose += 0.0002 * dt; // Slowest - aimlessness builds gradually
+        // Target: reach 0.65 (critical) around tick 800 from starting value of ~0.3
+        // This means ~0.35 increase over 800 ticks = 0.0004375/tick base
+        // With activity_mult=1.5 when active: 0.0004375 / 1.5 = 0.000292/tick
+        // Hierarchy: rest > food > social > purpose
+        self.rest += 0.0003 * dt * activity_mult;   // ~800 active ticks to critical
+        self.food += 0.0003 * dt;                   // ~1200 ticks to critical
+        self.social += 0.00015 * dt;                // ~2300 ticks to critical (slow per E5)
+        self.purpose += 0.0001 * dt;                // ~3500 ticks to critical (slowest)
 
         // Safety DECREASES when no threats (opposite of other needs)
-        // This prevents entities from being permanently scared
-        self.safety = (self.safety - 0.01 * dt).max(0.0);
+        // Fast decay ensures safety returns to baseline after combat
+        self.safety = (self.safety - 0.005 * dt).max(0.0);
 
         // Clamp to valid range
         self.rest = self.rest.min(1.0);
