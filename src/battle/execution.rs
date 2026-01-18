@@ -140,6 +140,10 @@ pub struct BattleState {
     /// Enemy AI controller (None = player controlled)
     #[serde(skip)]
     pub enemy_ai: Option<Box<dyn BattleAI>>,
+
+    /// Friendly AI controller (None = player controlled)
+    #[serde(skip)]
+    pub friendly_ai: Option<Box<dyn BattleAI>>,
 }
 
 impl std::fmt::Debug for BattleState {
@@ -163,6 +167,10 @@ impl std::fmt::Debug for BattleState {
                 "enemy_ai",
                 &self.enemy_ai.as_ref().map(|_| "<AI Controller>"),
             )
+            .field(
+                "friendly_ai",
+                &self.friendly_ai.as_ref().map(|_| "<AI Controller>"),
+            )
             .finish()
     }
 }
@@ -184,7 +192,8 @@ impl Clone for BattleState {
             active_combats: self.active_combats.clone(),
             routing_units: self.routing_units.clone(),
             battle_log: self.battle_log.clone(),
-            enemy_ai: None, // AI is not cloned - must be re-attached
+            enemy_ai: None,    // AI is not cloned - must be re-attached
+            friendly_ai: None, // AI is not cloned - must be re-attached
         }
     }
 }
@@ -207,6 +216,7 @@ impl BattleState {
             routing_units: Vec::new(),
             battle_log: Vec::new(),
             enemy_ai: None,
+            friendly_ai: None,
         }
     }
 
@@ -224,6 +234,11 @@ impl BattleState {
     /// Set the enemy AI controller
     pub fn set_enemy_ai(&mut self, ai: Option<Box<dyn BattleAI>>) {
         self.enemy_ai = ai;
+    }
+
+    /// Set the friendly AI controller
+    pub fn set_friendly_ai(&mut self, ai: Option<Box<dyn BattleAI>>) {
+        self.friendly_ai = ai;
     }
 
     /// Advance the battle by one tick
