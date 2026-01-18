@@ -72,6 +72,10 @@ impl AiCommander {
     fn evaluate_tactical(&mut self, context: &DecisionContext) -> Vec<Order> {
         let mut orders = Vec::new();
 
+        // Clear pending orders from last evaluation cycle
+        // Previous orders should have been delivered by now (re-eval interval > courier travel)
+        self.pending_orders.clear();
+
         // Get effective aggression (base + phase modifier)
         let phase = self.phase_manager.current_phase();
         let effective_aggression =
@@ -107,8 +111,13 @@ impl AiCommander {
     }
 
     /// Check if unit needs new orders
+    /// Units that are Formed, Alert, or Moving can receive new orders.
+    /// Moving units may need to be redirected if the tactical situation changes.
     fn unit_needs_orders(&self, unit: &BattleUnit) -> bool {
-        matches!(unit.stance, UnitStance::Formed | UnitStance::Alert) && unit.can_fight()
+        matches!(
+            unit.stance,
+            UnitStance::Formed | UnitStance::Alert | UnitStance::Moving
+        ) && unit.can_fight()
     }
 
     /// Decide what order to give a specific unit
@@ -121,7 +130,11 @@ impl AiCommander {
         let visible_enemies = context.visible_enemy_units();
 
         if visible_enemies.is_empty() {
-            return None;
+            // No visible enemies - but we know there's a battle happening.
+            // Advance toward enemy HQ to find them.
+            // Commanders know roughly where the enemy came from (pre-battle intel).
+            let enemy_hq = context.enemy_hq_position();
+            return Some(Order::move_to(unit.id, enemy_hq));
         }
 
         // Find best target based on personality weights

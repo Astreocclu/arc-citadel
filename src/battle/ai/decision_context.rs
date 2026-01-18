@@ -124,6 +124,12 @@ impl<'a> DecisionContext<'a> {
         self.own_army.hq_position
     }
 
+    /// Get enemy HQ position (known from pre-battle intel)
+    /// Even with fog of war, commanders know roughly where the enemy came from.
+    pub fn enemy_hq_position(&self) -> BattleHexCoord {
+        self.enemy_army.hq_position
+    }
+
     /// Get available couriers
     pub fn available_couriers(&self) -> usize {
         self.own_army.courier_pool.len()

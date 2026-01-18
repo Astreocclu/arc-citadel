@@ -12,14 +12,15 @@ pub const BATTLE_TICK_MS: u32 = 100;
 pub const BATTLE_TICK_SIM_SECONDS: f32 = 1.0;
 pub const MAX_BATTLE_TICKS: u64 = 6000; // 10 minutes
 
-// Movement (hexes per tick)
-pub const INFANTRY_WALK_SPEED: f32 = 0.05;
-pub const INFANTRY_RUN_SPEED: f32 = 0.10;
-pub const CAVALRY_WALK_SPEED: f32 = 0.10;
-pub const CAVALRY_TROT_SPEED: f32 = 0.20;
-pub const CAVALRY_CHARGE_SPEED: f32 = 0.40;
-pub const COURIER_SPEED: f32 = 0.30;
-pub const ROUT_SPEED: f32 = 0.15;
+// Movement (hexes per tick, where 1 tick = 1 second, 1 hex = 20 meters)
+// Real-world reference: infantry march ~5 km/h (1.4 m/s), cavalry trot ~14 km/h (3.9 m/s)
+pub const INFANTRY_WALK_SPEED: f32 = 0.07;   // ~5 km/h marching pace
+pub const INFANTRY_RUN_SPEED: f32 = 0.14;    // ~10 km/h jogging
+pub const CAVALRY_WALK_SPEED: f32 = 0.085;   // ~6 km/h
+pub const CAVALRY_TROT_SPEED: f32 = 0.20;    // ~14 km/h
+pub const CAVALRY_CHARGE_SPEED: f32 = 0.50;  // ~36 km/h (canter/gallop burst)
+pub const COURIER_SPEED: f32 = 0.40;         // ~29 km/h (sustained fast pace)
+pub const ROUT_SPEED: f32 = 0.18;            // Panicked running, faster than march
 
 // Vision (hexes)
 pub const BASE_VISION_RANGE: u32 = 8;
