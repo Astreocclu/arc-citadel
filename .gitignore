@@ -19,3 +19,4 @@ __pycache__/
 *.tmp
 worldgen/output/
 worldgen/*.html
+simulation_output.json
