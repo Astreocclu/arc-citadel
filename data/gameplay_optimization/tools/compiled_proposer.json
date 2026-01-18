@@ -1,0 +1,86 @@
+{
+  "generate.predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "failed_expectation": "Focus: action-selection",
+        "tunable_constants": "- src/entity/needs.rs: has_critical threshold = 0.8 (range: [0.6, 0.95])\n- src/simulation/action_select.rs: social need threshold for TalkTo = 0.5 (range: [0.3, 0.7])\n- src/simulation/action_select.rs: safety flee threshold = 0.6 (range: [0.4, 0.8])",
+        "system_files": "- src/simulation/action_select.rs\n- src/actions/catalog.rs\n- src/entity/tasks.rs\n- src/entity/species/human.rs",
+        "reasoning": "This change improved metrics: 57% -> 71%",
+        "file_path": "src/simulation/action_select.rs",
+        "change_description": "Lower social need threshold for triggering TalkTo action - entities were too antisocial even when idle",
+        "code_snippet": "Reduced social need threshold constant from 0.5 to 0.35 to match the interruption logic threshold added in previous step",
+        "confidence": "85"
+      },
+      {
+        "augmented": true,
+        "failed_expectation": "Focus: action-selection",
+        "tunable_constants": "- src/entity/needs.rs: has_critical threshold = 0.8 (range: [0.6, 0.95])\n- src/simulation/action_select.rs: social need threshold for TalkTo = 0.5 (range: [0.3, 0.7])\n- src/simulation/action_select.rs: safety flee threshold = 0.6 (range: [0.4, 0.8])",
+        "system_files": "- src/simulation/action_select.rs\n- src/actions/catalog.rs\n- src/entity/tasks.rs\n- src/entity/species/human.rs",
+        "reasoning": "This change improved metrics: 57% -> 71%",
+        "file_path": "src/simulation/action_select.rs",
+        "change_description": "Lower social need threshold for triggering TalkTo action - entities were too antisocial even when idle",
+        "code_snippet": "Reduced social need threshold constant from 0.5 to 0.35 to match the interruption logic threshold added in previous step",
+        "confidence": "85"
+      },
+      {
+        "augmented": true,
+        "failed_expectation": "Focus: action-selection",
+        "tunable_constants": "- src/entity/needs.rs: has_critical threshold = 0.8 (range: [0.6, 0.95])\n- src/simulation/action_select.rs: social need threshold for TalkTo = 0.5 (range: [0.3, 0.7])\n- src/simulation/action_select.rs: safety flee threshold = 0.6 (range: [0.4, 0.8])",
+        "system_files": "- src/simulation/action_select.rs\n- src/actions/catalog.rs\n- src/entity/tasks.rs\n- src/entity/species/human.rs",
+        "reasoning": "This change improved metrics: 57% -> 71%",
+        "file_path": "src/simulation/action_select.rs",
+        "change_description": "Lower social need threshold for triggering TalkTo action - entities were too antisocial even when idle",
+        "code_snippet": "Reduced social need threshold constant from 0.5 to 0.35 to match the interruption logic threshold added in previous step",
+        "confidence": "85"
+      }
+    ],
+    "signature": {
+      "instructions": "Propose a code change to fix a failed gameplay expectation.\n\nWhy this signature: Separates inputs (what failed, what can change)\nfrom outputs (what to change, why). DSPy learns the mapping.",
+      "fields": [
+        {
+          "prefix": "Failed Expectation:",
+          "description": "The expectation that failed: ID, behavior, and what was observed"
+        },
+        {
+          "prefix": "Tunable Constants:",
+          "description": "Constants that can be adjusted: file, name, current value, valid range"
+        },
+        {
+          "prefix": "System Files:",
+          "description": "Rust source files related to this behavior"
+        },
+        {
+          "prefix": "Reasoning:",
+          "description": "Step-by-step reasoning about why the behavior failed and how to fix it"
+        },
+        {
+          "prefix": "File Path:",
+          "description": "The specific file to modify"
+        },
+        {
+          "prefix": "Change Description:",
+          "description": "Concise description of the change"
+        },
+        {
+          "prefix": "Code Snippet:",
+          "description": "The actual code change or constant adjustment"
+        },
+        {
+          "prefix": "Confidence:",
+          "description": "Confidence 0-100 that this fix will help"
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.1.0",
+      "cloudpickle": "3.1"
+    }
+  }
+}

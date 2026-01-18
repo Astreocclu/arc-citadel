@@ -1,0 +1,106 @@
+{
+  "name": "campaign-full",
+  "description": "Full campaign layer: army movement, supply, weather, visibility, battle resolution, and scouts",
+
+  "systems": [
+    "src/campaign/map.rs",
+    "src/campaign/route.rs",
+    "src/campaign/supply.rs",
+    "src/campaign/weather.rs",
+    "src/campaign/visibility.rs",
+    "src/campaign/battle.rs",
+    "src/campaign/scouts.rs"
+  ],
+
+  "setup": {
+    "description": "Run campaign simulation with armies, supply, weather, scouts over 50 days",
+    "command": "cargo run --bin campaign_sim"
+  },
+
+  "expectations": [
+    {
+      "id": "E1",
+      "behavior": "Armies follow optimal paths considering terrain costs",
+      "eval_hint": "Path should prefer low-cost terrain (plains 1.0) over high-cost (mountains 3.0)",
+      "weight": 1.5
+    },
+    {
+      "id": "E2",
+      "behavior": "Aggressive armies engage enemies when meeting at same hex",
+      "eval_hint": "Two aggressive armies from different factions at same position = BATTLE event",
+      "weight": 1.5
+    },
+    {
+      "id": "E3",
+      "behavior": "Armies without supply suffer starvation attrition",
+      "eval_hint": "After supplies exhausted, army should lose ~2% soldiers per day",
+      "weight": 1.5
+    },
+    {
+      "id": "E4",
+      "behavior": "Supply consumption scales with army size (larger armies exhaust faster)",
+      "eval_hint": "500-unit army exhausts in ~3 days (14/5), 600-unit in ~2.3 days (14/6)",
+      "weight": 1.0
+    },
+    {
+      "id": "E5",
+      "behavior": "Weather varies over campaign duration",
+      "eval_hint": "Should see multiple weather types (Clear, Rain, Cloudy, etc) over 50 days",
+      "weight": 1.0
+    },
+    {
+      "id": "E6",
+      "behavior": "Scouts complete recon missions and gather intel",
+      "eval_hint": "Scout recon at (10,10) should trigger 'Scout completed recon' event",
+      "weight": 1.5
+    },
+    {
+      "id": "E7",
+      "behavior": "Scouts move faster than regular armies",
+      "eval_hint": "SCOUT_SPEED_MULTIPLIER=1.5, scout should reach destination before parent army",
+      "weight": 1.0
+    },
+    {
+      "id": "E8",
+      "behavior": "Battle casualties reflect army sizes and stances",
+      "eval_hint": "Similar-sized armies should have similar casualties in battle",
+      "weight": 1.0
+    },
+    {
+      "id": "E9",
+      "behavior": "Visibility system tracks explored hexes per faction",
+      "eval_hint": "Each faction should have 100+ hexes explored after 50 days of movement",
+      "weight": 1.0
+    },
+    {
+      "id": "E10",
+      "behavior": "Scouts can be detected by enemy armies",
+      "eval_hint": "Scout in same hex as enemy may trigger 'Scout detected' event",
+      "weight": 0.5
+    },
+    {
+      "id": "E11",
+      "behavior": "Scouts auto-return after completing recon and deliver intel",
+      "eval_hint": "After 'Scout completed recon' should see 'Scout returned with intel' event",
+      "weight": 1.0
+    },
+    {
+      "id": "E12",
+      "behavior": "Routed army retreats from battle hex after losing",
+      "eval_hint": "After battle with AttackerVictory or DefenderVictory, loser should retreat to adjacent hex",
+      "weight": 1.0
+    }
+  ],
+
+  "tunable_constants": [
+    {"file": "src/campaign/map.rs", "name": "Plains movement cost", "current": 1.0, "range": [0.5, 2.0]},
+    {"file": "src/campaign/map.rs", "name": "Mountains movement cost", "current": 3.0, "range": [2.0, 5.0]},
+    {"file": "src/campaign/supply.rs", "name": "BASE_SUPPLY_DAYS", "current": 14.0, "range": [7.0, 21.0]},
+    {"file": "src/campaign/supply.rs", "name": "STARVATION_ATTRITION_RATE", "current": 0.02, "range": [0.01, 0.05]},
+    {"file": "src/campaign/battle.rs", "name": "BASE_CASUALTY_RATE", "current": 0.05, "range": [0.02, 0.10]},
+    {"file": "src/campaign/battle.rs", "name": "ROUT_THRESHOLD", "current": 0.2, "range": [0.1, 0.4]},
+    {"file": "src/campaign/scouts.rs", "name": "SCOUT_SPEED_MULTIPLIER", "current": 1.5, "range": [1.2, 2.0]},
+    {"file": "src/campaign/scouts.rs", "name": "SCOUT_EVASION_CHANCE", "current": 0.7, "range": [0.5, 0.9]},
+    {"file": "src/campaign/visibility.rs", "name": "BASE_VISIBILITY_RANGE", "current": 3, "range": [2, 5]}
+  ]
+}

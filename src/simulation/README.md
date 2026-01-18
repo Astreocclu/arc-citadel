@@ -6,12 +6,20 @@
 
 ```
 simulation/
-├── mod.rs              # Module exports
-├── perception.rs       # What entities notice in their environment
-├── thought_gen.rs      # Generate thoughts from perceptions
-├── action_select.rs    # Choose actions based on thoughts and needs
-├── action_execute.rs   # Execute chosen actions
-└── tick.rs            # Orchestrate all systems each tick
+├── mod.rs                  # Module exports
+├── tick.rs                 # Orchestrate all systems each tick (4405 LOC)
+├── action_select.rs        # Choose actions based on needs/values (6121 LOC)
+├── perception.rs           # What entities notice in environment
+├── thought_gen.rs          # Generate thoughts from perceptions (stub)
+├── action_execute.rs       # Execute chosen actions (stub)
+├── consumption.rs          # Resource consumption logic
+├── expectation_formation.rs # Pattern learning from observations
+├── housing.rs              # Housing assignment and capacity
+├── population.rs           # Population dynamics
+├── resource_zone.rs        # Resource zone management
+├── rule_eval.rs            # Rule evaluation for actions
+├── value_dynamics.rs       # Value changes over time
+└── violation_detection.rs  # Detect behavioral violations (601 LOC)
 ```
 
 ## Architecture Position
@@ -31,103 +39,77 @@ simulation/
 
 ## System Execution Order
 
-The `tick.rs` file orchestrates systems in this sequence:
+The `tick.rs` file (4405 lines) orchestrates systems:
 
 ```rust
-pub fn run_simulation_tick(world: &mut World) {
+pub fn run_simulation_tick(world: &mut World) -> Vec<SimulationEvent> {
     update_needs(world);           // 1. Needs decay over time
-    let perceptions = run_perception(world);  // 2. Build spatial index, query
+    let perceptions = perception_system(world);  // 2. Build spatial index, query
     generate_thoughts(world, &perceptions);   // 3. React to perceptions
     decay_thoughts(world);         // 4. Fade old thoughts
     select_actions(world);         // 5. Choose actions for idle entities
     execute_tasks(world);          // 6. Progress current tasks
+    // Combat resolution wired in at line ~2280
     world.tick();                  // 7. Advance time
 }
 ```
 
 ## Key Components
 
-### Perception System (`perception.rs`)
+### Action Selection (`action_select.rs` - 6121 LOC)
 
-Determines what each entity notices based on spatial proximity:
+The largest file in the codebase. Implements action selection for all species.
 
+**Key exports:**
 ```rust
-pub struct Perception {
-    pub observer: EntityId,
-    pub perceived_entities: Vec<PerceivedEntity>,
-    pub perceived_objects: Vec<PerceivedObject>,
-    pub perceived_events: Vec<PerceivedEvent>,
-}
-
-pub struct PerceivedEntity {
-    pub entity: EntityId,
-    pub distance: f32,
-    pub relationship: RelationshipType,
-    pub threat_level: f32,
-    pub notable_features: Vec<String>,
-}
-```
-
-**Key function:**
-```rust
-pub fn perception_system(
-    spatial_grid: &SparseHashGrid,
-    positions: &[Vec2],
-    entity_ids: &[EntityId],
-    perception_range: f32,
-) -> Vec<Perception>
-```
-
-### Action Selection (`action_select.rs`)
-
-Chooses actions based on needs, thoughts, and values:
-
-```rust
-pub struct SelectionContext<'a> {
-    pub body: &'a BodyState,
-    pub needs: &'a Needs,
-    pub thoughts: &'a ThoughtBuffer,
-    pub values: &'a HumanValues,
-    pub has_current_task: bool,
-    pub threat_nearby: bool,
-    pub food_available: bool,
-    pub safe_location: bool,
-    pub entity_nearby: bool,
-    pub current_tick: Tick,
-}
+pub use action_select::select_action_with_rules;
 ```
 
 **Selection priority:**
-1. **Critical needs** (> 0.8) trigger immediate response
-2. **Value impulses** from strong thoughts matching values
-3. **Moderate needs** (> 0.6) addressed when idle
+1. **Critical needs** (> 0.65) trigger immediate response
+2. **Value-driven impulses** from strong thoughts matching values
+3. **Moderate needs** (> 0.5) addressed when idle
 4. **Idle actions** based on personality (wander, observe, socialize)
 
+### Perception System (`perception.rs`)
+
+Determines what each entity notices based on spatial proximity and values.
+
+### Expectation Formation (`expectation_formation.rs`)
+
+Pattern learning from observations:
 ```rust
-pub fn select_action_human(ctx: &SelectionContext) -> Option<Task> {
-    // Critical needs first
-    if let Some(critical) = ctx.needs.has_critical() {
-        return select_critical_response(critical, ctx);
-    }
+pub use expectation_formation::{
+    infer_patterns_from_action,
+    process_observations,
+    record_observation,
+};
+```
 
-    // Already busy? Don't interrupt
-    if ctx.has_current_task {
-        return None;
-    }
+### Violation Detection (`violation_detection.rs` - 601 LOC)
 
-    // Value-driven impulses
-    if let Some(task) = check_value_impulses(ctx) {
-        return Some(task);
-    }
+Detects when entity behavior violates expected patterns:
+```rust
+pub use violation_detection::{
+    check_pattern_violation,
+    check_violations,
+    process_violations,
+    ViolationType,
+};
+```
 
-    // Address moderate needs
-    if let Some(task) = address_moderate_need(ctx) {
-        return Some(task);
-    }
+### Resource Zones (`resource_zone.rs`)
 
-    // Default to idle behavior
-    Some(select_idle_action(ctx))
-}
+Manages resource availability:
+```rust
+pub use resource_zone::{ResourceType, ResourceZone};
+```
+
+### Value Dynamics (`value_dynamics.rs`)
+
+Applies value changes over time:
+```rust
+pub use value_dynamics::{apply_event, apply_tick_dynamics};
 ```
 
 ## Data Flow
@@ -180,77 +162,9 @@ World State
 - Receives `&mut World` for all operations
 - Iterates via `world.humans.iter_living()`
 
-## Best Practices
-
-### Building Context for Selection
-```rust
-let ctx = SelectionContext {
-    body: &world.humans.body_states[i],
-    needs: &world.humans.needs[i],
-    thoughts: &world.humans.thoughts[i],
-    values: &world.humans.values[i],
-    has_current_task: world.humans.task_queues[i].current().is_some(),
-    threat_nearby: world.humans.needs[i].safety > 0.5,
-    food_available: true,  // TODO: Check actual food sources
-    safe_location: world.humans.needs[i].safety < 0.3,
-    entity_nearby: !perceptions[i].perceived_entities.is_empty(),
-    current_tick: world.current_tick,
-};
-```
-
-### Generating Thoughts from Perception
-```rust
-for perceived in &perception.perceived_entities {
-    if perceived.threat_level > 0.5 {
-        let thought = Thought::new(
-            Valence::Negative,
-            perceived.threat_level,
-            "concern",  // Concept category
-            "threatening entity nearby",
-            CauseType::Entity,
-            world.current_tick,
-        );
-        world.humans.thoughts[idx].add(thought);
-    }
-}
-```
-
-## Extension Points
-
-### Adding New Perception Types
-1. Add struct to `perception.rs`
-2. Update `perception_system()` to detect new type
-3. Update `generate_thoughts()` to react appropriately
-
-### Adding New Selection Logic
-1. Add helper function in `action_select.rs`
-2. Call from appropriate priority level in `select_action_human()`
-3. Ensure critical needs always take precedence
-
-### Species-Specific Perception
-Values filter what entities notice:
-```rust
-pub fn filter_perception_human(
-    raw_perception: &[PerceivedObject],
-    values: &HumanValues,
-) -> Vec<PerceivedObject> {
-    raw_perception.iter()
-        .filter(|obj| {
-            // High beauty value → notice aesthetic properties
-            if values.beauty > 0.5 {
-                if obj.has_property("aesthetic") { return true; }
-            }
-            // High honor value → notice social status
-            if values.honor > 0.5 {
-                if obj.has_property("social_status") { return true; }
-            }
-            // Always notice threats
-            obj.has_property("threat")
-        })
-        .cloned()
-        .collect()
-}
-```
+### With `combat/` module
+- `resolve_exchange()` called from tick.rs (line ~2280)
+- Applies wounds and fatigue to combatants
 
 ## Critical Implementation Details
 
@@ -266,8 +180,6 @@ Actions satisfy needs at **0.05x per tick**, not the nominal amount:
 // Total satisfaction: 0.025 × 20 = 0.5
 ```
 
-This creates meaningful time investment - entities can't instantly satisfy needs.
-
 ### Task Completion Rules
 
 | Duration | Progress Rate | Behavior |
@@ -275,8 +187,6 @@ This creates meaningful time investment - entities can't instantly satisfy needs
 | 0 (continuous) | 0.1/tick | **Never completes** - cancelled/replaced only |
 | 1-60 (quick) | 0.05/tick | Completes in ~20 ticks |
 | >60 (long) | 0.02/tick | Completes in ~50 ticks |
-
-Continuous actions (IdleWander, IdleObserve) run until interrupted by a higher-priority task.
 
 ### Configuration
 
@@ -292,7 +202,3 @@ cargo test --lib simulation::
 cargo test test_needs_decay
 cargo test test_different_values_different_behavior
 ```
-
-### Test Coverage
-- `test_needs_decay` - Verify needs increase over ticks
-- `test_different_values_different_behavior` - Different values produce different actions

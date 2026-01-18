@@ -80,21 +80,46 @@ class FixProposer(dspy.Module):
         )
 
 
-def configure_dspy(api_key: str | None = None):
-    """Set up DSPy with Gemini backend.
+def configure_dspy(api_key: str | None = None, model: str | None = None):
+    """Set up DSPy with LLM backend.
 
     Why separate function: Allows reconfiguration for different
     models or testing scenarios.
-    """
-    key = api_key or os.getenv("GOOGLE_API_KEY")
-    if not key:
-        raise ValueError("GOOGLE_API_KEY required")
 
-    lm = dspy.LM(
-        model="gemini/gemini-2.0-flash",
-        api_key=key,
-        temperature=0.7,  # Slightly creative for proposals
-    )
+    Supported models:
+        - gemini (default): Uses GOOGLE_API_KEY
+        - deepseek: Uses DEEPSEEK_API_KEY, good for code reasoning
+    """
+    model = model or os.getenv("DSPY_MODEL", "gemini")
+
+    # Retry settings for rate limiting
+    retry_kwargs = {
+        "num_retries": 3,
+        "timeout": 120,
+    }
+
+    if model == "deepseek":
+        key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        if not key:
+            raise ValueError("DEEPSEEK_API_KEY required for DeepSeek model")
+        lm = dspy.LM(
+            model="deepseek/deepseek-chat",
+            api_key=key,
+            temperature=0.7,
+            **retry_kwargs,
+        )
+    else:
+        # Default to Gemini
+        key = api_key or os.getenv("GOOGLE_API_KEY")
+        if not key:
+            raise ValueError("GOOGLE_API_KEY required for Gemini model")
+        lm = dspy.LM(
+            model="gemini/gemini-3-pro-preview",
+            api_key=key,
+            temperature=0.7,
+            **retry_kwargs,
+        )
+
     dspy.configure(lm=lm)
 
 
@@ -139,8 +164,20 @@ def propose_fixes(
     # Format system files
     systems_text = "\n".join(f"- {s}" for s in focus.get("systems", []))
 
-    # Generate proposals
+    # Generate proposals - prefer compiled (trained) proposer if available
+    compiled_path = Path(__file__).parent.parent.parent / "compiled_proposer.json"
     proposer = FixProposer()
+    using_compiled = False
+    if compiled_path.exists():
+        try:
+            proposer.load(str(compiled_path))
+            using_compiled = True
+            print(f"Loaded trained proposer from {compiled_path}")
+        except Exception as e:
+            print(f"Warning: Could not load compiled proposer ({e}), using untrained")
+
+    if not using_compiled:
+        print("Using untrained proposer (run 'opt-gameplay learn' to train)")
     hypotheses = []
 
     for miss in misses:

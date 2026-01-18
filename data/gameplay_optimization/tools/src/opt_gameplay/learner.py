@@ -19,7 +19,35 @@ from .proposer import FixProposer, GenerateFix, configure_dspy
 load_dotenv()
 
 # Where to save compiled DSPy programs
+# Path from tools/src/opt_gameplay/learner.py:
+# .parent = opt_gameplay/, .parent.parent = src/, .parent.parent.parent = tools/
 COMPILED_PROPOSER_PATH = Path(__file__).parent.parent.parent / "compiled_proposer.json"
+# .parent.parent.parent.parent = data/gameplay_optimization/
+FOCUSES_DIR = Path(__file__).parent.parent.parent.parent / "focuses"
+
+
+def load_focus_context(focus_name: str) -> tuple[str, str]:
+    """Load tunable constants and system files from a focus file.
+
+    Returns (tunable_constants_text, systems_text).
+    """
+    focus_path = FOCUSES_DIR / f"{focus_name}.json"
+    if not focus_path.exists():
+        return "(no focus file found)", "(no systems listed)"
+
+    with open(focus_path) as f:
+        focus = json.load(f)
+
+    tunables = focus.get("tunable_constants", [])
+    tunables_text = "\n".join(
+        f"- {t['file']}: {t['name']} = {t['current']} (range: {t['range']})"
+        for t in tunables
+    ) or "(no tunable constants)"
+
+    systems = focus.get("systems", [])
+    systems_text = "\n".join(f"- {s}" for s in systems) or "(no systems listed)"
+
+    return tunables_text, systems_text
 
 
 def extract_training_examples(changelog_path: str) -> list[dict]:
@@ -50,6 +78,7 @@ def extract_training_examples(changelog_path: str) -> list[dict]:
         # Only use entries where metrics improved
         if after > before:
             examples.append({
+                "focus": entry.get("focus", "unknown"),
                 "failed_expectation": f"Focus: {entry.get('focus', 'unknown')}",
                 "hypothesis": entry.get("hypothesis", ""),
                 "file": entry.get("file", ""),
@@ -69,10 +98,14 @@ def create_dspy_examples(training_data: list[dict]) -> list[dspy.Example]:
     examples = []
 
     for item in training_data:
+        # Load real focus data for richer training context
+        focus_name = item.get("focus", "unknown")
+        tunables_text, systems_text = load_focus_context(focus_name)
+
         ex = dspy.Example(
             failed_expectation=item["failed_expectation"],
-            tunable_constants="(from focus config)",
-            system_files=item.get("file", ""),
+            tunable_constants=tunables_text,
+            system_files=systems_text,
             # Expected outputs
             reasoning=f"This change improved metrics: {item['improvement']}",
             file_path=item.get("file", ""),
@@ -86,12 +119,17 @@ def create_dspy_examples(training_data: list[dict]) -> list[dspy.Example]:
     return examples
 
 
-def metric_fn(example: dspy.Example, prediction: dspy.Prediction) -> bool:
+def metric_fn(example: dspy.Example, prediction: dspy.Prediction, trace=None) -> bool:
     """Evaluate if a prediction is good.
 
     Why simple metric: We can't run the actual simulation during
     training, so we check if the proposal is well-formed and
     references actual files.
+
+    Args:
+        example: The input example
+        prediction: The model's prediction
+        trace: Optional trace info from DSPy (unused but required by newer DSPy versions)
     """
     # Check prediction has required fields
     if not prediction.file_path or not prediction.change_description:
@@ -138,10 +176,16 @@ def train_proposer(
     # Convert to DSPy examples
     examples = create_dspy_examples(training_data)
 
-    # Split into train/dev
-    split = max(1, len(examples) // 4)
-    trainset = examples[:-split] if split < len(examples) else examples
-    devset = examples[-split:] if split < len(examples) else examples[:1]
+    # Split into train/dev (use all examples for both if we have few)
+    if len(examples) <= 2:
+        # With 1-2 examples, use all for training (no meaningful split possible)
+        trainset = examples
+        devset = examples
+    else:
+        # Reserve ~25% for dev, but at least 1
+        split = max(1, len(examples) // 4)
+        trainset = examples[:-split]
+        devset = examples[-split:]
 
     # Create optimizer
     optimizer = BootstrapFewShot(

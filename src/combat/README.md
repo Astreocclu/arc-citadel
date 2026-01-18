@@ -2,25 +2,84 @@
 
 > Combat resolution, weapons, armor, wounds, and morale. Behavior emerges from property interactions.
 
-## Module Structure
+## Module Structure (2128 LOC total)
 
 ```
 combat/
-├── mod.rs          # Module exports
-├── resolution.rs   # Combat resolution (stub)
-├── weapons.rs      # Weapon properties (stub)
-├── armor.rs        # Armor properties (stub)
-├── wounds.rs       # Wound system (stub)
-└── morale.rs       # Morale system (stub)
+├── mod.rs          # Module exports (39 re-exported items)
+├── resolution.rs   # Combat resolution - resolve_exchange() (6821 LOC)
+├── weapons.rs      # Weapon properties and types
+├── armor.rs        # Armor properties and coverage
+├── wounds.rs       # Wound system and severity
+├── trauma.rs       # Trauma calculation
+├── penetration.rs  # Armor penetration mechanics
+├── morale.rs       # Morale system
+├── body_zone.rs    # Body part targeting
+├── formation.rs    # Combat formation effects
+├── skill.rs        # Combat skill levels
+├── stance.rs       # Combat stances (aggressive, defensive, etc.)
+├── state.rs        # Combat state tracking
+├── constants.rs    # Combat constants
+├── adapter.rs      # Integration with entity system
+└── equipment.rs    # Equipment properties
 ```
 
-## Status: Stub Implementation
+## Status: COMPLETE IMPLEMENTATION
 
-This module is planned but not yet implemented. The design follows Arc Citadel's core principle: **behavior emerges from property interactions**.
+All combat subsystems are implemented and wired into the simulation tick.
 
-## Planned Design
+## Core Functions
 
-### Combat Resolution Flow
+### Combat Resolution
+
+```rust
+pub fn resolve_exchange(attacker: &Combatant, defender: &Combatant) -> ExchangeResult
+```
+
+Called from `simulation/tick.rs` (line ~2280). Resolves a combat exchange between two combatants.
+
+### Supporting Functions
+
+```rust
+pub fn resolve_penetration(impact: f32, armor: &ArmorProperties) -> PenetrationResult
+pub fn resolve_trauma(penetration: f32, zone: BodyZone) -> TraumaResult
+pub fn combine_results(penetration: PenetrationResult, trauma: TraumaResult) -> Wound
+```
+
+## Key Types
+
+### Combatant
+
+```rust
+pub struct Combatant {
+    pub skill: CombatSkill,
+    pub stance: CombatStance,
+    pub weapon: WeaponProperties,
+    pub armor: ArmorProperties,
+    pub fatigue: f32,
+}
+```
+
+### ExchangeResult
+
+```rust
+pub struct ExchangeResult {
+    pub attacker_wound: Option<Wound>,
+    pub defender_wound: Option<Wound>,
+}
+```
+
+### Wound
+
+```rust
+pub struct Wound {
+    pub zone: BodyZone,
+    pub severity: WoundSeverity,
+    pub bleed_rate: f32,
+}
+```
+
+## Combat Resolution Flow
 
 ```
 Attacker Intent
@@ -32,114 +91,76 @@ Attacker Intent
        │
        ▼
 ┌─────────────┐
-│  Strength   │ ← Physical capability
+│  Skill +    │ ← Combat skill level
+│  Stance     │ ← Aggressive/Defensive
 └──────┬──────┘
        │
        ▼
 ┌─────────────┐
-│   Impact    │ = weapon × strength × fatigue
+│   Impact    │ = weapon × skill × fatigue
 └──────┬──────┘
        │
        ▼
 ┌─────────────┐
-│   Armor     │ ← Coverage, material, condition
+│ Penetration │ ← resolve_penetration()
 └──────┬──────┘
        │
        ▼
 ┌─────────────┐
-│   Wound     │ ← Location, severity, type
+│   Trauma    │ ← resolve_trauma()
 └──────┬──────┘
        │
        ▼
 ┌─────────────┐
-│   Morale    │ ← Pain, fear, resolve
+│   Wound     │ ← combine_results()
 └─────────────┘
 ```
 
-### Property Interaction Examples
+## Integration with Simulation
+
+In `simulation/tick.rs` (around line 2280):
 
 ```rust
-// Impact force from attack
-fn calculate_impact(
-    strength: f32,
-    weapon_weight: f32,
-    swing_momentum: f32,
-    fatigue: f32,
-) -> f32 {
-    let base_force = strength * weapon_weight * swing_momentum;
-    base_force * (1.0 - fatigue * 0.3)
-}
+let exchange = resolve_exchange(&attacker, &defender);
 
-// Armor penetration
-fn calculate_penetration(
-    impact: f32,
-    armor_thickness: f32,
-    armor_condition: f32,
-    angle_of_impact: f32,
-) -> f32 {
-    let effective_armor = armor_thickness * armor_condition * angle_of_impact;
-    (impact - effective_armor).max(0.0)
-}
-
-// Wound severity
-fn calculate_wound(
-    penetration: f32,
-    body_part: BodyPart,
-    weapon_type: WeaponType,
-) -> Wound {
-    // Severity emerges from interaction of factors
-    // Different weapon types cause different wound types
+// Apply wounds to defender
+if let Some(wound) = &exchange.defender_wound {
+    if wound.severity != WoundSeverity::None {
+        let fatigue_increase = match wound.severity {
+            WoundSeverity::Light => 0.1,
+            WoundSeverity::Moderate => 0.2,
+            WoundSeverity::Severe => 0.4,
+            WoundSeverity::Critical => 0.6,
+            WoundSeverity::None => 0.0,
+        };
+        world.humans.body_states[defender_idx].fatigue =
+            (world.humans.body_states[defender_idx].fatigue + fatigue_increase).min(1.0);
+    }
 }
 ```
 
-### Morale System
+## Enums
 
-Morale emerges from:
-- Current wounds and pain
-- Nearby allies and enemies
-- Recent combat outcomes
-- Entity values (courage, loyalty)
+### WoundSeverity
+`None`, `Light`, `Moderate`, `Severe`, `Critical`
 
-```rust
-fn update_morale(
-    entity: &Entity,
-    nearby_allies: usize,
-    nearby_enemies: usize,
-    recent_wounds: &[Wound],
-    values: &HumanValues,
-) -> f32 {
-    // Morale is a function of all these factors
-    // Breaking point depends on values
-}
+### BodyZone
+`Head`, `Torso`, `LeftArm`, `RightArm`, `LeftLeg`, `RightLeg`
+
+### CombatStance
+`Aggressive`, `Balanced`, `Defensive`, `Reckless`
+
+### CombatSkill
+`Untrained`, `Novice`, `Competent`, `Skilled`, `Expert`, `Master`
+
+## Testing
+
+```bash
+cargo test --lib combat::
 ```
 
-## Integration Points
-
-### With `entity/body.rs`
-- Wounds affect BodyState
-- Pain affects action capability
-- Fatigue affects combat effectiveness
-
-### With `entity/needs.rs`
-- Combat increases safety need
-- Wounds increase rest need
-- Victory may satisfy purpose need
-
-### With `simulation/action_select.rs`
-- Low morale triggers Flee action
-- High threat triggers defensive actions
-
-## Future Implementation
-
-When implementing this module:
-
-1. **Start with weapons and armor** as data structures
-2. **Implement resolution** as property interaction
-3. **Add wounds** that affect body state
-4. **Add morale** that affects action selection
-
-## Testing Strategy
-
-- Unit tests for each property interaction
-- Integration tests for combat outcomes
-- Property tests for edge cases (extreme values)
+Tests cover:
+- Individual combat resolution
+- Wound severity calculation
+- Armor penetration mechanics
+- Stance modifiers
