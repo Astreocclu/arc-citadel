@@ -162,3 +162,39 @@ This demonstrates E2 is actually a **HIT** - entities DO eat and rest when criti
 3. **Fix applied**: Allow critical needs to interrupt idle tasks
 4. **Result**: 3/5 testable = 60% hit rate
 5. **Remaining issues**: E6 (TalkTo) requires faster social decay or dedicated critical threshold
+6. **DSPy learning loop completed**: Full training pipeline now operational
+
+## DSPy Learning Loop Implementation
+
+The DSPy learning loop is now fully functional:
+
+### Components Completed
+| Component | File | Status |
+|-----------|------|--------|
+| Example extraction | `learner.py:25-60` | Working |
+| DSPy Example creation | `learner.py:63-86` | Working |
+| Metric function | `learner.py:89-112` | Fixed (3-arg signature) |
+| BootstrapFewShot optimizer | `learner.py:151-155` | Working |
+| Compile & save | `learner.py:161-167` | Working |
+| Load compiled module | `proposer.py:146-151` | Working |
+| CLI `learn` command | `cli.py:104-141` | Working |
+
+### Usage
+```bash
+# Train the proposer on successful fixes
+opt-gameplay learn --changelog data/gameplay_optimization/changelog.json
+
+# The proposer will automatically use the compiled (trained) module
+opt-gameplay propose -e /tmp/eval.json -f focuses/action-selection.json
+```
+
+### Training Data
+Added first entry to `changelog.json` with today's fix:
+- Focus: action-selection
+- Hypothesis: Allow critical needs to interrupt idle tasks
+- Hit rate improvement: 14% → 60%
+
+### Fixes Made
+1. **Circular import**: Moved compiled module loading inline in `proposer.py` instead of importing from `learner.py`
+2. **Metric signature**: Updated `metric_fn()` to accept 3 arguments (DSPy 3.x requirement)
+3. **Min examples**: Lowered from 3 to 1 for testing with limited data
