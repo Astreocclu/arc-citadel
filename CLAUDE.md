@@ -145,7 +145,7 @@ Behavior emerges from the interaction of values, needs, and context:
 | `actions/` | Action definitions | `catalog.rs` |
 | `combat/` | Combat resolution | `resolution.rs`, `wounds.rs` |
 | `llm/` | Natural language parsing | `client.rs`, `parser.rs`, `context.rs` |
-| `campaign/` | Strategic map layer | `map.rs`, `location.rs` |
+| `campaign/` | Strategic map layer | `map.rs`, `route.rs`, `supply.rs`, `weather.rs`, `visibility.rs`, `battle.rs`, `scouts.rs` |
 | `battle/` | Tactical combat | `battle_map.rs`, `execution.rs` |
 | `ui/` | Terminal interface | `terminal.rs`, `display.rs` |
 
@@ -322,20 +322,28 @@ cargo test --lib simulation::
 
 ## Implementation Status
 
-| Module | Status | Notes |
-|--------|--------|-------|
-| core/ | Complete | Types, errors |
-| ecs/ | Complete | World, entity management |
-| spatial/ | Complete | Grid, sparse hash |
-| entity/ | Complete | Needs, thoughts, tasks, human archetype |
-| simulation/ | Complete | Core loop, perception, action selection |
-| actions/ | Partial | Catalog complete, execution stubs |
-| llm/ | Complete | Client, parser, context |
-| combat/ | Stub | Planned |
-| campaign/ | Stub | Planned |
-| battle/ | Stub | Planned |
-| ui/ | Stub | Planned |
-| genetics/ | Stub | Planned |
+| Module | LOC | Status | Notes |
+|--------|-----|--------|-------|
+| simulation/ | 12,881 | Complete | Core loop, perception, action selection, violation detection |
+| battle/ | 8,322 | Complete | Execution, movement, morale, orders, formations, hex grid |
+| skills/ | 7,209 | Complete | Definitions, loadouts, history, progression |
+| blueprints/ | 3,880 | Complete | Building registry, construction, expression language |
+| aggregate/ | 2,726 | Complete | Polity systems, generation, resolution |
+| core/ | 2,516 | Complete | Types, errors, config, astronomy |
+| combat/ | 2,128 | Complete | Resolution, wounds, fatigue, equipment |
+| city/ | 1,806 | Complete | City simulation systems |
+| world/ | 1,293 | Complete | World state management |
+| renderer/ | 1,962 | Complete | wgpu shapes, sprites, animations, GPU pipeline |
+| llm/ | 869 | Complete | Client, parser, context |
+| rules/ | 736 | Complete | Game rules |
+| spatial/ | 676 | Complete | Grid, sparse hash |
+| entity/ | 670 | Complete | Needs, thoughts, tasks, human archetype |
+| ecs/ | 342 | Complete | World, entity management |
+| command/ | 393 | Complete | Player commands |
+| actions/ | 124 | Complete | Action catalog |
+| ui/ | 95 | Complete | egui overlay, display, input, state |
+| campaign/ | 2,500+ | Complete | Hex map, armies, supply, weather, visibility, battle, scouts |
+| genetics/ | 8 | Stub | Only module declarations, no implementation |
 
 ## Implementation Details
 
@@ -346,6 +354,75 @@ Each module README contains a **Critical Implementation Details** section with g
 - `src/spatial/README.md` - Query requirements
 
 All tunable constants are documented in `src/core/config.rs` (`SimulationConfig`).
+
+## Gameplay Optimization Tools (DSPy)
+
+Self-improving optimization loop for tuning simulation behavior.
+
+**Location:** `data/gameplay_optimization/`
+
+### AUTONOMOUS OPTIMIZATION (Default Behavior)
+
+When asked to optimize gameplay or tune simulation behavior, **run the full loop autonomously without asking for human input**:
+
+1. **Build & Run Simulation** → Capture output to `/tmp/sim_output.txt`
+2. **Evaluate** → Run against focus config, save to `/tmp/eval.json`
+3. **Propose Fixes** → Generate hypotheses for failed expectations
+4. **Apply Best Fix** → Edit the code directly
+5. **Re-evaluate** → Verify improvement
+6. **Update Changelog** → Record the fix in `changelog.json`
+7. **Retrain Proposer** → Run `opt-gameplay learn` if 3+ successful fixes
+8. **Repeat** → Continue until hit rate stops improving or user interrupts
+9. **Update Documentation** → When optimization session ends, update relevant docs:
+   - Update module READMEs if behavior/constants changed (e.g., `src/simulation/README.md`)
+   - Update `src/core/config.rs` comments if tunable values changed
+   - Add session notes to `docs/plans/` with date prefix (e.g., `2026-01-16-session-notes.md`)
+   - Update focus config descriptions in this file if expectations evolved
+
+**Only ask for human input if explicitly requested by the user.**
+
+### Manual Commands
+
+```bash
+# Install tools (from data/gameplay_optimization/tools/)
+source .venv/bin/activate  # Use project venv
+
+# Evaluate simulation against expectations
+opt-gameplay evaluate -f ../focuses/action-selection.json -s /tmp/sim.txt -o /tmp/eval.json
+
+# Generate fix proposals for failed expectations
+opt-gameplay propose -e /tmp/eval.json -f ../focuses/action-selection.json
+
+# Train proposer on successful fixes (after 3+ entries in changelog)
+opt-gameplay learn --changelog ../changelog.json
+
+# Compare before/after evaluations
+opt-gameplay diff -b /tmp/eval_v1.json -a /tmp/eval_v2.json
+```
+
+**Architecture:**
+| Component | Tech | Purpose |
+|-----------|------|---------|
+| Evaluator | LangChain + Pydantic | Structured verdict parsing (HIT/PARTIAL/MISS) |
+| Proposer | DSPy ChainOfThought | Generate fix hypotheses with reasoning |
+| Learner | DSPy BootstrapFewShot | Train on successful fixes |
+
+**Focus Configs:** `data/gameplay_optimization/focuses/`
+- `action-selection.json` - Action variety, critical needs, idle behavior
+- `need-satisfaction.json` - Decay rates, proactive/reactive behavior
+- `perception-filtering.json` - Threat perception, value-driven noticing
+- `thought-quality.json` - Generation, intensity, decay, buffer
+- `social-behavior.json` - Relationships, memory, social actions
+
+**Training Data:** `data/gameplay_optimization/changelog.json`
+
+**Key Tunable Files:**
+- `src/entity/needs.rs` - Critical threshold (0.65), decay rates
+- `src/core/config.rs` - All simulation constants
+- `src/simulation/action_select.rs` - Action selection logic
+- `src/bin/emergence_sim.rs` - Initial entity state for testing
+
+See `data/gameplay_optimization/README.md` for full documentation.
 
 ## Implementation Plan Reference
 
