@@ -1,0 +1,98 @@
+{
+  "name": "battle-ai",
+  "description": "How the battle AI makes tactical decisions",
+  "expectations": [
+    {
+      "id": "B1",
+      "behavior": "AI retreats when strength ratio drops below retreat_threshold",
+      "eval_hint": "Check for retreat orders when friendly/enemy strength ratio < 0.3"
+    },
+    {
+      "id": "B2",
+      "behavior": "AI prioritizes attacking weak/damaged enemy units",
+      "eval_hint": "Attack orders should target units with lowest effective_strength"
+    },
+    {
+      "id": "B3",
+      "behavior": "AI exploits flanking opportunities when available",
+      "eval_hint": "Units should maneuver to attack from multiple directions"
+    },
+    {
+      "id": "B4",
+      "behavior": "AI preserves reserves until main assault phase",
+      "eval_hint": "Reserve units should not engage in opening phase"
+    },
+    {
+      "id": "B5",
+      "behavior": "AI responds to routing units by attempting rally",
+      "eval_hint": "Rally orders issued for broken units when commander nearby"
+    },
+    {
+      "id": "B6",
+      "behavior": "Aggressive personality attacks more frequently than cautious",
+      "eval_hint": "Compare attack order frequency between personality types"
+    },
+    {
+      "id": "B7",
+      "behavior": "AI uses couriers efficiently (doesn't spam orders)",
+      "eval_hint": "Order frequency should match re_evaluation_interval"
+    }
+  ],
+  "tunable_constants": [
+    {
+      "file": "src/battle/ai/personality.rs",
+      "name": "default aggression",
+      "current": "0.5",
+      "range": "0.0-1.0"
+    },
+    {
+      "file": "src/battle/ai/personality.rs",
+      "name": "default caution",
+      "current": "0.5",
+      "range": "0.0-1.0"
+    },
+    {
+      "file": "src/battle/ai/personality.rs",
+      "name": "retreat_threshold",
+      "current": "0.3",
+      "range": "0.1-0.5"
+    },
+    {
+      "file": "src/battle/ai/personality.rs",
+      "name": "casualty_threshold",
+      "current": "0.5",
+      "range": "0.3-0.7"
+    },
+    {
+      "file": "src/battle/ai/personality.rs",
+      "name": "flanking_value",
+      "current": "1.2",
+      "range": "1.0-2.0"
+    },
+    {
+      "file": "src/battle/ai/personality.rs",
+      "name": "attack_value",
+      "current": "1.0",
+      "range": "0.5-2.0"
+    },
+    {
+      "file": "src/battle/ai/personality.rs",
+      "name": "defense_value",
+      "current": "1.0",
+      "range": "0.5-2.0"
+    },
+    {
+      "file": "src/battle/ai/personality.rs",
+      "name": "reserve_value",
+      "current": "0.8",
+      "range": "0.3-1.5"
+    }
+  ],
+  "systems": [
+    "src/battle/ai/commander.rs",
+    "src/battle/ai/personality.rs",
+    "src/battle/ai/decision_context.rs",
+    "src/battle/ai/phase_plans.rs",
+    "src/battle/execution.rs"
+  ]
+}
