@@ -8,8 +8,10 @@
 // Submodules
 mod commander;
 mod decision_context;
+pub mod llm_gateway;
 mod personality;
 mod phase_plans;
+pub mod scoring;
 
 // Re-exports
 pub use commander::AiCommander;

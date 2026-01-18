@@ -27,12 +27,16 @@ struct Args {
     #[arg(long, default_value = "default")]
     enemy: String,
 
-    /// Map size in hexes (creates a square map)
-    #[arg(long, default_value_t = 30)]
-    map_size: u32,
+    /// Map width in hexes
+    #[arg(long, default_value_t = 80)]
+    map_width: u32,
+
+    /// Map height in hexes
+    #[arg(long, default_value_t = 40)]
+    map_height: u32,
 
     /// Maximum ticks before timeout (draw)
-    #[arg(long, default_value_t = 500)]
+    #[arg(long, default_value_t = 3000)]
     max_ticks: u64,
 
     /// Random seed for deterministic runs
@@ -97,11 +101,11 @@ fn main() {
     let enemy_ai = AiCommander::with_seed(enemy_personality.clone(), seed.wrapping_add(1));
 
     // Create map
-    let map = BattleMap::new(args.map_size, args.map_size);
+    let map = BattleMap::new(args.map_width, args.map_height);
 
     // Create test armies with 3 infantry units each (50 entities per unit)
-    // Start armies 10 hexes apart (close enough to see each other with vision range 8)
-    let center_y = (args.map_size / 2) as i32;
+    // Start armies 60 hexes apart on an 80-wide map (extends approach phase)
+    let center_y = (args.map_height / 2) as i32;
     let friendly_army = create_test_army(
         "Friendly",
         BattleHexCoord::new(10, center_y),
@@ -109,7 +113,7 @@ fn main() {
     );
     let enemy_army = create_test_army(
         "Enemy",
-        BattleHexCoord::new(20, center_y),
+        BattleHexCoord::new(70, center_y),
         &mut rng,
     );
 
@@ -162,15 +166,17 @@ fn main() {
                 state.friendly_army.courier_pool.len(),
                 state.enemy_army.courier_pool.len()
             );
-            // Show unit positions
+            // Show unit positions and stances
             for formation in &state.friendly_army.formations {
                 for unit in &formation.units {
-                    eprintln!("  Friendly unit at ({},{})", unit.position.q, unit.position.r);
+                    eprintln!("  Friendly unit at ({},{}) stance={:?} stress={:.2} casualties={}",
+                        unit.position.q, unit.position.r, unit.stance, unit.stress, unit.casualties);
                 }
             }
             for formation in &state.enemy_army.formations {
                 for unit in &formation.units {
-                    eprintln!("  Enemy unit at ({},{})", unit.position.q, unit.position.r);
+                    eprintln!("  Enemy unit at ({},{}) stance={:?} stress={:.2} casualties={}",
+                        unit.position.q, unit.position.r, unit.stance, unit.stress, unit.casualties);
                 }
             }
         }

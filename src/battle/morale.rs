@@ -124,9 +124,9 @@ mod tests {
     fn test_unit_breaks_when_stress_exceeds_threshold() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         unit.elements.push(Element::new(vec![EntityId::new(); 50]));
-        // Infantry base_stress_threshold is 1.0, plus 0.1 for high cohesion = 1.1
-        // So use stress >= 1.1 to break
-        unit.stress = 1.2;
+        // Infantry base_stress_threshold is 2.0, plus 0.1 for high cohesion = 2.1
+        // So use stress >= 2.1 to break
+        unit.stress = 2.2;
 
         let result = check_morale_break(&unit);
 

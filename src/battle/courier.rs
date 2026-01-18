@@ -5,7 +5,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::battle::hex::BattleHexCoord;
+use crate::battle::formation_layout::FormationLineId;
+use crate::battle::hex::{BattleHexCoord, HexDirection};
 use crate::battle::planning::{EngagementRule, GoCodeId};
 use crate::battle::units::{FormationId, FormationShape, UnitId};
 use crate::core::types::{EntityId, Tick};
@@ -38,6 +39,16 @@ pub enum OrderType {
     ExecuteGoCode(GoCodeId),
     Rally,
     HoldPosition,
+    /// Form a line between two hex coordinates
+    /// Units will be distributed along the line and move to their assigned slots
+    FormLine {
+        start: BattleHexCoord,
+        end: BattleHexCoord,
+        facing: HexDirection,
+        depth: u8,
+    },
+    /// Move to assigned slot in a formation line
+    MoveToFormationSlot(FormationLineId),
 }
 
 /// Target of an order

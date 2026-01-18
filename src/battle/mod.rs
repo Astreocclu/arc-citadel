@@ -14,12 +14,14 @@ pub mod constants;
 pub mod courier;
 pub mod engagement;
 pub mod execution;
+pub mod formation_layout;
 pub mod hex;
 pub mod morale;
 pub mod movement;
 pub mod orders;
 pub mod pathfinding;
 pub mod planning;
+// ranged.rs - orphaned, depends on unimplemented combat::weapons
 pub mod resolution;
 pub mod terrain;
 pub mod triggers;
@@ -36,6 +38,9 @@ pub use courier::{
 pub use engagement::{
     detect_engagement, find_all_engagements, is_flanked, is_surrounded, should_initiate_combat,
     PotentialEngagement,
+};
+pub use formation_layout::{
+    compute_formation_positions, FormationLine, FormationLineId, FormationSlot,
 };
 pub use execution::{
     check_battle_end, ActiveCombat, BattleEvent, BattleEventLog, BattleEventType, BattleOutcome,
@@ -55,8 +60,8 @@ pub use planning::{
     WaypointBehavior, WaypointPlan,
 };
 pub use resolution::{
-    calculate_casualty_rate, calculate_stress_delta, determine_combat_lod, resolve_shock_attack,
-    resolve_unit_combat, CombatLOD, ShockResult, UnitCombatResult,
+    determine_combat_lod, resolve_shock_attack, resolve_unit_combat, CombatLOD, ShockResult,
+    UnitCombatResult,
 };
 pub use terrain::{BattleTerrain, TerrainFeature};
 pub use triggers::{

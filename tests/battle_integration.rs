@@ -128,30 +128,7 @@ fn test_go_code_planning() {
     assert!(plan.get_go_code("HAMMER").is_some());
 }
 
-#[test]
-fn test_combat_resolution_no_percentage_modifiers() {
-    // This test ensures we're using additive, not multiplicative modifiers
 
-    let weapon = WeaponProperties::sword();
-    let armor = ArmorProperties::leather();
-
-    // Get rates at different pressures
-    let rates: Vec<f32> = (-5..=5)
-        .map(|p| calculate_casualty_rate(&weapon, &armor, p as f32 * 0.1))
-        .collect();
-
-    // Calculate deltas between adjacent pressures
-    let deltas: Vec<f32> = rates.windows(2).map(|w| w[1] - w[0]).collect();
-
-    // All deltas should be approximately equal (additive behavior)
-    let avg_delta: f32 = deltas.iter().sum::<f32>() / deltas.len() as f32;
-    for delta in &deltas {
-        assert!(
-            (delta - avg_delta).abs() < 0.001,
-            "Deltas should be consistent for additive behavior"
-        );
-    }
-}
 
 #[test]
 fn test_ai_controlled_army_issues_orders() {

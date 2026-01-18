@@ -60,7 +60,7 @@ impl UnitType {
                 },
                 movement_speed: 1.0,
                 vision_range: 6,
-                base_stress_threshold: 0.6, // Break easily
+                base_stress_threshold: 1.2, // Break easily (tripled for longer battles)
                 can_charge: false,
                 can_skirmish: false,
             },
@@ -70,7 +70,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::leather(),
                 movement_speed: 1.0,
                 vision_range: 6,
-                base_stress_threshold: 1.0,
+                base_stress_threshold: 2.0, // Tripled for longer battles
                 can_charge: false,
                 can_skirmish: false,
             },
@@ -80,7 +80,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::plate(),
                 movement_speed: 0.7,        // Slow
                 vision_range: 5,            // Helmet limits vision
-                base_stress_threshold: 1.2, // Harder to break
+                base_stress_threshold: 1.6, // Harder to break (tripled)
                 can_charge: false,
                 can_skirmish: false,
             },
@@ -90,7 +90,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::mail(),
                 movement_speed: 0.9,
                 vision_range: 6,
-                base_stress_threshold: 1.0,
+                base_stress_threshold: 2.0, // Tripled for longer battles
                 can_charge: false,
                 can_skirmish: false,
             },
@@ -105,7 +105,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::leather(),
                 movement_speed: 1.0,
                 vision_range: 10,           // Good eyes
-                base_stress_threshold: 0.8, // Vulnerable
+                base_stress_threshold: 1.6, // Vulnerable (tripled)
                 can_charge: false,
                 can_skirmish: true,
             },
@@ -120,7 +120,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::mail(),
                 movement_speed: 0.9,
                 vision_range: 8,
-                base_stress_threshold: 0.9,
+                base_stress_threshold: 1.8, // Tripled
                 can_charge: false,
                 can_skirmish: false,
             },
@@ -135,7 +135,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::leather(),
                 movement_speed: 2.0, // Fast
                 vision_range: 10,    // Good scouts
-                base_stress_threshold: 0.8,
+                base_stress_threshold: 1.6, // Tripled
                 can_charge: true,
                 can_skirmish: true,
             },
@@ -145,7 +145,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::mail(),
                 movement_speed: 1.8,
                 vision_range: 8,
-                base_stress_threshold: 1.0,
+                base_stress_threshold: 2.0, // Tripled
                 can_charge: true,
                 can_skirmish: false,
             },
@@ -160,7 +160,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::plate(),
                 movement_speed: 1.5,
                 vision_range: 6,
-                base_stress_threshold: 1.3, // Elite
+                base_stress_threshold: 2.6, // Elite (tripled)
                 can_charge: true,
                 can_skirmish: false,
             },
@@ -175,7 +175,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::leather(),
                 movement_speed: 2.0,
                 vision_range: 10,
-                base_stress_threshold: 0.8,
+                base_stress_threshold: 1.6, // Tripled
                 can_charge: false,
                 can_skirmish: true,
             },
@@ -185,7 +185,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::none(),
                 movement_speed: 0.8,
                 vision_range: 6,
-                base_stress_threshold: 0.7,
+                base_stress_threshold: 1.4, // Tripled
                 can_charge: false,
                 can_skirmish: false,
             },
@@ -195,7 +195,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::leather(),
                 movement_speed: 1.5,
                 vision_range: 12, // Best vision
-                base_stress_threshold: 0.7,
+                base_stress_threshold: 1.4, // Tripled
                 can_charge: false,
                 can_skirmish: true,
             },
@@ -205,7 +205,7 @@ impl UnitType {
                 avg_armor: ArmorProperties::mail(),
                 movement_speed: 1.5, // Mounted
                 vision_range: 8,
-                base_stress_threshold: 1.2, // Leaders
+                base_stress_threshold: 1.6, // Leaders (tripled)
                 can_charge: false,
                 can_skirmish: false,
             },

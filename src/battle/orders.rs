@@ -3,10 +3,12 @@
 //! Translates courier-delivered orders into waypoint plan modifications.
 
 use crate::battle::courier::{Order, OrderTarget, OrderType};
+use crate::battle::formation_layout::FormationLine;
+use crate::battle::hex::{BattleHexCoord, HexDirection};
 use crate::battle::planning::{
     BattlePlan, EngagementRule, MovementPace, Waypoint, WaypointBehavior, WaypointPlan,
 };
-use crate::battle::units::{Army, UnitId, UnitStance};
+use crate::battle::units::{Army, FormationId, UnitId, UnitStance};
 
 /// Result of applying an order
 #[derive(Debug, Clone)]
@@ -21,6 +23,25 @@ pub fn apply_order(order: &Order, army: &mut Army, plan: &mut BattlePlan) -> App
     match &order.target {
         OrderTarget::Unit(unit_id) => apply_order_to_unit(order, *unit_id, army, plan),
         OrderTarget::Formation(formation_id) => {
+            // Special handling for FormLine - creates formation line with slot assignments
+            if let OrderType::FormLine {
+                start,
+                end,
+                facing,
+                depth,
+            } = &order.order_type
+            {
+                return apply_form_line_to_formation(
+                    *formation_id,
+                    *start,
+                    *end,
+                    *facing,
+                    *depth,
+                    army,
+                    plan,
+                );
+            }
+
             // Apply to all units in formation
             let unit_ids: Vec<UnitId> = army
                 .formations
@@ -235,6 +256,145 @@ fn apply_order_to_unit(
                 message: "Holding position".to_string(),
             }
         }
+
+        OrderType::FormLine {
+            start,
+            end,
+            facing,
+            depth,
+        } => {
+            // FormLine is typically applied to a formation, not a single unit
+            // When applied to a unit, it moves that unit to the start position
+            let waypoint_plan = get_or_create_waypoint_plan(plan, unit_id);
+            waypoint_plan.waypoints.clear();
+            waypoint_plan.current_waypoint = 0;
+            waypoint_plan.wait_start_tick = None;
+            waypoint_plan.add_waypoint(
+                Waypoint::new(*start, WaypointBehavior::HoldAt).with_pace(MovementPace::Quick),
+            );
+
+            // Set unit to moving stance
+            if let Some(unit) = army.get_unit_mut(unit_id) {
+                unit.stance = UnitStance::Moving;
+            }
+
+            ApplyOrderResult {
+                success: true,
+                affected_units: vec![unit_id],
+                message: format!(
+                    "Forming line from {:?} to {:?}, facing {:?}, depth {}",
+                    start, end, facing, depth
+                ),
+            }
+        }
+
+        OrderType::MoveToFormationSlot(formation_line_id) => {
+            // Look up the formation line from the plan to get target position
+            // The formation line must be stored in the plan's formation_lines
+            if let Some(target_pos) = plan
+                .formation_lines
+                .iter()
+                .find(|fl| fl.id == *formation_line_id)
+                .and_then(|fl| fl.get_target_position(unit_id))
+            {
+                let waypoint_plan = get_or_create_waypoint_plan(plan, unit_id);
+                waypoint_plan.waypoints.clear();
+                waypoint_plan.current_waypoint = 0;
+                waypoint_plan.wait_start_tick = None;
+                waypoint_plan.add_waypoint(
+                    Waypoint::new(target_pos, WaypointBehavior::HoldAt)
+                        .with_pace(MovementPace::Quick),
+                );
+
+                // Set unit to moving stance
+                if let Some(unit) = army.get_unit_mut(unit_id) {
+                    unit.stance = UnitStance::Moving;
+                }
+
+                ApplyOrderResult {
+                    success: true,
+                    affected_units: vec![unit_id],
+                    message: format!("Moving to formation slot at {:?}", target_pos),
+                }
+            } else {
+                ApplyOrderResult {
+                    success: false,
+                    affected_units: vec![],
+                    message: format!(
+                        "Formation line {:?} not found or unit not assigned",
+                        formation_line_id
+                    ),
+                }
+            }
+        }
+    }
+}
+
+/// Apply a FormLine order to a formation
+///
+/// Creates a FormationLine with slot assignments and sets each unit's
+/// waypoint to their assigned slot position.
+fn apply_form_line_to_formation(
+    formation_id: FormationId,
+    start: BattleHexCoord,
+    end: BattleHexCoord,
+    facing: HexDirection,
+    depth: u8,
+    army: &mut Army,
+    plan: &mut BattlePlan,
+) -> ApplyOrderResult {
+    // Get unit IDs in the formation
+    let unit_ids: Vec<UnitId> = army
+        .formations
+        .iter()
+        .find(|f| f.id == formation_id)
+        .map(|f| f.units.iter().map(|u| u.id).collect())
+        .unwrap_or_default();
+
+    if unit_ids.is_empty() {
+        return ApplyOrderResult {
+            success: false,
+            affected_units: vec![],
+            message: format!("Formation {:?} not found or empty", formation_id),
+        };
+    }
+
+    // Create the formation line and assign slots
+    let mut formation_line = FormationLine::new(formation_id, start, end, facing).with_depth(depth);
+    formation_line.assign_units(&unit_ids);
+
+    // Store the formation line in the plan
+    // Remove any existing formation line for this formation
+    plan.formation_lines
+        .retain(|fl| fl.formation_id != formation_id);
+    plan.formation_lines.push(formation_line.clone());
+
+    // Set each unit's waypoint to their assigned slot position
+    let mut affected = Vec::new();
+    for slot in &formation_line.slots {
+        let waypoint_plan = get_or_create_waypoint_plan(plan, slot.unit_id);
+        waypoint_plan.waypoints.clear();
+        waypoint_plan.current_waypoint = 0;
+        waypoint_plan.wait_start_tick = None;
+        waypoint_plan.add_waypoint(
+            Waypoint::new(slot.position, WaypointBehavior::HoldAt).with_pace(MovementPace::Quick),
+        );
+
+        // Set unit to moving stance
+        if let Some(unit) = army.get_unit_mut(slot.unit_id) {
+            unit.stance = UnitStance::Moving;
+        }
+
+        affected.push(slot.unit_id);
+    }
+
+    ApplyOrderResult {
+        success: true,
+        affected_units: affected,
+        message: format!(
+            "Formation {:?} forming line from {:?} to {:?}",
+            formation_id, start, end
+        ),
     }
 }
 
@@ -607,5 +767,215 @@ mod tests {
         assert_eq!(wp_plan.waypoints.len(), 1);
         assert_eq!(wp_plan.current_waypoint, 0);
         assert!(wp_plan.wait_start_tick.is_none());
+    }
+
+    fn create_test_army_with_formation() -> (Army, FormationId, Vec<UnitId>) {
+        let mut army = Army::new(ArmyId::new(), EntityId::new());
+        let formation_id = FormationId::new();
+        let mut formation = BattleFormation::new(formation_id, EntityId::new());
+
+        // Add 5 units to the formation
+        let mut unit_ids = Vec::new();
+        for i in 0..5 {
+            let unit_id = UnitId::new();
+            let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
+            unit.position = BattleHexCoord::new(i, 0);
+            unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+            formation.units.push(unit);
+            unit_ids.push(unit_id);
+        }
+
+        army.formations.push(formation);
+        (army, formation_id, unit_ids)
+    }
+
+    #[test]
+    fn test_apply_form_line_to_formation() {
+        let (mut army, formation_id, unit_ids) = create_test_army_with_formation();
+        let mut plan = BattlePlan::new();
+
+        let order = Order {
+            order_type: OrderType::FormLine {
+                start: BattleHexCoord::new(0, 5),
+                end: BattleHexCoord::new(10, 5),
+                facing: HexDirection::NorthEast,
+                depth: 1,
+            },
+            target: OrderTarget::Formation(formation_id),
+            issued_at: 0,
+        };
+
+        let result = apply_order(&order, &mut army, &mut plan);
+
+        assert!(result.success);
+        assert_eq!(result.affected_units.len(), 5);
+
+        // Check formation line was created
+        assert_eq!(plan.formation_lines.len(), 1);
+        let fl = &plan.formation_lines[0];
+        assert_eq!(fl.formation_id, formation_id);
+        assert_eq!(fl.slots.len(), 5);
+
+        // Check each unit has a waypoint plan
+        for unit_id in &unit_ids {
+            let wp_plan = plan.get_waypoint_plan(*unit_id);
+            assert!(wp_plan.is_some());
+            let wp_plan = wp_plan.unwrap();
+            assert_eq!(wp_plan.waypoints.len(), 1);
+            assert_eq!(wp_plan.waypoints[0].behavior, WaypointBehavior::HoldAt);
+        }
+
+        // Check units are set to moving stance
+        for unit_id in &unit_ids {
+            let unit = army.get_unit(*unit_id).unwrap();
+            assert_eq!(unit.stance, UnitStance::Moving);
+        }
+    }
+
+    #[test]
+    fn test_form_line_replaces_existing_formation_line() {
+        let (mut army, formation_id, _) = create_test_army_with_formation();
+        let mut plan = BattlePlan::new();
+
+        // Apply first form line
+        let order1 = Order {
+            order_type: OrderType::FormLine {
+                start: BattleHexCoord::new(0, 5),
+                end: BattleHexCoord::new(10, 5),
+                facing: HexDirection::NorthEast,
+                depth: 1,
+            },
+            target: OrderTarget::Formation(formation_id),
+            issued_at: 0,
+        };
+        apply_order(&order1, &mut army, &mut plan);
+        assert_eq!(plan.formation_lines.len(), 1);
+
+        // Apply second form line - should replace the first
+        let order2 = Order {
+            order_type: OrderType::FormLine {
+                start: BattleHexCoord::new(0, 10),
+                end: BattleHexCoord::new(10, 10),
+                facing: HexDirection::East,
+                depth: 2,
+            },
+            target: OrderTarget::Formation(formation_id),
+            issued_at: 1,
+        };
+        apply_order(&order2, &mut army, &mut plan);
+
+        // Should still only have 1 formation line (replaced)
+        assert_eq!(plan.formation_lines.len(), 1);
+        let fl = &plan.formation_lines[0];
+        assert_eq!(fl.start, BattleHexCoord::new(0, 10));
+        assert_eq!(fl.depth, 2);
+    }
+
+    #[test]
+    fn test_form_line_with_depth() {
+        let (mut army, formation_id, _) = create_test_army_with_formation();
+        let mut plan = BattlePlan::new();
+
+        // Form a short line with depth 2 (3 hexes wide, so 3 front + 2 back)
+        let order = Order {
+            order_type: OrderType::FormLine {
+                start: BattleHexCoord::new(0, 5),
+                end: BattleHexCoord::new(2, 5), // 3 hexes
+                facing: HexDirection::NorthEast,
+                depth: 2,
+            },
+            target: OrderTarget::Formation(formation_id),
+            issued_at: 0,
+        };
+
+        let result = apply_order(&order, &mut army, &mut plan);
+        assert!(result.success);
+
+        let fl = &plan.formation_lines[0];
+        // 5 units, 3 positions in front rank = 3 front, 2 in second rank
+        let front_rank = fl.slots.iter().filter(|s| s.rank == 0).count();
+        let back_rank = fl.slots.iter().filter(|s| s.rank == 1).count();
+        assert_eq!(front_rank, 3);
+        assert_eq!(back_rank, 2);
+    }
+
+    #[test]
+    fn test_move_to_formation_slot_order() {
+        let (mut army, formation_id, unit_ids) = create_test_army_with_formation();
+        let mut plan = BattlePlan::new();
+
+        // First create a formation line
+        let form_order = Order {
+            order_type: OrderType::FormLine {
+                start: BattleHexCoord::new(0, 5),
+                end: BattleHexCoord::new(10, 5),
+                facing: HexDirection::NorthEast,
+                depth: 1,
+            },
+            target: OrderTarget::Formation(formation_id),
+            issued_at: 0,
+        };
+        apply_order(&form_order, &mut army, &mut plan);
+
+        let fl_id = plan.formation_lines[0].id;
+
+        // Now manually clear a unit's waypoints and reissue MoveToFormationSlot
+        plan.waypoint_plans.clear();
+
+        let order = Order {
+            order_type: OrderType::MoveToFormationSlot(fl_id),
+            target: OrderTarget::Unit(unit_ids[0]),
+            issued_at: 1,
+        };
+
+        let result = apply_order(&order, &mut army, &mut plan);
+        assert!(result.success);
+
+        // Unit should have a waypoint at their slot position
+        let wp_plan = plan.get_waypoint_plan(unit_ids[0]).unwrap();
+        assert_eq!(wp_plan.waypoints.len(), 1);
+    }
+
+    #[test]
+    fn test_move_to_formation_slot_fails_for_unknown_line() {
+        let (mut army, _, unit_ids) = create_test_army_with_formation();
+        let mut plan = BattlePlan::new();
+
+        // Try to move to a formation line that doesn't exist
+        let fake_line_id = crate::battle::formation_layout::FormationLineId::new();
+        let order = Order {
+            order_type: OrderType::MoveToFormationSlot(fake_line_id),
+            target: OrderTarget::Unit(unit_ids[0]),
+            issued_at: 0,
+        };
+
+        let result = apply_order(&order, &mut army, &mut plan);
+        assert!(!result.success);
+        assert!(result.affected_units.is_empty());
+    }
+
+    #[test]
+    fn test_form_line_to_single_unit() {
+        let (mut army, unit_id) = create_test_army_with_unit();
+        let mut plan = BattlePlan::new();
+
+        // When FormLine is applied to a single unit, it should just move to start
+        let order = Order {
+            order_type: OrderType::FormLine {
+                start: BattleHexCoord::new(5, 5),
+                end: BattleHexCoord::new(10, 5),
+                facing: HexDirection::NorthEast,
+                depth: 1,
+            },
+            target: OrderTarget::Unit(unit_id),
+            issued_at: 0,
+        };
+
+        let result = apply_order(&order, &mut army, &mut plan);
+        assert!(result.success);
+
+        // Unit should move to start position
+        let wp_plan = plan.get_waypoint_plan(unit_id).unwrap();
+        assert_eq!(wp_plan.waypoints[0].position, BattleHexCoord::new(5, 5));
     }
 }

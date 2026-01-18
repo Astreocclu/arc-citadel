@@ -2,9 +2,11 @@
 //!
 //! Each tick: movement -> couriers -> engagement -> combat -> morale -> rout
 
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::battle::ai::{BattleAI, DecisionContext};
+use crate::combat::state::CombatState;
 
 use crate::battle::battle_map::BattleMap;
 use crate::battle::constants::COURIER_SPEED;
@@ -40,6 +42,7 @@ pub enum BattleOutcome {
     Victory,
     PyrrhicVictory,
     Draw,
+    MutualRout, // Both sides broke
     Defeat,
     DecisiveDefeat,
 }
@@ -63,6 +66,7 @@ pub enum BattleEventType {
     BattleStarted,
     UnitEngaged { unit_id: UnitId },
     UnitBroke { unit_id: UnitId },
+    UnitDestroyed { unit_id: UnitId },
     UnitRallied { unit_id: UnitId },
     CommanderKilled { entity_id: EntityId },
     ObjectiveCaptured { name: String },
@@ -139,6 +143,9 @@ pub struct BattleState {
     pub active_combats: Vec<ActiveCombat>,
     pub routing_units: Vec<RoutingUnit>,
 
+    // Entity-level combat state
+    pub entity_states: HashMap<EntityId, CombatState>,
+
     // Log
     pub battle_log: Vec<BattleEvent>,
 
@@ -168,6 +175,7 @@ impl std::fmt::Debug for BattleState {
             .field("enemy_visibility", &self.enemy_visibility)
             .field("active_combats", &self.active_combats)
             .field("routing_units", &self.routing_units)
+            .field("entity_states_count", &self.entity_states.len())
             .field("battle_log", &self.battle_log)
             .field(
                 "enemy_ai",
@@ -198,6 +206,7 @@ impl Clone for BattleState {
             enemy_visibility: self.enemy_visibility.clone(),
             active_combats: self.active_combats.clone(),
             routing_units: self.routing_units.clone(),
+            entity_states: self.entity_states.clone(),
             battle_log: self.battle_log.clone(),
             enemy_ai: None,    // AI is not cloned - must be re-attached
             friendly_ai: None, // AI is not cloned - must be re-attached
@@ -223,6 +232,7 @@ impl BattleState {
             enemy_visibility: ArmyVisibility::new(),
             active_combats: Vec::new(),
             routing_units: Vec::new(),
+            entity_states: HashMap::new(),
             battle_log: Vec::new(),
             enemy_ai: None,
             friendly_ai: None,
@@ -789,16 +799,16 @@ impl BattleState {
 
         // Process each engagement
         for engagement in engagements {
-            // Find units by ID and resolve combat
-            let friendly_unit = self.friendly_army.get_unit(engagement.attacker_id);
-            let enemy_unit = self.enemy_army.get_unit(engagement.defender_id);
-
-            if let (Some(attacker), Some(defender)) = (friendly_unit, enemy_unit) {
-                let result = resolve_unit_combat(attacker, defender, 0.0);
-
-                // Apply results
-                if let Some(unit) = self.friendly_army.get_unit_mut(engagement.attacker_id) {
-                    unit.casualties += result.attacker_casualties;
+                        // Find units by ID and resolve combat
+                        let friendly_unit = self.friendly_army.get_unit(engagement.attacker_id);
+                        let enemy_unit = self.enemy_army.get_unit(engagement.defender_id);
+            
+                        if let (Some(attacker), Some(defender)) = (friendly_unit, enemy_unit) {
+                            // Resolve combat with entity states
+                            let result = resolve_unit_combat(attacker, defender, &mut self.entity_states);
+            
+                            // Apply results
+                            if let Some(unit) = self.friendly_army.get_unit_mut(engagement.attacker_id) {                    unit.casualties += result.attacker_casualties;
                     unit.stress += result.attacker_stress_delta;
                     unit.fatigue = (unit.fatigue + result.attacker_fatigue_delta).min(1.0);
                     unit.stance = UnitStance::Engaged;
@@ -828,6 +838,17 @@ impl BattleState {
         // Check morale for all units
         for formation in &mut self.friendly_army.formations {
             for unit in &mut formation.units {
+                // Auto-rout destroyed units (0 effective strength)
+                if unit.effective_strength() == 0 && !unit.is_broken() {
+                    process_morale_break(unit);
+                    events.push(
+                        BattleEventType::UnitDestroyed { unit_id: unit.id },
+                        "Unit destroyed".to_string(),
+                        self.tick,
+                    );
+                    continue;
+                }
+
                 // Count nearby routing friendlies
                 let nearby_routing = routing_positions
                     .iter()
@@ -864,6 +885,17 @@ impl BattleState {
 
         for formation in &mut self.enemy_army.formations {
             for unit in &mut formation.units {
+                // Auto-rout destroyed units (0 effective strength)
+                if unit.effective_strength() == 0 && !unit.is_broken() {
+                    process_morale_break(unit);
+                    events.push(
+                        BattleEventType::UnitDestroyed { unit_id: unit.id },
+                        "Unit destroyed".to_string(),
+                        self.tick,
+                    );
+                    continue;
+                }
+
                 let nearby_routing = enemy_routing_positions
                     .iter()
                     .filter(|pos| unit.position.distance(pos) <= 2)
@@ -966,16 +998,22 @@ pub fn check_battle_end(state: &BattleState) -> Option<BattleOutcome> {
         return Some(BattleOutcome::DecisiveDefeat);
     }
 
-    // Check for army rout (>80% routing)
+    // Check for army rout (>50% routing = majority broken)
     let enemy_routing = state.enemy_army.percentage_routing();
     let friendly_routing = state.friendly_army.percentage_routing();
 
-    if enemy_routing > 0.8 {
+    // If one side has majority routing and the other doesn't, that side loses
+    if enemy_routing > 0.5 && friendly_routing <= 0.5 {
         return Some(BattleOutcome::Victory);
     }
 
-    if friendly_routing > 0.8 {
+    if friendly_routing > 0.5 && enemy_routing <= 0.5 {
         return Some(BattleOutcome::Defeat);
+    }
+
+    // If both sides have majority routing, it's a mutual rout (draw)
+    if enemy_routing > 0.5 && friendly_routing > 0.5 {
+        return Some(BattleOutcome::MutualRout);
     }
 
     // Check time limit
