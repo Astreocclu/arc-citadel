@@ -5,7 +5,7 @@
 //! combat resolution system.
 
 use crate::combat::resolution::{resolve_exchange, Combatant, ExchangeResult};
-use crate::combat::{ArmorProperties, CombatSkill, CombatStance, WeaponProperties};
+use crate::combat::{CombatSkill, CombatStance};
 use crate::core::types::EntityId;
 use crate::ecs::world::World;
 
@@ -54,9 +54,12 @@ impl<'a> CombatAdapter<'a> {
         // Derive combat skill from chunk library
         let skill = CombatSkill::from_chunk_library(&self.world.humans.chunk_libraries[idx]);
 
+        // Read actual equipment from entity's combat state
+        let combat_state = &self.world.humans.combat_states[idx];
+
         Combatant {
-            weapon: WeaponProperties::fists(), // Default: unarmed
-            armor: ArmorProperties::none(),    // Default: unarmored
+            weapon: combat_state.weapon.clone(),
+            armor: combat_state.armor.clone(),
             stance,
             skill,
         }

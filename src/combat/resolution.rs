@@ -75,7 +75,7 @@ pub struct ExchangeResult {
 }
 
 /// Select a hit zone (deterministic based on skill)
-fn select_hit_zone(skill: SkillLevel) -> BodyZone {
+pub fn select_hit_zone(skill: SkillLevel) -> BodyZone {
     // Higher skill = more likely to hit vital areas
     // This is deterministic, not random
     match skill {
@@ -87,7 +87,7 @@ fn select_hit_zone(skill: SkillLevel) -> BodyZone {
 }
 
 /// Resolve a single hit
-fn resolve_hit(weapon: &WeaponProperties, armor: &ArmorProperties, zone: BodyZone) -> Wound {
+pub fn resolve_hit(weapon: &WeaponProperties, armor: &ArmorProperties, zone: BodyZone) -> Wound {
     let has_piercing = weapon.has_special(WeaponSpecial::Piercing);
     let pen = resolve_penetration(weapon.edge, armor.rigidity, has_piercing);
     let trauma = resolve_trauma(weapon.mass, armor.padding);

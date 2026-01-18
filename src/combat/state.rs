@@ -3,6 +3,8 @@
 //! Every entity has combat state (mandatory but minimal).
 
 use crate::combat::{ArmorProperties, CombatSkill, CombatStance, MoraleState, WeaponProperties};
+use crate::combat::wounds::Wound;
+use crate::combat::body_zone::WoundSeverity;
 use serde::{Deserialize, Serialize};
 
 /// Combat state component
@@ -20,6 +22,8 @@ pub struct CombatState {
     pub armor: ArmorProperties,
     /// Combat fatigue (0.0 to 1.0)
     pub fatigue: f32,
+    /// Active wounds
+    pub wounds: Vec<Wound>,
 }
 
 impl Default for CombatState {
@@ -31,6 +35,7 @@ impl Default for CombatState {
             weapon: WeaponProperties::default(),
             armor: ArmorProperties::default(),
             fatigue: 0.0,
+            wounds: Vec::new(),
         }
     }
 }
@@ -38,7 +43,7 @@ impl Default for CombatState {
 impl CombatState {
     /// Can this entity participate in combat?
     pub fn can_fight(&self) -> bool {
-        !matches!(self.stance, CombatStance::Broken)
+        !matches!(self.stance, CombatStance::Broken) && !self.is_incapacitated()
     }
 
     /// Is this entity actively in combat?
@@ -57,6 +62,42 @@ impl CombatState {
     /// Recover fatigue
     pub fn recover_fatigue(&mut self, amount: f32) {
         self.fatigue = (self.fatigue - amount).max(0.0);
+    }
+
+    /// Check if entity is incapacitated (unable to fight)
+    ///
+    /// Incapacitation occurs from:
+    /// - Any Critical wound
+    /// - Accumulated wound severity (3+ Serious, 5+ Minor wounds, etc.)
+    pub fn is_incapacitated(&self) -> bool {
+        // Any single critical wound
+        if self.wounds.iter().any(|w| w.severity >= WoundSeverity::Critical) {
+            return true;
+        }
+
+        // Accumulating wounds - convert to severity points
+        // Scratch=1, Minor=2, Serious=4
+        // Incapacitated at 10+ points (e.g., 5 Minor, or 2 Serious + 1 Minor, etc.)
+        let total_severity: u32 = self.wounds.iter().map(|w| {
+            match w.severity {
+                WoundSeverity::None => 0,
+                WoundSeverity::Scratch => 1,
+                WoundSeverity::Minor => 2,
+                WoundSeverity::Serious => 4,
+                WoundSeverity::Critical | WoundSeverity::Destroyed => 10, // Already handled above
+            }
+        }).sum();
+
+        total_severity >= 10
+    }
+
+    /// Check if entity is dead
+    pub fn is_dead(&self) -> bool {
+        // Dead if destroyed or if head/neck/torso critical
+        self.wounds.iter().any(|w| {
+            w.severity == WoundSeverity::Destroyed ||
+            (w.severity >= WoundSeverity::Critical && (w.zone == crate::combat::body_zone::BodyZone::Head || w.zone == crate::combat::body_zone::BodyZone::Neck || w.zone == crate::combat::body_zone::BodyZone::Torso))
+        })
     }
 }
 

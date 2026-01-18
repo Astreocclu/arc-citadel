@@ -123,6 +123,26 @@ impl WeaponProperties {
             special: vec![],
         }
     }
+
+    /// Common weapon: Axe (orcs, woodcutters)
+    pub fn axe() -> Self {
+        Self {
+            edge: Edge::Sharp,
+            mass: Mass::Heavy,
+            reach: Reach::Medium,
+            special: vec![WeaponSpecial::Shieldbreaker],
+        }
+    }
+
+    /// Common weapon: Club (simple blunt weapon)
+    pub fn club() -> Self {
+        Self {
+            edge: Edge::Blunt,
+            mass: Mass::Medium,
+            reach: Reach::Short,
+            special: vec![],
+        }
+    }
 }
 
 impl Default for WeaponProperties {

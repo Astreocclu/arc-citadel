@@ -11,6 +11,7 @@ pub mod adapter;
 pub mod armor;
 pub mod body_zone;
 pub mod constants;
+pub mod equipment;
 pub mod formation;
 pub mod morale;
 pub mod penetration;
@@ -24,6 +25,7 @@ pub mod wounds;
 
 pub use adapter::{CombatAdapter, CombatResult};
 pub use armor::{ArmorProperties, Coverage, Padding, Rigidity};
+pub use equipment::{armor_for_role, combat_state_for_role, weapon_for_role};
 pub use body_zone::{BodyZone, WoundSeverity};
 pub use formation::{FormationState, PressureCategory, ShockType};
 pub use morale::{BreakResult, MoraleState, StressSource};
