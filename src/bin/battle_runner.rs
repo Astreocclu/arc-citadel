@@ -42,6 +42,10 @@ struct Args {
     /// Output format: json or text
     #[arg(long, default_value = "json")]
     format: String,
+
+    /// Enable verbose battle logging for evaluation
+    #[arg(long, short = 'v')]
+    verbose: bool,
 }
 
 /// JSON output structure
@@ -103,9 +107,57 @@ fn main() {
     state.set_enemy_ai(Some(Box::new(enemy_ai)));
     state.start_battle();
 
+    // Log initial state if verbose
+    if args.verbose {
+        eprintln!("=== Battle Started ===");
+        eprintln!(
+            "Friendly army: {} troops in {} formations",
+            state.friendly_army.total_strength(),
+            state.friendly_army.formations.len()
+        );
+        eprintln!(
+            "Enemy army: {} troops in {} formations",
+            state.enemy_army.total_strength(),
+            state.enemy_army.formations.len()
+        );
+        // Log any initial events (like BattleStarted)
+        for event in &state.battle_log {
+            eprintln!(
+                "  [{}] {:?}: {}",
+                event.tick, event.event_type, event.description
+            );
+        }
+        eprintln!();
+    }
+
     // Run battle loop
     while !state.is_finished() && state.tick < args.max_ticks {
+        if args.verbose {
+            eprintln!("=== Tick {} ===", state.tick);
+            eprintln!(
+                "Friendly strength: {}/{}",
+                state.friendly_army.effective_strength(),
+                state.friendly_army.total_strength()
+            );
+            eprintln!(
+                "Enemy strength: {}/{}",
+                state.enemy_army.effective_strength(),
+                state.enemy_army.total_strength()
+            );
+        }
+
+        let events_before = state.battle_log.len();
         let _events = state.run_tick();
+
+        if args.verbose {
+            // Print new events
+            for event in state.battle_log.iter().skip(events_before) {
+                eprintln!(
+                    "  [{}] {:?}: {}",
+                    event.tick, event.event_type, event.description
+                );
+            }
+        }
     }
 
     // If battle didn't end naturally, end as timeout (handled by check_battle_end)
