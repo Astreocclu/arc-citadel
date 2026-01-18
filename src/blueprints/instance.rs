@@ -45,6 +45,10 @@ pub struct CivilianProperties {
     pub worker_capacity: u32,
     pub storage_capacity: u32,
     pub prestige_modifier: f32,
+    /// Aesthetic value (0.0-1.0) - perceived by high-beauty entities
+    pub aesthetic_value: f32,
+    /// Sacred/holy significance (0.0-1.0) - perceived by high-piety entities
+    pub sacred_value: f32,
 }
 
 /// Evaluated geometry (cached at instantiation)

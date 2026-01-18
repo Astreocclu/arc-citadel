@@ -5,6 +5,8 @@ use crate::city::building::{BuildingArchetype, BuildingId, BuildingType};
 use crate::city::stockpile::Stockpile;
 use crate::core::astronomy::AstronomicalState;
 use crate::core::types::{EntityId, Species, Vec2};
+use crate::entity::species::dwarf::DwarfArchetype;
+use crate::entity::species::elf::ElfArchetype;
 use crate::entity::species::human::HumanArchetype;
 use crate::entity::species::orc::OrcArchetype;
 use crate::rules::SpeciesRules;
@@ -68,6 +70,8 @@ pub struct World {
     entity_registry: AHashMap<EntityId, (Species, usize)>,
     pub humans: HumanArchetype,
     pub orcs: OrcArchetype,
+    pub dwarves: DwarfArchetype,
+    pub elves: ElfArchetype,
     next_indices: AHashMap<Species, usize>,
     pub food_zones: Vec<FoodZone>,
     next_food_zone_id: u32,
@@ -105,6 +109,8 @@ impl World {
             entity_registry: AHashMap::new(),
             humans: HumanArchetype::new(),
             orcs: OrcArchetype::new(),
+            dwarves: DwarfArchetype::new(),
+            elves: ElfArchetype::new(),
             next_indices,
             food_zones: Vec::new(),
             next_food_zone_id: 0,
@@ -156,6 +162,32 @@ impl World {
         entity_id
     }
 
+    pub fn spawn_dwarf(&mut self, name: String) -> EntityId {
+        let entity_id = EntityId::new();
+        let index = *self.next_indices.get(&Species::Dwarf).unwrap();
+
+        self.dwarves.spawn(entity_id, name, self.current_tick);
+
+        self.entity_registry
+            .insert(entity_id, (Species::Dwarf, index));
+        *self.next_indices.get_mut(&Species::Dwarf).unwrap() += 1;
+
+        entity_id
+    }
+
+    pub fn spawn_elf(&mut self, name: String) -> EntityId {
+        let entity_id = EntityId::new();
+        let index = *self.next_indices.get(&Species::Elf).unwrap();
+
+        self.elves.spawn(entity_id, name, self.current_tick);
+
+        self.entity_registry
+            .insert(entity_id, (Species::Elf, index));
+        *self.next_indices.get_mut(&Species::Elf).unwrap() += 1;
+
+        entity_id
+    }
+
     /// Spawn a new building at the given position
     pub fn spawn_building(&mut self, building_type: BuildingType, position: Vec2) -> BuildingId {
         let id = BuildingId::new();
@@ -169,7 +201,7 @@ impl World {
     }
 
     pub fn entity_count(&self) -> usize {
-        self.humans.count() + self.orcs.count()
+        self.humans.count() + self.orcs.count() + self.dwarves.count() + self.elves.count()
     }
 
     pub fn tick(&mut self) {

@@ -11,6 +11,7 @@ pub mod attention;
 pub mod chunk_id;
 pub mod context;
 pub mod definitions;
+// display.rs - orphaned, depends on unimplemented ChunkLibrary::domain_summary
 pub mod domain;
 pub mod history;
 pub mod integration;
@@ -18,6 +19,7 @@ pub mod learning;
 pub mod library;
 pub mod resolution;
 pub mod spawn_loadouts;
+// species_mods.rs - orphaned, depends on unimplemented genetics::Phenotype
 
 pub use action_mapping::{action_requires_skill, get_chunks_for_action};
 pub use attention::{

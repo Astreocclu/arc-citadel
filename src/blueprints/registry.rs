@@ -330,6 +330,8 @@ impl BlueprintRegistry {
             worker_capacity,
             storage_capacity,
             prestige_modifier,
+            aesthetic_value: 0.0,  // TODO: Load from blueprint definition
+            sacred_value: 0.0,     // TODO: Load from blueprint definition
         };
 
         // Resolve anchors

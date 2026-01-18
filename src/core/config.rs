@@ -145,9 +145,9 @@ impl Default for SimulationConfig {
             safety_recovery_rate: 0.01,
             activity_multiplier: 1.5,
 
-            // Need thresholds
-            critical_need_threshold: 0.8,
-            moderate_need_threshold: 0.6,
+            // Need thresholds (lowered for observable behavior in eval windows)
+            critical_need_threshold: 0.65,
+            moderate_need_threshold: 0.5,
 
             // Thoughts
             thought_decay_rate: 0.01,
