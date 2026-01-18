@@ -17,13 +17,23 @@ pub enum SimulationEvent {
     /// An entity started a new task
     TaskStarted {
         entity_name: String,
+        /// Unique entity index for tracking across ticks (names are duplicated)
+        entity_idx: usize,
         action: ActionId,
+        /// Current simulation tick for timing analysis
+        tick: u64,
         /// Curiosity value for correlating IdleObserve with personality (0.0-1.0)
         curiosity: f32,
         /// Social need for correlating TalkTo with elevated social need (0.0-1.0)
         social_need: f32,
         /// Honor value for correlating Attack with high-honor defense behavior (0.0-1.0)
         honor: f32,
+        /// Food need level (0.0=full, 1.0=starving)
+        food_need: f32,
+        /// Rest need level (0.0=rested, 1.0=exhausted)
+        rest_need: f32,
+        /// Safety need level (0.0=safe, 1.0=terrified)
+        safety_need: f32,
     },
     /// An entity completed a task
     TaskCompleted {
@@ -40,7 +50,103 @@ pub enum SimulationEvent {
         building_idx: usize,
         recipe: String,
     },
+    /// Perception event: entity perceived something
+    PerceptionUpdate {
+        entity_name: String,
+        entity_idx: usize,
+        tick: u64,
+        /// Number of entities perceived
+        perceived_count: usize,
+        /// Number of objects perceived (aesthetic/sacred based on values)
+        perceived_objects_count: usize,
+        /// Threat level of highest threat perceived (0.0-1.0)
+        max_threat_level: f32,
+        /// Whether a food zone was perceived
+        food_zone_nearby: bool,
+        /// Perception range used (affected by fatigue, IdleObserve bonus)
+        effective_range: f32,
+        /// Entity's beauty value (for aesthetic filtering)
+        beauty_value: f32,
+        /// Entity's piety value (for sacred object filtering)
+        piety_value: f32,
+        /// Entity's current fatigue
+        fatigue: f32,
+    },
+    /// Thought generated event
+    ThoughtGenerated {
+        entity_name: String,
+        entity_idx: usize,
+        tick: u64,
+        /// Positive or negative valence
+        valence: String,
+        /// Thought intensity (0.0-1.0)
+        intensity: f32,
+        /// Category of the thought (fear, joy, etc)
+        category: String,
+        /// What caused this thought
+        cause: String,
+        /// Current buffer size after adding
+        buffer_size: usize,
+    },
+    /// Social memory update event
+    SocialMemoryUpdate {
+        entity_name: String,
+        entity_idx: usize,
+        tick: u64,
+        /// Entity being remembered
+        target_name: String,
+        /// New disposition after update
+        new_disposition: String,
+        /// Number of memories for this target
+        memory_count: usize,
+        /// Total relationship slots used
+        total_slots_used: usize,
+    },
+    /// Disposition change event (for social-behavior E1, E2)
+    DispositionChange {
+        entity_name: String,
+        entity_idx: usize,
+        tick: u64,
+        target_name: String,
+        old_disposition: String,
+        new_disposition: String,
+        /// What triggered the change
+        trigger: String,
+    },
+    /// Game over event - signals end of simulation
+    GameOver {
+        tick: u64,
+        outcome: GameOutcome,
+    },
 }
+
+/// Outcome of the game
+#[derive(Debug, Clone, PartialEq)]
+pub enum GameOutcome {
+    /// All hostile forces eliminated
+    Victory { orcs_killed: usize },
+    /// All allied forces eliminated
+    Defeat {
+        humans_killed: usize,
+        dwarves_killed: usize,
+        elves_killed: usize,
+    },
+    /// Mutual destruction
+    Draw,
+    /// Simulation still in progress
+    InProgress,
+}
+/// Target entity info for cross-species combat resolution
+///
+/// Combat can occur between any entity types (human vs orc, orc vs dwarf, etc.)
+/// This enum tracks the target type and index for damage application.
+#[derive(Debug, Clone, Copy)]
+enum CombatTarget {
+    Human(usize),
+    Orc(usize),
+    // Future: Dwarf(usize), Construct(usize), etc.
+}
+
 use crate::city::construction::{
     apply_construction_work, calculate_worker_contribution, ContributionResult,
 };
@@ -56,7 +162,8 @@ use crate::entity::social::{Disposition, EventType};
 use crate::entity::tasks::Task;
 use crate::entity::thoughts::{CauseType, Thought, Valence};
 use crate::simulation::action_select::{
-    select_action_human, select_action_orc, OrcSelectionContext, SelectionContext,
+    select_action_dwarf, select_action_elf, select_action_human, select_action_orc,
+    DwarfSelectionContext, ElfSelectionContext, OrcSelectionContext, SelectionContext,
 };
 use crate::simulation::consumption::consume_food;
 use crate::simulation::expectation_formation::process_observations;
@@ -99,15 +206,25 @@ pub fn run_simulation_tick(world: &mut World) -> Vec<SimulationEvent> {
 
     update_needs(world);
     refresh_all_attention(world);
-    let perceptions = run_perception(world);
-    generate_thoughts(world, &perceptions);
+    let (perceptions, perception_ranges) = run_perception_with_ranges(world);
+    emit_perception_events(world, &perceptions, &perception_ranges, &mut events);
+    generate_thoughts_with_events(world, &perceptions, &mut events);
     process_observations(world, &perceptions);
     process_violations(world, &perceptions);
-    convert_thoughts_to_memories(world);
+    convert_thoughts_to_memories_with_events(world, &mut events);
     decay_thoughts(world);
     select_actions(world, &mut events);
     execute_tasks(world, &mut events);
     regenerate_food_zones(world);
+
+    // Check win condition after combat resolution
+    let outcome = check_win_condition(world);
+    if outcome != GameOutcome::InProgress {
+        events.push(SimulationEvent::GameOver {
+            tick: world.current_tick,
+            outcome,
+        });
+    }
 
     // Run production tick for buildings
     let recipes = RecipeCatalog::with_defaults(); // TODO: Load from config
@@ -177,6 +294,30 @@ fn update_needs(world: &mut World) {
         let dt = 1.0;
         world.orcs.needs[i].decay(dt, is_active);
     }
+
+    // Process dwarves
+    let dwarf_indices: Vec<usize> = world.dwarves.iter_living().collect();
+    for i in dwarf_indices {
+        let is_restful = world.dwarves.task_queues[i]
+            .current()
+            .map(|t| t.action.is_restful())
+            .unwrap_or(true);
+        let is_active = !is_restful;
+        let dt = 1.0;
+        world.dwarves.needs[i].decay(dt, is_active);
+    }
+
+    // Process elves
+    let elf_indices: Vec<usize> = world.elves.iter_living().collect();
+    for i in elf_indices {
+        let is_restful = world.elves.task_queues[i]
+            .current()
+            .map(|t| t.action.is_restful())
+            .unwrap_or(true);
+        let is_active = !is_restful;
+        let dt = 1.0;
+        world.elves.needs[i].decay(dt, is_active);
+    }
 }
 
 /// Refresh attention budgets for all entities
@@ -197,6 +338,278 @@ fn refresh_all_attention(world: &mut World) {
     // TODO: Add refresh for other species when they have chunk_libraries
 }
 
+/// Run perception and return both perceptions and the ranges used (for event logging)
+///
+/// This function now includes cross-species perception:
+/// - Humans can perceive both other humans AND orcs
+/// - Orcs are always perceived as threats (threat_level = 0.9)
+/// - Disposition from social memory affects threat_level (hostile = 0.7)
+fn run_perception_with_ranges(
+    world: &World,
+) -> (Vec<crate::simulation::perception::Perception>, Vec<f32>) {
+    use crate::simulation::perception::{PerceivedEntity, Perception};
+    use crate::entity::social::Disposition;
+
+    let mut grid = SparseHashGrid::new(10.0);
+
+    // Collect positions and IDs for spatial queries - INCLUDE BOTH HUMANS AND ORCS
+    let human_positions: Vec<_> = world.humans.positions.iter().cloned().collect();
+    let human_ids: Vec<_> = world.humans.ids.iter().cloned().collect();
+    let orc_positions: Vec<_> = world.orcs.positions.iter().cloned().collect();
+    let orc_ids: Vec<_> = world.orcs.ids.iter().cloned().collect();
+
+    // Combine all entities into single spatial grid for cross-species perception
+    let all_entities: Vec<_> = human_ids.iter().cloned().zip(human_positions.iter().cloned())
+        .chain(orc_ids.iter().cloned().zip(orc_positions.iter().cloned()))
+        .collect();
+    grid.rebuild(all_entities.into_iter());
+
+    // Collect social memories for perception lookup
+    let social_memories: Vec<_> = world.humans.social_memories.iter().cloned().collect();
+
+    // Build lookups for entity type and position
+    let id_to_human_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+        human_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+    let id_to_orc_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+        orc_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+
+    // Compute per-entity perception ranges
+    // IdleObserve grants 1.5x perception range
+    // Fatigue > 0.7 reduces range by 20% (via effective_visual_range)
+    const BASE_PERCEPTION_RANGE: f32 = 50.0;
+    const IDLE_OBSERVE_MULTIPLIER: f32 = 1.5;
+    let perception_ranges: Vec<f32> = world
+        .humans
+        .task_queues
+        .iter()
+        .enumerate()
+        .map(|(i, queue)| {
+            let is_observing = queue
+                .current()
+                .map(|t| t.action == ActionId::IdleObserve)
+                .unwrap_or(false);
+            let base = if is_observing {
+                BASE_PERCEPTION_RANGE * IDLE_OBSERVE_MULTIPLIER
+            } else {
+                BASE_PERCEPTION_RANGE
+            };
+            // Apply fatigue penalty: 20% reduction when fatigue > 0.7
+            let fatigue = world.humans.body_states[i].fatigue;
+            crate::simulation::perception::effective_visual_range(base, fatigue, 1.0, 1.0)
+        })
+        .collect();
+
+    // Build perceptions with threat level computation
+    let mut perceptions: Vec<Perception> = human_ids
+        .iter()
+        .enumerate()
+        .map(|(i, &observer_id)| {
+            let observer_pos = human_positions[i];
+            let observer_memory = &social_memories[i];
+            let perception_range = perception_ranges[i];
+
+            let nearby: Vec<_> = grid
+                .query_neighbors(observer_pos)
+                .filter(|&e| e != observer_id)
+                .collect();
+
+            let perceived_entities: Vec<_> = nearby
+                .iter()
+                .filter_map(|&entity| {
+                    // Get entity position from appropriate archetype
+                    let (entity_pos, is_orc) = if let Some(&idx) = id_to_human_idx.get(&entity) {
+                        (human_positions[idx], false)
+                    } else if let Some(&idx) = id_to_orc_idx.get(&entity) {
+                        (orc_positions[idx], true)
+                    } else {
+                        return None;
+                    };
+
+                    let distance = observer_pos.distance(&entity_pos);
+
+                    if distance <= perception_range {
+                        // Look up disposition from social memory
+                        let disposition = observer_memory.get_disposition(entity);
+
+                        // Compute threat level based on species and disposition
+                        let threat_level = if is_orc {
+                            // Orcs are always high threat to humans
+                            0.9
+                        } else {
+                            // Disposition-based threat for humans
+                            match disposition {
+                                Disposition::Hostile => 0.7,
+                                Disposition::Suspicious => 0.3,
+                                _ => 0.0,
+                            }
+                        };
+
+                        Some(PerceivedEntity {
+                            entity,
+                            distance,
+                            relationship: crate::simulation::perception::RelationshipType::Unknown,
+                            disposition,
+                            threat_level,
+                            notable_features: vec![],
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            Perception {
+                observer: observer_id,
+                perceived_entities,
+                perceived_objects: vec![],
+                perceived_events: vec![],
+                nearest_food_zone: None,
+                nearest_building_site: None,
+            }
+        })
+        .collect();
+
+    // Populate nearest_food_zone, nearest_building_site, and perceived_objects
+    for (i, perception) in perceptions.iter_mut().enumerate() {
+        perception.nearest_food_zone =
+            find_nearest_food_zone(human_positions[i], perception_ranges[i], &world.food_zones);
+        perception.nearest_building_site =
+            find_nearest_building_site(human_positions[i], perception_ranges[i], &world.buildings);
+
+        // Populate perceived_objects based on values (E2: aesthetic, E3: sacred)
+        let values = &world.humans.values[i];
+        let pos = human_positions[i];
+        let range = perception_ranges[i];
+
+        perception.perceived_objects = world.world_objects
+            .get_in_radius(glam::Vec2::new(pos.x, pos.y), range)
+            .iter()
+            .filter_map(|obj| {
+                let aesthetic = obj.civilian.aesthetic_value;
+                let sacred = obj.civilian.sacred_value;
+
+                // Check if this object is notable to this entity based on their values
+                // High-beauty entities (beauty > 0.5) notice aesthetic objects
+                // High-piety entities (piety > 0.5) notice sacred objects
+                let should_notice = (aesthetic > 0.3 && values.beauty > 0.5)
+                                  || (sacred > 0.3 && values.piety > 0.5);
+
+                if should_notice {
+                    let mut props = Vec::new();
+                    if aesthetic > 0.1 {
+                        props.push(crate::simulation::perception::ObjectProperty {
+                            name: "aesthetic".to_string(),
+                            value: crate::simulation::perception::PropertyValue::Aesthetic(aesthetic),
+                        });
+                    }
+                    if sacred > 0.1 {
+                        props.push(crate::simulation::perception::ObjectProperty {
+                            name: "sacred".to_string(),
+                            value: crate::simulation::perception::PropertyValue::Quality(sacred),
+                        });
+                    }
+
+                    Some(crate::simulation::perception::PerceivedObject {
+                        object_type: obj.blueprint_name.clone(),
+                        position: crate::core::types::Vec2::new(obj.position.x, obj.position.y),
+                        properties: props,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+    }
+
+    (perceptions, perception_ranges)
+}
+
+/// Emit perception events for logging (sampled to avoid log spam)
+///
+/// Prioritizes logging entities that perceive threats, ensuring threat
+/// events are captured even when rare (e.g., 20 orcs among 10000 humans).
+fn emit_perception_events(
+    world: &World,
+    perceptions: &[crate::simulation::perception::Perception],
+    perception_ranges: &[f32],
+    events: &mut Vec<SimulationEvent>,
+) {
+    let tick = world.current_tick;
+    // Sample every 100 ticks to avoid log spam
+    if tick % 100 != 0 {
+        return;
+    }
+
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world
+        .humans
+        .ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
+    // Separate perceptions into threat and non-threat
+    let mut threat_perceptions: Vec<(usize, &crate::simulation::perception::Perception, f32)> = Vec::new();
+    let mut normal_perceptions: Vec<(usize, &crate::simulation::perception::Perception, f32)> = Vec::new();
+
+    for (i, perception) in perceptions.iter().enumerate() {
+        let max_threat = perception
+            .perceived_entities
+            .iter()
+            .map(|e| e.threat_level)
+            .fold(0.0f32, |a, b| a.max(b));
+
+        if max_threat > 0.1 {
+            threat_perceptions.push((i, perception, max_threat));
+        } else {
+            normal_perceptions.push((i, perception, max_threat));
+        }
+    }
+
+    // Log all threat perceptions (up to 30), then fill remaining with normal (up to 50 total)
+    let mut logged = 0;
+    const MAX_THREAT_LOGS: usize = 30;
+    const MAX_TOTAL_LOGS: usize = 50;
+
+    for (i, perception, max_threat) in threat_perceptions.iter().take(MAX_THREAT_LOGS) {
+        if let Some(&idx) = id_to_idx.get(&perception.observer) {
+            events.push(SimulationEvent::PerceptionUpdate {
+                entity_name: world.humans.names[idx].clone(),
+                entity_idx: idx,
+                tick,
+                perceived_count: perception.perceived_entities.len(),
+                perceived_objects_count: perception.perceived_objects.len(),
+                max_threat_level: *max_threat,
+                food_zone_nearby: perception.nearest_food_zone.is_some(),
+                effective_range: perception_ranges[*i],
+                beauty_value: world.humans.values[idx].beauty,
+                piety_value: world.humans.values[idx].piety,
+                fatigue: world.humans.body_states[idx].fatigue,
+            });
+            logged += 1;
+        }
+    }
+
+    // Fill remaining slots with normal perceptions
+    for (i, perception, max_threat) in normal_perceptions.iter().take(MAX_TOTAL_LOGS - logged) {
+        if let Some(&idx) = id_to_idx.get(&perception.observer) {
+            events.push(SimulationEvent::PerceptionUpdate {
+                entity_name: world.humans.names[idx].clone(),
+                entity_idx: idx,
+                tick,
+                perceived_count: perception.perceived_entities.len(),
+                perceived_objects_count: perception.perceived_objects.len(),
+                max_threat_level: *max_threat,
+                food_zone_nearby: perception.nearest_food_zone.is_some(),
+                effective_range: perception_ranges[*i],
+                beauty_value: world.humans.values[idx].beauty,
+                piety_value: world.humans.values[idx].piety,
+                fatigue: world.humans.body_states[idx].fatigue,
+            });
+        }
+    }
+}
+
 /// Run the perception system for all entities (PARALLEL when beneficial)
 ///
 /// Creates a spatial hash grid for efficient neighbor queries,
@@ -204,6 +617,7 @@ fn refresh_all_attention(world: &mut World) {
 /// Also populates nearest_food_zone for each entity.
 ///
 /// IdleObserve action grants 1.5x perception range.
+#[allow(dead_code)]
 fn run_perception(world: &World) -> Vec<crate::simulation::perception::Perception> {
     let mut grid = SparseHashGrid::new(10.0);
 
@@ -336,10 +750,242 @@ fn perception_system_parallel(
         .collect()
 }
 
+/// Generate thoughts from perceptions with event logging
+///
+/// This is where entities react to what they perceive based on their values.
+/// Perceptions are filtered through values to generate appropriate thoughts.
+/// Emits ThoughtGenerated events (sampled to avoid log spam).
+fn generate_thoughts_with_events(
+    world: &mut World,
+    perceptions: &[crate::simulation::perception::Perception],
+    events: &mut Vec<SimulationEvent>,
+) {
+    let current_tick = world.current_tick;
+    // Sample every 50 ticks for thought logging
+    let should_log = current_tick % 50 == 0;
+    let mut thought_count = 0;
+    const MAX_THOUGHT_LOGS: usize = 20;
+
+    // Build O(1) lookup map once, not O(n) search per perception
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world
+        .humans
+        .ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
+
+    // Build entity name lookup for specific cause descriptions
+    let entity_names: ahash::AHashMap<crate::core::types::EntityId, String> = world
+        .humans
+        .ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, world.humans.names[i].clone()))
+        .chain(
+            world
+                .orcs
+                .ids
+                .iter()
+                .map(|&id| (id, "an orc".to_string())),
+        )
+        .collect();
+
+    for perception in perceptions {
+        let Some(&idx) = id_to_idx.get(&perception.observer) else {
+            continue;
+        };
+        let values = &world.humans.values[idx];
+        // Copy needs values we need before any mutable borrows
+        let food_need = world.humans.needs[idx].food;
+
+        // Process perceived entities
+        for perceived in &perception.perceived_entities {
+            // Generate threat-based thoughts with value-weighted intensity
+            if perceived.threat_level > 0.5 {
+                // E2: Intensity varies by value alignment - high safety value = more intense fear
+                let safety_modifier = 0.7 + (values.safety * 0.6); // 0.7-1.3 range
+                let intensity = (perceived.threat_level * safety_modifier).min(1.0);
+                // E5: Use "danger" category for high-intensity thoughts to trigger value impulses
+                // High safety value + high intensity = "danger" (triggers Flee via check_value_impulses)
+                // Otherwise use emotional categories that don't trigger impulsive actions
+                let category = if intensity > 0.7 && values.safety > 0.5 {
+                    "danger"
+                } else if values.safety > 0.5 {
+                    "fear"
+                } else {
+                    "concern"
+                };
+
+                // E7: Specific cause description with entity name
+                let target_name = entity_names
+                    .get(&perceived.entity)
+                    .map(|s| s.as_str())
+                    .unwrap_or("unknown entity");
+                let cause_desc = format!("saw {} at distance {:.0}m", target_name, perceived.distance);
+
+                let mut thought = Thought::new(
+                    Valence::Negative,
+                    intensity,
+                    category,
+                    &cause_desc,
+                    CauseType::Entity,
+                    current_tick,
+                );
+                // Set cause_entity so this thought can become a social memory
+                thought.cause_entity = Some(perceived.entity);
+                world.humans.thoughts[idx].add(thought);
+
+                // Log thought event (sampled)
+                if should_log && thought_count < MAX_THOUGHT_LOGS {
+                    events.push(SimulationEvent::ThoughtGenerated {
+                        entity_name: world.humans.names[idx].clone(),
+                        entity_idx: idx,
+                        tick: current_tick,
+                        valence: "Negative".to_string(),
+                        intensity,
+                        category: category.to_string(),
+                        cause: cause_desc,
+                        buffer_size: world.humans.thoughts[idx].iter().count(),
+                    });
+                    thought_count += 1;
+                }
+
+                // Increase safety need based on threat
+                world.humans.needs[idx].safety =
+                    (world.humans.needs[idx].safety + perceived.threat_level * 0.3).min(1.0);
+            }
+
+            // E1: Generate positive thoughts from friendly entities
+            if perceived.relationship == RelationshipType::Ally
+                || matches!(
+                    perceived.disposition,
+                    Disposition::Friendly | Disposition::Favorable
+                )
+            {
+                // E2: Intensity weighted by loyalty value for social connections
+                let base_intensity = 0.3;
+                let loyalty_modifier = 0.5 + (values.loyalty * 0.5); // 0.5-1.0 range
+                let intensity = (base_intensity * loyalty_modifier).min(1.0);
+
+                let target_name = entity_names
+                    .get(&perceived.entity)
+                    .map(|s| s.as_str())
+                    .unwrap_or("a friend");
+                let cause_desc = format!("saw friendly face - {}", target_name);
+
+                let mut thought = Thought::new(
+                    Valence::Positive,
+                    intensity,
+                    "companionship",
+                    &cause_desc,
+                    CauseType::Entity,
+                    current_tick,
+                );
+                thought.cause_entity = Some(perceived.entity);
+                world.humans.thoughts[idx].add(thought);
+
+                if should_log && thought_count < MAX_THOUGHT_LOGS {
+                    events.push(SimulationEvent::ThoughtGenerated {
+                        entity_name: world.humans.names[idx].clone(),
+                        entity_idx: idx,
+                        tick: current_tick,
+                        valence: "Positive".to_string(),
+                        intensity,
+                        category: "companionship".to_string(),
+                        cause: cause_desc,
+                        buffer_size: world.humans.thoughts[idx].iter().count(),
+                    });
+                    thought_count += 1;
+                }
+
+                world.humans.needs[idx].satisfy(NeedType::Social, 0.1);
+            }
+        }
+
+        // E1: Generate hunger-related thoughts when food is nearby and entity is hungry
+        if let Some((_, _food_pos, distance)) = perception.nearest_food_zone {
+            if food_need > 0.5 {
+                // E2: Intensity scaled by hunger level
+                let intensity = food_need * 0.8;
+                let cause_desc = format!(
+                    "noticed food source at distance {:.0}m (hunger: {:.0}%)",
+                    distance,
+                    food_need * 100.0
+                );
+
+                let thought = Thought::new(
+                    Valence::Positive,
+                    intensity,
+                    "appetite",
+                    &cause_desc,
+                    CauseType::Object,
+                    current_tick,
+                );
+                world.humans.thoughts[idx].add(thought);
+
+                if should_log && thought_count < MAX_THOUGHT_LOGS {
+                    events.push(SimulationEvent::ThoughtGenerated {
+                        entity_name: world.humans.names[idx].clone(),
+                        entity_idx: idx,
+                        tick: current_tick,
+                        valence: "Positive".to_string(),
+                        intensity,
+                        category: "appetite".to_string(),
+                        cause: cause_desc,
+                        buffer_size: world.humans.thoughts[idx].iter().count(),
+                    });
+                    thought_count += 1;
+                }
+            }
+        }
+
+        // Process perceived events
+        for event in &perception.perceived_events {
+            // Generate thoughts based on event significance
+            if event.significance > 0.5 {
+                let valence = if event.event_type.contains("positive")
+                    || event.event_type.contains("celebration")
+                {
+                    Valence::Positive
+                } else {
+                    Valence::Negative
+                };
+
+                let thought = Thought::new(
+                    valence,
+                    event.significance,
+                    &event.event_type,
+                    format!("witnessed {}", event.event_type),
+                    CauseType::Event,
+                    current_tick,
+                );
+                world.humans.thoughts[idx].add(thought);
+
+                // Log thought event (sampled)
+                if should_log && thought_count < MAX_THOUGHT_LOGS {
+                    events.push(SimulationEvent::ThoughtGenerated {
+                        entity_name: world.humans.names[idx].clone(),
+                        entity_idx: idx,
+                        tick: current_tick,
+                        valence: format!("{:?}", valence),
+                        intensity: event.significance,
+                        category: event.event_type.clone(),
+                        cause: format!("witnessed {}", event.event_type),
+                        buffer_size: world.humans.thoughts[idx].iter().count(),
+                    });
+                    thought_count += 1;
+                }
+            }
+        }
+    }
+}
+
 /// Generate thoughts from perceptions
 ///
 /// This is where entities react to what they perceive based on their values.
 /// Perceptions are filtered through values to generate appropriate thoughts.
+#[allow(dead_code)]
 fn generate_thoughts(world: &mut World, perceptions: &[crate::simulation::perception::Perception]) {
     // Build O(1) lookup map once, not O(n) search per perception
     let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world
@@ -411,37 +1057,114 @@ fn generate_thoughts(world: &mut World, perceptions: &[crate::simulation::percep
     }
 }
 
-/// Convert intense thoughts about entities to social memories
+/// Convert intense thoughts about entities to social memories with event logging
 ///
 /// Scans each entity's ThoughtBuffer for thoughts that are:
 /// - Intense (intensity >= THOUGHT_MEMORY_THRESHOLD)
 /// - About another entity (cause_entity is Some)
 ///
 /// These thoughts are converted to memories via record_encounter().
-/// Uses EventType::Observation for now (can be refined later based on thought type).
-fn convert_thoughts_to_memories(world: &mut World) {
+/// Emits SocialMemoryUpdate and DispositionChange events (sampled to avoid log spam).
+fn convert_thoughts_to_memories_with_events(world: &mut World, events: &mut Vec<SimulationEvent>) {
     const THOUGHT_MEMORY_THRESHOLD: f32 = 0.7;
 
     let current_tick = world.current_tick;
+    // Sample every 100 ticks for social memory logging
+    let should_log = current_tick % 100 == 0;
+    let mut memory_log_count = 0;
+    const MAX_MEMORY_LOGS: usize = 30;
+
     let living_indices: Vec<usize> = world.humans.iter_living().collect();
+
+    // Build ID -> name lookup for target names
+    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> = world
+        .humans
+        .ids
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| (id, i))
+        .collect();
 
     for &idx in &living_indices {
         // Collect thoughts that should become memories
         let thoughts_to_convert: Vec<_> = world.humans.thoughts[idx]
             .iter()
             .filter(|t| t.intensity >= THOUGHT_MEMORY_THRESHOLD && t.cause_entity.is_some())
-            .map(|t| (t.cause_entity.unwrap(), t.intensity))
+            .map(|t| (t.cause_entity.unwrap(), t.intensity, t.valence))
             .collect();
 
         // Create memories from intense thoughts about entities
-        for (target_id, intensity) in thoughts_to_convert {
-            // Use EventType::Observation for now (can be refined later)
+        for (target_id, intensity, valence) in thoughts_to_convert {
+            // Get old disposition before recording
+            let old_disposition = world.humans.social_memories[idx].get_disposition(target_id);
+
+            // Map thought valence to appropriate EventType
+            // Negative thoughts (threats, harm) use HarmReceived
+            // Positive thoughts (aid, gifts) use AidReceived
+            let event_type = if valence == Valence::Negative {
+                EventType::HarmReceived
+            } else {
+                EventType::AidReceived
+            };
+
             world.humans.social_memories[idx].record_encounter(
                 target_id,
-                EventType::Observation,
+                event_type,
                 intensity,
                 current_tick,
             );
+
+            // Get new disposition after recording
+            let new_disposition = world.humans.social_memories[idx].get_disposition(target_id);
+
+            // Log memory update (sampled)
+            if should_log && memory_log_count < MAX_MEMORY_LOGS {
+                let target_name = id_to_idx
+                    .get(&target_id)
+                    .map(|&i| world.humans.names[i].clone())
+                    .unwrap_or_else(|| format!("entity_{}", target_id.0));
+
+                let memory_count = world.humans.social_memories[idx]
+                    .find_slot(target_id)
+                    .map(|r| r.memories.len())
+                    .unwrap_or(0);
+
+                let total_slots = world.humans.social_memories[idx].slots.len();
+
+                events.push(SimulationEvent::SocialMemoryUpdate {
+                    entity_name: world.humans.names[idx].clone(),
+                    entity_idx: idx,
+                    tick: current_tick,
+                    target_name: target_name.clone(),
+                    new_disposition: format!("{:?}", new_disposition),
+                    memory_count,
+                    total_slots_used: total_slots,
+                });
+
+                // Log disposition change if it changed
+                if old_disposition != new_disposition {
+                    let trigger = format!(
+                        "intense {} thought ({})",
+                        if valence == Valence::Positive {
+                            "positive"
+                        } else {
+                            "negative"
+                        },
+                        intensity
+                    );
+                    events.push(SimulationEvent::DispositionChange {
+                        entity_name: world.humans.names[idx].clone(),
+                        entity_idx: idx,
+                        tick: current_tick,
+                        target_name,
+                        old_disposition: format!("{:?}", old_disposition),
+                        new_disposition: format!("{:?}", new_disposition),
+                        trigger,
+                    });
+                }
+
+                memory_log_count += 1;
+            }
         }
     }
 }
@@ -548,14 +1271,25 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                         }
                     });
 
-                // For idle tasks, interrupt if there's a critical need, elevated social need, OR nearby threat
-                let has_idle_task = world.humans.task_queues[i].current().is_some();
+                // Check for existing tasks and their types
+                let has_task = world.humans.task_queues[i].current().is_some();
+                let current_action = world.humans.task_queues[i].current().map(|t| t.action);
                 let has_critical_need = world.humans.needs[i].has_critical().is_some();
                 // Social needs can interrupt idle tasks at the same threshold as TalkTo triggers
                 let has_elevated_social = world.humans.needs[i].social > 0.35;
 
-                // If entity has idle task but no need to interrupt (including threats), skip action selection
-                if has_idle_task && !has_critical_need && !has_elevated_social && !threat_detected {
+                // If entity has a social action in progress, don't interrupt for social need
+                // This prevents TalkTo/Help/Trade from being reset every tick
+                let has_social_task = matches!(
+                    current_action,
+                    Some(ActionId::TalkTo) | Some(ActionId::Help) | Some(ActionId::Trade)
+                );
+                if has_social_task && !has_critical_need && !threat_detected {
+                    return None;
+                }
+
+                // If entity has any task but no need to interrupt (including threats), skip action selection
+                if has_task && !has_critical_need && !has_elevated_social && !threat_detected {
                     return None;
                 }
 
@@ -620,8 +1354,8 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                     building_skill: world.humans.building_skills[i],
                     nearest_building_site,
                 };
-                // Flag indicating we should clear an existing idle task before adding new one
-                let should_clear_idle = has_idle_task && has_critical_need;
+                // Flag indicating we should clear an existing task before adding new one
+                let should_clear_idle = has_task && has_critical_need;
                 Some((i, select_action_human(&ctx), should_clear_idle))
             })
             .collect();
@@ -634,10 +1368,15 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                 }
                 events.push(SimulationEvent::TaskStarted {
                     entity_name: world.humans.names[i].clone(),
+                    entity_idx: i,
                     action: task.action,
+                    tick: current_tick,
                     curiosity: world.humans.values[i].curiosity,
                     social_need: world.humans.needs[i].social,
                     honor: world.humans.values[i].honor,
+                    food_need: world.humans.needs[i].food,
+                    rest_need: world.humans.needs[i].rest,
+                    safety_need: world.humans.needs[i].safety,
                 });
                 world.humans.task_queues[i].push(task);
             }
@@ -754,10 +1493,15 @@ fn select_actions(world: &mut World, events: &mut Vec<SimulationEvent>) {
                 }
                 events.push(SimulationEvent::TaskStarted {
                     entity_name: world.humans.names[i].clone(),
+                    entity_idx: i,
                     action: task.action,
+                    tick: current_tick,
                     curiosity: world.humans.values[i].curiosity,
                     social_need: world.humans.needs[i].social,
                     honor: world.humans.values[i].honor,
+                    food_need: world.humans.needs[i].food,
+                    rest_need: world.humans.needs[i].rest,
+                    safety_need: world.humans.needs[i].safety,
                 });
                 world.humans.task_queues[i].push(task);
             }
@@ -773,15 +1517,24 @@ fn select_orc_actions(world: &mut World, current_tick: u64) {
     let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
     let perception_range = 50.0;
 
-    // Build spatial grid for orc perception
+    // Build spatial grid for orc perception - include BOTH orcs AND humans
     let mut grid = SparseHashGrid::new(10.0);
     let orc_positions: Vec<_> = world.orcs.positions.iter().cloned().collect();
     let orc_ids: Vec<_> = world.orcs.ids.iter().cloned().collect();
-    grid.rebuild(orc_ids.iter().cloned().zip(orc_positions.iter().cloned()));
+    let human_positions: Vec<_> = world.humans.positions.iter().cloned().collect();
+    let human_ids: Vec<_> = world.humans.ids.iter().cloned().collect();
 
-    // Build lookup map for orc indices
-    let id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+    // Combine all entities into the grid
+    let all_entities: Vec<_> = orc_ids.iter().cloned().zip(orc_positions.iter().cloned())
+        .chain(human_ids.iter().cloned().zip(human_positions.iter().cloned()))
+        .collect();
+    grid.rebuild(all_entities.into_iter());
+
+    // Build lookup maps for both species
+    let orc_id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
         orc_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+    let human_id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+        human_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
 
     for i in orc_indices {
         if world.orcs.task_queues[i].current().is_some() {
@@ -794,20 +1547,37 @@ fn select_orc_actions(world: &mut World, current_tick: u64) {
         let food_available = world.food_zones.iter().any(|zone| zone.contains(pos));
         let nearest_food_zone = find_nearest_food_zone(pos, perception_range, &world.food_zones);
 
-        // Query nearby entities and build dispositions list
+        // Query nearby entities (both orcs and humans) and build dispositions list
         let perceived_dispositions: Vec<_> = grid
             .query_neighbors(pos)
             .filter(|&e| e != observer_id)
             .filter_map(|entity| {
-                let entity_idx = *id_to_idx.get(&entity)?;
-                let entity_pos = orc_positions[entity_idx];
-                let distance = pos.distance(&entity_pos);
-                if distance <= perception_range {
-                    let disposition = world.orcs.social_memories[i].get_disposition(entity);
-                    Some((entity, disposition))
-                } else {
-                    None
+                // Check if entity is an orc
+                if let Some(&entity_idx) = orc_id_to_idx.get(&entity) {
+                    let entity_pos = orc_positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        let disposition = world.orcs.social_memories[i].get_disposition(entity);
+                        return Some((entity, disposition));
+                    }
                 }
+                // Check if entity is a human - orcs see humans as hostile by default
+                if let Some(&entity_idx) = human_id_to_idx.get(&entity) {
+                    let entity_pos = human_positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        // Orcs view humans as hostile unless they have positive social memory
+                        let disposition = world.orcs.social_memories[i].get_disposition(entity);
+                        // Default to Hostile if Unknown (orcs are aggressive toward humans)
+                        let effective_disposition = if disposition == crate::entity::social::social_memory::Disposition::Unknown {
+                            crate::entity::social::social_memory::Disposition::Hostile
+                        } else {
+                            disposition
+                        };
+                        return Some((entity, effective_disposition));
+                    }
+                }
+                None
             })
             .collect();
 
@@ -828,6 +1598,190 @@ fn select_orc_actions(world: &mut World, current_tick: u64) {
 
         if let Some(task) = select_action_orc(&ctx) {
             world.orcs.task_queues[i].push(task);
+        }
+    }
+
+    // Action selection for dwarves
+    let dwarf_indices: Vec<usize> = world.dwarves.iter_living().collect();
+    let dwarf_positions: Vec<_> = world.dwarves.positions.iter().cloned().collect();
+    let dwarf_ids: Vec<_> = world.dwarves.ids.iter().cloned().collect();
+    let dwarf_id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+        dwarf_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+
+    for &i in &dwarf_indices {
+        if world.dwarves.task_queues[i].current().is_some() {
+            continue;
+        }
+
+        let pos = dwarf_positions[i];
+        let perception_range = 50.0;
+
+        // Check for nearby food zones
+        let (food_available, nearest_food_zone) = {
+            let mut nearest: Option<(u32, crate::core::types::Vec2, f32)> = None;
+            let mut food_avail = false;
+
+            for zone in &world.food_zones {
+                let dist = zone.position.distance(&pos);
+                if dist <= zone.radius {
+                    food_avail = true;
+                }
+                if dist <= perception_range {
+                    if nearest.is_none() || dist < nearest.unwrap().2 {
+                        nearest = Some((zone.id, zone.position, dist));
+                    }
+                }
+            }
+
+            (food_avail, nearest)
+        };
+
+        // Build perceived dispositions - similar to orcs but dwarves are less aggressive
+        let nearby_entities: Vec<_> = grid
+            .query_neighbors(pos)
+            .filter(|&e| !dwarf_ids.contains(&e))
+            .collect();
+
+        let perceived_dispositions: Vec<(crate::core::types::EntityId, crate::entity::social::Disposition)> = nearby_entities
+            .iter()
+            .filter_map(|&entity| {
+                if let Some(&entity_idx) = orc_id_to_idx.get(&entity) {
+                    let entity_pos = orc_positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        // Dwarves view orcs as hostile
+                        return Some((entity, crate::entity::social::social_memory::Disposition::Hostile));
+                    }
+                }
+                if let Some(&entity_idx) = human_id_to_idx.get(&entity) {
+                    let entity_pos = human_positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        let disposition = world.dwarves.social_memories[i].get_disposition(entity);
+                        return Some((entity, disposition));
+                    }
+                }
+                if let Some(&entity_idx) = dwarf_id_to_idx.get(&entity) {
+                    let entity_pos = dwarf_positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        // Dwarves view other dwarves favorably
+                        return Some((entity, crate::entity::social::social_memory::Disposition::Favorable));
+                    }
+                }
+                None
+            })
+            .collect();
+
+        let ctx = DwarfSelectionContext {
+            body: &world.dwarves.body_states[i],
+            needs: &world.dwarves.needs[i],
+            thoughts: &world.dwarves.thoughts[i],
+            values: &world.dwarves.values[i],
+            has_current_task: false,
+            threat_nearby: world.dwarves.needs[i].safety > 0.5,
+            food_available,
+            safe_location: world.dwarves.needs[i].safety < 0.3,
+            entity_nearby: !perceived_dispositions.is_empty(),
+            current_tick,
+            nearest_food_zone,
+            perceived_dispositions,
+        };
+
+        if let Some(task) = select_action_dwarf(&ctx) {
+            world.dwarves.task_queues[i].push(task);
+        }
+    }
+
+    // Action selection for elves
+    let elf_indices: Vec<usize> = world.elves.iter_living().collect();
+    let elf_positions: Vec<_> = world.elves.positions.iter().cloned().collect();
+    let elf_ids: Vec<_> = world.elves.ids.iter().cloned().collect();
+    let elf_id_to_idx: ahash::AHashMap<crate::core::types::EntityId, usize> =
+        elf_ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+
+    for &i in &elf_indices {
+        if world.elves.task_queues[i].current().is_some() {
+            continue;
+        }
+
+        let pos = elf_positions[i];
+        let perception_range = 60.0; // Elves have better perception
+
+        // Check for nearby food zones
+        let (food_available, nearest_food_zone) = {
+            let mut nearest: Option<(u32, crate::core::types::Vec2, f32)> = None;
+            let mut food_avail = false;
+
+            for zone in &world.food_zones {
+                let dist = zone.position.distance(&pos);
+                if dist <= zone.radius {
+                    food_avail = true;
+                }
+                if dist <= perception_range {
+                    if nearest.is_none() || dist < nearest.unwrap().2 {
+                        nearest = Some((zone.id, zone.position, dist));
+                    }
+                }
+            }
+
+            (food_avail, nearest)
+        };
+
+        // Build perceived dispositions - elves are aloof
+        let nearby_entities: Vec<_> = grid
+            .query_neighbors(pos)
+            .filter(|&e| !elf_ids.contains(&e))
+            .collect();
+
+        let perceived_dispositions: Vec<(crate::core::types::EntityId, crate::entity::social::Disposition)> = nearby_entities
+            .iter()
+            .filter_map(|&entity| {
+                if let Some(&entity_idx) = orc_id_to_idx.get(&entity) {
+                    let entity_pos = orc_positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        // Elves view orcs as hostile
+                        return Some((entity, crate::entity::social::social_memory::Disposition::Hostile));
+                    }
+                }
+                if let Some(&entity_idx) = human_id_to_idx.get(&entity) {
+                    let entity_pos = human_positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        let disposition = world.elves.social_memories[i].get_disposition(entity);
+                        return Some((entity, disposition));
+                    }
+                }
+                if let Some(&entity_idx) = elf_id_to_idx.get(&entity) {
+                    let entity_pos = elf_positions[entity_idx];
+                    let distance = pos.distance(&entity_pos);
+                    if distance <= perception_range {
+                        // Elves view other elves favorably
+                        return Some((entity, crate::entity::social::social_memory::Disposition::Favorable));
+                    }
+                }
+                None
+            })
+            .collect();
+
+        let ctx = ElfSelectionContext {
+            body: &world.elves.body_states[i],
+            needs: &world.elves.needs[i],
+            thoughts: &world.elves.thoughts[i],
+            values: &world.elves.values[i],
+            has_current_task: false,
+            threat_nearby: world.elves.needs[i].safety > 0.5,
+            food_available,
+            safe_location: world.elves.needs[i].safety < 0.3,
+            entity_nearby: !perceived_dispositions.is_empty(),
+            current_tick,
+            nearest_food_zone,
+            perceived_dispositions,
+        };
+
+        if let Some(task) = select_action_elf(&ctx) {
+            world.elves.task_queues[i].push(task);
         }
     }
 }
@@ -919,16 +1873,21 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
             }
         };
 
-        // For combat actions (Attack), pre-compute target info
-        // Returns (target_id, defender_idx) if target exists
-        let combat_target_info: Option<(crate::core::types::EntityId, usize)> = {
+        // For combat actions (Attack), pre-compute target info across ALL entity types
+        // Returns (target_id, CombatTarget) if target exists in any archetype
+        let combat_target_info: Option<(crate::core::types::EntityId, CombatTarget)> = {
             if let Some(task) = world.humans.task_queues[i].current() {
                 if task.action == ActionId::Attack {
                     if let Some(target_id) = task.target_entity {
+                        // Check humans first
                         if let Some(defender_idx) = world.humans.index_of(target_id) {
-                            Some((target_id, defender_idx))
+                            Some((target_id, CombatTarget::Human(defender_idx)))
+                        // Check orcs
+                        } else if let Some(defender_idx) = world.orcs.index_of(target_id) {
+                            Some((target_id, CombatTarget::Orc(defender_idx)))
+                        // Future: check other species here
                         } else {
-                            None // Target doesn't exist
+                            None // Target doesn't exist in any archetype
                         }
                     } else {
                         None // No target entity
@@ -1244,6 +2203,7 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                             is_complete
                         }
                     } else {
+                        // Target not found - complete early
                         true
                     }
                 }
@@ -1535,20 +2495,13 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                                     skill_result.attention_cost,
                                 );
 
-                                // Execute attack using combat resolution
-                                let success = if let Some((_, defender_idx)) = combat_target_info {
-                                    // Build combatants from entity data
+                                // Execute attack using combat resolution (cross-species)
+                                let success = if let Some((_, target)) = combat_target_info {
+                                    // Build attacker from human data
                                     let attacker_skill = CombatSkill::from_chunk_library(
                                         &world.humans.chunk_libraries[i],
                                     );
-                                    let defender_skill = CombatSkill::from_chunk_library(
-                                        &world.humans.chunk_libraries[defender_idx],
-                                    );
-
-                                    // Read actual equipment from combat states
                                     let attacker_combat_state = &world.humans.combat_states[i];
-                                    let defender_combat_state = &world.humans.combat_states[defender_idx];
-
                                     let attacker = Combatant {
                                         weapon: attacker_combat_state.weapon.clone(),
                                         armor: attacker_combat_state.armor.clone(),
@@ -1556,54 +2509,119 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                                         skill: attacker_skill,
                                     };
 
-                                    let defender = Combatant {
-                                        weapon: defender_combat_state.weapon.clone(),
-                                        armor: defender_combat_state.armor.clone(),
-                                        stance: CombatStance::Neutral,
-                                        skill: defender_skill,
+                                    // Build defender based on target type
+                                    let (defender, defender_hit) = match target {
+                                        CombatTarget::Human(defender_idx) => {
+                                            let defender_skill = CombatSkill::from_chunk_library(
+                                                &world.humans.chunk_libraries[defender_idx],
+                                            );
+                                            let defender_combat_state = &world.humans.combat_states[defender_idx];
+                                            let defender = Combatant {
+                                                weapon: defender_combat_state.weapon.clone(),
+                                                armor: defender_combat_state.armor.clone(),
+                                                stance: CombatStance::Neutral,
+                                                skill: defender_skill,
+                                            };
+
+                                            let exchange = resolve_exchange(&attacker, &defender);
+
+                                            // Apply wounds to human defender
+                                            if let Some(wound) = &exchange.defender_wound {
+                                                if wound.severity != WoundSeverity::None {
+                                                    let fatigue_increase = match wound.severity {
+                                                        WoundSeverity::None => 0.0,
+                                                        WoundSeverity::Scratch => 0.05,
+                                                        WoundSeverity::Minor => 0.1,
+                                                        WoundSeverity::Serious => 0.2,
+                                                        WoundSeverity::Critical => 0.4,
+                                                        WoundSeverity::Destroyed => 0.6,
+                                                    };
+                                                    world.humans.body_states[defender_idx].fatigue =
+                                                        (world.humans.body_states[defender_idx].fatigue
+                                                            + fatigue_increase)
+                                                            .min(1.0);
+                                                }
+                                            }
+
+                                            // Apply wounds to attacker (counter-attack)
+                                            if let Some(wound) = &exchange.attacker_wound {
+                                                if wound.severity != WoundSeverity::None {
+                                                    let fatigue_increase = match wound.severity {
+                                                        WoundSeverity::None => 0.0,
+                                                        WoundSeverity::Scratch => 0.05,
+                                                        WoundSeverity::Minor => 0.1,
+                                                        WoundSeverity::Serious => 0.2,
+                                                        WoundSeverity::Critical => 0.4,
+                                                        WoundSeverity::Destroyed => 0.6,
+                                                    };
+                                                    world.humans.body_states[i].fatigue =
+                                                        (world.humans.body_states[i].fatigue
+                                                            + fatigue_increase)
+                                                            .min(1.0);
+                                                }
+                                            }
+
+                                            (defender, exchange.defender_hit)
+                                        }
+                                        CombatTarget::Orc(defender_idx) => {
+                                            // Orcs don't have chunk_libraries yet, use default skill
+                                            let defender_skill = CombatSkill::default();
+                                            // Orcs don't have combat_states, use unarmed/unarmored defaults
+                                            let defender = Combatant {
+                                                weapon: WeaponProperties::default(), // fists
+                                                armor: ArmorProperties::default(),   // no armor
+                                                stance: CombatStance::Neutral,
+                                                skill: defender_skill,
+                                            };
+
+                                            let exchange = resolve_exchange(&attacker, &defender);
+
+                                            // Apply wounds to orc defender
+                                            if let Some(wound) = &exchange.defender_wound {
+                                                if wound.severity != WoundSeverity::None {
+                                                    let fatigue_increase = match wound.severity {
+                                                        WoundSeverity::None => 0.0,
+                                                        WoundSeverity::Scratch => 0.05,
+                                                        WoundSeverity::Minor => 0.1,
+                                                        WoundSeverity::Serious => 0.2,
+                                                        WoundSeverity::Critical => 0.4,
+                                                        WoundSeverity::Destroyed => 0.6,
+                                                    };
+                                                    world.orcs.body_states[defender_idx].fatigue =
+                                                        (world.orcs.body_states[defender_idx].fatigue
+                                                            + fatigue_increase)
+                                                            .min(1.0);
+
+                                                    // Kill orc if fatigue reaches 1.0 (exhausted)
+                                                    if world.orcs.body_states[defender_idx].fatigue >= 1.0 {
+                                                        world.orcs.alive[defender_idx] = false;
+                                                    }
+                                                }
+                                            }
+
+                                            // Orc counter-attack damages attacker
+                                            if let Some(wound) = &exchange.attacker_wound {
+                                                if wound.severity != WoundSeverity::None {
+                                                    let fatigue_increase = match wound.severity {
+                                                        WoundSeverity::None => 0.0,
+                                                        WoundSeverity::Scratch => 0.05,
+                                                        WoundSeverity::Minor => 0.1,
+                                                        WoundSeverity::Serious => 0.2,
+                                                        WoundSeverity::Critical => 0.4,
+                                                        WoundSeverity::Destroyed => 0.6,
+                                                    };
+                                                    world.humans.body_states[i].fatigue =
+                                                        (world.humans.body_states[i].fatigue
+                                                            + fatigue_increase)
+                                                            .min(1.0);
+                                                }
+                                            }
+
+                                            (defender, exchange.defender_hit)
+                                        }
                                     };
 
-                                    // Resolve the exchange
-                                    let exchange = resolve_exchange(&attacker, &defender);
-
-                                    // Apply wounds to defender
-                                    if let Some(wound) = &exchange.defender_wound {
-                                        if wound.severity != WoundSeverity::None {
-                                            // Apply fatigue/damage to defender based on severity
-                                            let fatigue_increase = match wound.severity {
-                                                WoundSeverity::None => 0.0,
-                                                WoundSeverity::Scratch => 0.05,
-                                                WoundSeverity::Minor => 0.1,
-                                                WoundSeverity::Serious => 0.2,
-                                                WoundSeverity::Critical => 0.4,
-                                                WoundSeverity::Destroyed => 0.6,
-                                            };
-                                            world.humans.body_states[defender_idx].fatigue =
-                                                (world.humans.body_states[defender_idx].fatigue
-                                                    + fatigue_increase)
-                                                    .min(1.0);
-                                        }
-                                    }
-
-                                    // Apply wounds to attacker (if defender counter-attacked)
-                                    if let Some(wound) = &exchange.attacker_wound {
-                                        if wound.severity != WoundSeverity::None {
-                                            let fatigue_increase = match wound.severity {
-                                                WoundSeverity::None => 0.0,
-                                                WoundSeverity::Scratch => 0.05,
-                                                WoundSeverity::Minor => 0.1,
-                                                WoundSeverity::Serious => 0.2,
-                                                WoundSeverity::Critical => 0.4,
-                                                WoundSeverity::Destroyed => 0.6,
-                                            };
-                                            world.humans.body_states[i].fatigue =
-                                                (world.humans.body_states[i].fatigue
-                                                    + fatigue_increase)
-                                                    .min(1.0);
-                                        }
-                                    }
-
-                                    exchange.defender_hit
+                                    defender_hit
                                 } else {
                                     false // No target found
                                 };
@@ -1710,13 +2728,17 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
             continue;
         };
 
-        // Generate CombatHit event if this was an attack action that hit
+        // Generate CombatHit event if this was an attack action that hit (cross-species)
         if action == ActionId::Attack && is_complete {
-            if let Some((_, defender_idx)) = combat_target_info {
+            if let Some((_, target)) = combat_target_info {
                 // Attack completed with a target - generate combat hit event
+                let defender_name = match target {
+                    CombatTarget::Human(defender_idx) => world.humans.names[defender_idx].clone(),
+                    CombatTarget::Orc(defender_idx) => world.orcs.names[defender_idx].clone(),
+                };
                 events.push(SimulationEvent::CombatHit {
                     attacker: world.humans.names[i].clone(),
-                    defender: world.humans.names[defender_idx].clone(),
+                    defender: defender_name,
                 });
             }
         }
@@ -1787,6 +2809,32 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
             // Create social memories if this was a social action with a target
             if let Some(target_id) = target_entity {
                 create_social_memory_from_task(world, i, action, target_id, world.current_tick);
+
+                // Emit social memory event for completed social actions
+                if matches!(action, ActionId::TalkTo | ActionId::Help | ActionId::Trade) {
+                    let new_disposition = world.humans.social_memories[i].get_disposition(target_id);
+                    if let Some(target_idx) = world.humans.index_of(target_id) {
+                        let target_name = world.humans.names[target_idx].clone();
+                        let memory_count = world.humans.social_memories[i]
+                            .find_slot(target_id)
+                            .map(|r| r.memories.len())
+                            .unwrap_or(0);
+                        let total_slots = world.humans.social_memories[i].slots.len();
+
+                        // Sample to reduce log spam (every 100 ticks)
+                        if world.current_tick % 100 == 0 {
+                            events.push(SimulationEvent::SocialMemoryUpdate {
+                                entity_name: world.humans.names[i].clone(),
+                                entity_idx: i,
+                                tick: world.current_tick,
+                                target_name,
+                                new_disposition: format!("{:?}", new_disposition),
+                                memory_count,
+                                total_slots_used: total_slots,
+                            });
+                        }
+                    }
+                }
             }
 
             // Generate TaskCompleted event
@@ -1800,14 +2848,32 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
     }
 
     // Execute orc tasks
-    execute_orc_tasks(world);
+    execute_orc_tasks(world, events);
+
+    // Execute dwarf tasks
+    execute_dwarf_tasks(world, events);
+
+    // Execute elf tasks
+    execute_elf_tasks(world, events);
 }
 
 /// Execute current tasks for orc entities
-fn execute_orc_tasks(world: &mut World) {
+fn execute_orc_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
     let orc_indices: Vec<usize> = world.orcs.iter_living().collect();
 
-    for i in orc_indices {
+    // Collect combat actions to process after the main loop
+    let mut orc_attacks: Vec<(usize, crate::core::types::EntityId)> = Vec::new();
+
+    for i in orc_indices.iter().cloned() {
+        // Check for Attack action and collect target info
+        if let Some(task) = world.orcs.task_queues[i].current() {
+            if task.action == ActionId::Attack {
+                if let Some(target_id) = task.target_entity {
+                    orc_attacks.push((i, target_id));
+                }
+            }
+        }
+
         // Get task info
         let task_info = world.orcs.task_queues[i].current_mut().map(|task| {
             let action = task.action;
@@ -1860,15 +2926,20 @@ fn execute_orc_tasks(world: &mut World) {
                     task.progress += 1.0 / duration as f32;
                     task.progress >= 1.0
                 }
+                ActionId::Attack => {
+                    // Progress attack action
+                    task.progress += 0.1;
+                    task.progress >= 1.0
+                }
                 _ => false,
             };
 
-            // Progress for non-movement actions
-            let is_movement_or_rest = matches!(
+            // Progress for non-movement actions (excluding Attack which is handled above)
+            let is_special = matches!(
                 action,
-                ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Rest
+                ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Rest | ActionId::Attack
             );
-            if !is_movement_or_rest {
+            if !is_special {
                 let duration = task.action.base_duration();
                 let progress_rate = match duration {
                     0 => 0.1,
@@ -1908,6 +2979,305 @@ fn execute_orc_tasks(world: &mut World) {
             }
         }
     }
+
+    // Process orc attacks against targets (cross-species combat)
+    for (attacker_idx, target_id) in orc_attacks {
+        // Find target - could be human or orc
+        let target_info: Option<CombatTarget> = if let Some(idx) = world.humans.index_of(target_id) {
+            Some(CombatTarget::Human(idx))
+        } else if let Some(idx) = world.orcs.index_of(target_id) {
+            Some(CombatTarget::Orc(idx))
+        } else {
+            None
+        };
+
+        if let Some(target) = target_info {
+            // Get orc attacker stats (orcs use axes by default)
+            let attacker = Combatant {
+                weapon: WeaponProperties::axe(),
+                armor: ArmorProperties::none(),
+                skill: CombatSkill::novice(),
+                stance: CombatStance::Pressing,
+            };
+
+            // Get defender stats based on target type
+            let defender = match target {
+                CombatTarget::Human(idx) => Combatant {
+                    weapon: world.humans.combat_states[idx].weapon.clone(),
+                    armor: world.humans.combat_states[idx].armor.clone(),
+                    skill: CombatSkill::novice(),
+                    stance: CombatStance::Neutral,
+                },
+                CombatTarget::Orc(idx) => Combatant {
+                    weapon: WeaponProperties::axe(),
+                    armor: ArmorProperties::none(),
+                    skill: CombatSkill::novice(),
+                    stance: CombatStance::Neutral,
+                },
+            };
+
+            // Resolve combat exchange
+            let exchange = resolve_exchange(&attacker, &defender);
+
+            // Get names for event logging
+            let attacker_name = world.orcs.names[attacker_idx].clone();
+            let defender_name = match target {
+                CombatTarget::Human(idx) => world.humans.names[idx].clone(),
+                CombatTarget::Orc(idx) => world.orcs.names[idx].clone(),
+            };
+
+            // Generate CombatHit event
+            events.push(SimulationEvent::CombatHit {
+                attacker: attacker_name,
+                defender: defender_name,
+            });
+
+            // Apply damage to defender
+            if let Some(wound) = &exchange.defender_wound {
+                if wound.severity != WoundSeverity::None {
+                    let fatigue_increase = match wound.severity {
+                        WoundSeverity::None => 0.0,
+                        WoundSeverity::Scratch => 0.05,
+                        WoundSeverity::Minor => 0.1,
+                        WoundSeverity::Serious => 0.2,
+                        WoundSeverity::Critical => 0.4,
+                        WoundSeverity::Destroyed => 0.6,
+                    };
+
+                    match target {
+                        CombatTarget::Human(idx) => {
+                            world.humans.body_states[idx].fatigue =
+                                (world.humans.body_states[idx].fatigue + fatigue_increase).min(1.0);
+                            // Kill human if fatigue reaches 1.0
+                            if world.humans.body_states[idx].fatigue >= 1.0 {
+                                world.humans.alive[idx] = false;
+                            }
+                        }
+                        CombatTarget::Orc(idx) => {
+                            world.orcs.body_states[idx].fatigue =
+                                (world.orcs.body_states[idx].fatigue + fatigue_increase).min(1.0);
+                            // Kill orc if fatigue reaches 1.0
+                            if world.orcs.body_states[idx].fatigue >= 1.0 {
+                                world.orcs.alive[idx] = false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply counter-attack damage to orc attacker
+            if let Some(wound) = &exchange.attacker_wound {
+                if wound.severity != WoundSeverity::None {
+                    let fatigue_increase = match wound.severity {
+                        WoundSeverity::None => 0.0,
+                        WoundSeverity::Scratch => 0.05,
+                        WoundSeverity::Minor => 0.1,
+                        WoundSeverity::Serious => 0.2,
+                        WoundSeverity::Critical => 0.4,
+                        WoundSeverity::Destroyed => 0.6,
+                    };
+                    world.orcs.body_states[attacker_idx].fatigue =
+                        (world.orcs.body_states[attacker_idx].fatigue + fatigue_increase).min(1.0);
+                    // Kill orc if fatigue reaches 1.0
+                    if world.orcs.body_states[attacker_idx].fatigue >= 1.0 {
+                        world.orcs.alive[attacker_idx] = false;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Execute current tasks for dwarf entities
+fn execute_dwarf_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
+    let dwarf_indices: Vec<usize> = world.dwarves.iter_living().collect();
+
+    for i in dwarf_indices.iter().cloned() {
+        // Get task info
+        let task_info = world.dwarves.task_queues[i].current_mut().map(|task| {
+            let action = task.action;
+            let target_pos = task.target_position;
+
+            // Handle movement actions
+            let movement_complete = match action {
+                ActionId::MoveTo => {
+                    if let Some(target) = target_pos {
+                        let current = world.dwarves.positions[i];
+                        let direction = (target - current).normalize();
+                        let speed = 1.8; // Dwarves are slightly slower
+                        if direction.length() > 0.0 {
+                            world.dwarves.positions[i] = current + direction * speed;
+                        }
+                        world.dwarves.positions[i].distance(&target) < 2.0
+                    } else {
+                        true
+                    }
+                }
+                ActionId::Flee | ActionId::SeekSafety => {
+                    if let Some(threat_pos) = target_pos {
+                        let current = world.dwarves.positions[i];
+                        let away = (current - threat_pos).normalize();
+                        let speed = 2.5;
+                        if away.length() > 0.0 {
+                            world.dwarves.positions[i] = current + away * speed;
+                        }
+                        let distance = world.dwarves.positions[i].distance(&threat_pos);
+                        distance > 20.0
+                    } else {
+                        true
+                    }
+                }
+                ActionId::Rest => {
+                    world.dwarves.body_states[i].fatigue =
+                        (world.dwarves.body_states[i].fatigue - 0.01).max(0.0);
+                    let duration = task.action.base_duration();
+                    task.progress += 1.0 / duration as f32;
+                    task.progress >= 1.0
+                }
+                _ => false,
+            };
+
+            // Progress for non-movement actions
+            let is_special = matches!(
+                action,
+                ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Rest
+            );
+            if !is_special {
+                let duration = task.action.base_duration();
+                let progress_rate = match duration {
+                    0 => 0.1,
+                    1..=60 => 0.05,
+                    _ => 0.02,
+                };
+                task.progress += progress_rate;
+            }
+
+            let duration = task.action.base_duration();
+            let progress_complete = duration > 0 && task.progress >= 1.0;
+            let is_complete = movement_complete || progress_complete;
+            (action, is_complete)
+        });
+
+        if let Some((action, is_complete)) = task_info {
+            // Handle Eat action
+            if action == ActionId::Eat {
+                let pos = world.dwarves.positions[i];
+                for zone in &mut world.food_zones {
+                    if zone.contains(pos) {
+                        let consumed = zone.consume(0.1);
+                        if consumed > 0.0 {
+                            world.dwarves.needs[i].satisfy(NeedType::Food, consumed * 0.5);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                for (need, amount) in action.satisfies_needs() {
+                    world.dwarves.needs[i].satisfy(need, amount * 0.05);
+                }
+            }
+
+            if is_complete {
+                world.dwarves.task_queues[i].complete_current();
+            }
+        }
+    }
+}
+
+/// Execute current tasks for elf entities
+fn execute_elf_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
+    let elf_indices: Vec<usize> = world.elves.iter_living().collect();
+
+    for i in elf_indices.iter().cloned() {
+        // Get task info
+        let task_info = world.elves.task_queues[i].current_mut().map(|task| {
+            let action = task.action;
+            let target_pos = task.target_position;
+
+            // Handle movement actions
+            let movement_complete = match action {
+                ActionId::MoveTo => {
+                    if let Some(target) = target_pos {
+                        let current = world.elves.positions[i];
+                        let direction = (target - current).normalize();
+                        let speed = 2.2; // Elves are faster and more graceful
+                        if direction.length() > 0.0 {
+                            world.elves.positions[i] = current + direction * speed;
+                        }
+                        world.elves.positions[i].distance(&target) < 2.0
+                    } else {
+                        true
+                    }
+                }
+                ActionId::Flee | ActionId::SeekSafety => {
+                    if let Some(threat_pos) = target_pos {
+                        let current = world.elves.positions[i];
+                        let away = (current - threat_pos).normalize();
+                        let speed = 3.5; // Elves flee quickly
+                        if away.length() > 0.0 {
+                            world.elves.positions[i] = current + away * speed;
+                        }
+                        let distance = world.elves.positions[i].distance(&threat_pos);
+                        distance > 25.0 // Elves seek more distance
+                    } else {
+                        true
+                    }
+                }
+                ActionId::Rest => {
+                    world.elves.body_states[i].fatigue =
+                        (world.elves.body_states[i].fatigue - 0.01).max(0.0);
+                    let duration = task.action.base_duration();
+                    task.progress += 1.0 / duration as f32;
+                    task.progress >= 1.0
+                }
+                _ => false,
+            };
+
+            // Progress for non-movement actions
+            let is_special = matches!(
+                action,
+                ActionId::MoveTo | ActionId::Flee | ActionId::SeekSafety | ActionId::Rest
+            );
+            if !is_special {
+                let duration = task.action.base_duration();
+                let progress_rate = match duration {
+                    0 => 0.1,
+                    1..=60 => 0.05,
+                    _ => 0.02,
+                };
+                task.progress += progress_rate;
+            }
+
+            let duration = task.action.base_duration();
+            let progress_complete = duration > 0 && task.progress >= 1.0;
+            let is_complete = movement_complete || progress_complete;
+            (action, is_complete)
+        });
+
+        if let Some((action, is_complete)) = task_info {
+            // Handle Eat action
+            if action == ActionId::Eat {
+                let pos = world.elves.positions[i];
+                for zone in &mut world.food_zones {
+                    if zone.contains(pos) {
+                        let consumed = zone.consume(0.08); // Elves eat less
+                        if consumed > 0.0 {
+                            world.elves.needs[i].satisfy(NeedType::Food, consumed * 0.6);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                for (need, amount) in action.satisfies_needs() {
+                    world.elves.needs[i].satisfy(need, amount * 0.05);
+                }
+            }
+
+            if is_complete {
+                world.elves.task_queues[i].complete_current();
+            }
+        }
+    }
 }
 
 /// Regenerate food for scarce zones
@@ -1917,6 +3287,41 @@ fn execute_orc_tasks(world: &mut World) {
 fn regenerate_food_zones(world: &mut World) {
     for zone in &mut world.food_zones {
         zone.regenerate();
+    }
+}
+
+/// Check if the game has reached a win or loss condition
+///
+/// Victory: All orcs eliminated with at least one allied race surviving
+/// Defeat: All allied races (humans, dwarves, elves) eliminated with orcs surviving
+/// Draw: All forces mutually eliminated
+/// InProgress: Combat still ongoing
+pub fn check_win_condition(world: &World) -> GameOutcome {
+    let humans_alive = world.humans.iter_living().count();
+    let dwarves_alive = world.dwarves.iter_living().count();
+    let elves_alive = world.elves.iter_living().count();
+    let orcs_alive = world.orcs.iter_living().count();
+
+    let allied_alive = humans_alive + dwarves_alive + elves_alive;
+
+    // Calculate casualties (total spawned - living)
+    let humans_killed = world.humans.count() - humans_alive;
+    let dwarves_killed = world.dwarves.count() - dwarves_alive;
+    let elves_killed = world.elves.count() - elves_alive;
+    let orcs_killed = world.orcs.count() - orcs_alive;
+
+    if orcs_alive == 0 && allied_alive > 0 {
+        GameOutcome::Victory { orcs_killed }
+    } else if allied_alive == 0 && orcs_alive > 0 {
+        GameOutcome::Defeat {
+            humans_killed,
+            dwarves_killed,
+            elves_killed,
+        }
+    } else if allied_alive == 0 && orcs_alive == 0 {
+        GameOutcome::Draw
+    } else {
+        GameOutcome::InProgress
     }
 }
 
@@ -3662,5 +5067,78 @@ mod tests {
         // Scholar: fists, no armor
         assert_eq!(scholar_state.weapon.edge, Edge::Blunt);
         assert_eq!(scholar_state.armor.coverage, Coverage::None);
+    }
+
+    #[test]
+    fn test_win_condition_in_progress() {
+        let mut world = World::new();
+        world.spawn_human("Human1".into());
+        world.spawn_orc("Orc1".into());
+
+        let outcome = check_win_condition(&world);
+        assert_eq!(outcome, GameOutcome::InProgress);
+    }
+
+    #[test]
+    fn test_win_condition_victory() {
+        let mut world = World::new();
+        world.spawn_human("Human1".into());
+        world.spawn_dwarf("Dwarf1".into());
+        // Spawn orc but kill it
+        world.spawn_orc("Orc1".into());
+        world.orcs.alive[0] = false;
+
+        let outcome = check_win_condition(&world);
+        assert_eq!(outcome, GameOutcome::Victory { orcs_killed: 1 });
+    }
+
+    #[test]
+    fn test_win_condition_defeat() {
+        let mut world = World::new();
+        // Spawn human but kill it
+        world.spawn_human("Human1".into());
+        world.humans.alive[0] = false;
+        // Living orc
+        world.spawn_orc("Orc1".into());
+
+        let outcome = check_win_condition(&world);
+        assert_eq!(
+            outcome,
+            GameOutcome::Defeat {
+                humans_killed: 1,
+                dwarves_killed: 0,
+                elves_killed: 0
+            }
+        );
+    }
+
+    #[test]
+    fn test_win_condition_draw() {
+        let mut world = World::new();
+        // Spawn and kill human
+        world.spawn_human("Human1".into());
+        world.humans.alive[0] = false;
+        // Spawn and kill orc
+        world.spawn_orc("Orc1".into());
+        world.orcs.alive[0] = false;
+
+        let outcome = check_win_condition(&world);
+        assert_eq!(outcome, GameOutcome::Draw);
+    }
+
+    #[test]
+    fn test_win_condition_counts_all_allies() {
+        let mut world = World::new();
+        // Kill all humans
+        world.spawn_human("Human1".into());
+        world.humans.alive[0] = false;
+        // But dwarves still alive
+        world.spawn_dwarf("Dwarf1".into());
+        // Orcs still alive
+        world.spawn_orc("Orc1".into());
+
+        let outcome = check_win_condition(&world);
+        // Should still be in progress because dwarves are alive
+        assert_eq!(outcome, GameOutcome::InProgress);
     }
 }

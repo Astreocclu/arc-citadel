@@ -2,6 +2,9 @@
 //! Observes what patterns emerge from 10,000 autonomous entities
 
 use arc_citadel::actions::catalog::ActionId;
+use arc_citadel::blueprints::{
+    BlueprintId, BlueprintInstance, CivilianProperties, EvaluatedGeometry, InstanceId, PlacedBy,
+};
 use arc_citadel::core::types::Vec2;
 use arc_citadel::ecs::world::{Abundance, World};
 use arc_citadel::simulation::tick::{run_simulation_tick, SimulationEvent};
@@ -57,6 +60,14 @@ fn main() {
         world.humans.values[i].curiosity = pseudo_random(&mut rng_seed, 0.0, 1.0);
         world.humans.values[i].safety = pseudo_random(&mut rng_seed, 0.0, 1.0);
         world.humans.values[i].piety = pseudo_random(&mut rng_seed, 0.0, 1.0);
+
+        // Diverse fatigue for E4 (perception range affected by fatigue)
+        // 20% of entities start tired (fatigue > 0.7) to demonstrate perception range reduction
+        world.humans.body_states[i].fatigue = if i % 5 == 0 {
+            pseudo_random(&mut rng_seed, 0.75, 0.95) // Tired - will have reduced perception range
+        } else {
+            pseudo_random(&mut rng_seed, 0.0, 0.5) // Rested - normal perception range
+        };
     }
 
     // Create food zones - spread across the ENTIRE map so entities can find food
@@ -91,7 +102,7 @@ fn main() {
 
     // Spawn hostile orcs scattered across the map for E4/E7 testing
     // These create threat scenarios that trigger safety and honor behaviors
-    let orc_count = 100; // 1% of human population
+    let orc_count = 20; // 0.2% of human population - enough for threat testing without constant war
     println!("Spawning {} hostile orcs...\n", orc_count);
     for i in 0..orc_count {
         let orc_name = format!("Orc_{}", i);
@@ -106,6 +117,60 @@ fn main() {
         // Orcs have high aggression - they will attack nearby humans
         world.orcs.needs[i].safety = 0.1; // Low safety need = aggressive
     }
+
+    // Create world objects for E2/E3 (aesthetic/sacred perception filtering)
+    // Scatter beautiful statues and sacred shrines across the map
+    let object_count = 100;
+    println!("Spawning {} world objects (statues and shrines)...\n", object_count);
+
+    for i in 0..object_count {
+        let x = pseudo_random(&mut rng_seed, 0.0, 990.0);
+        let y = pseudo_random(&mut rng_seed, 0.0, 990.0);
+        let pos = glam::Vec2::new(x, y);
+
+        // Alternate between aesthetic objects (statues) and sacred objects (shrines)
+        let (name, aesthetic, sacred) = if i % 2 == 0 {
+            // Beautiful statue - high aesthetic value, low sacred
+            ("marble_statue", pseudo_random(&mut rng_seed, 0.6, 1.0), 0.0)
+        } else {
+            // Sacred shrine - low aesthetic, high sacred
+            ("wooden_shrine", 0.1, pseudo_random(&mut rng_seed, 0.6, 1.0))
+        };
+
+        let mut civilian = CivilianProperties::default();
+        civilian.aesthetic_value = aesthetic;
+        civilian.sacred_value = sacred;
+
+        let instance = BlueprintInstance {
+            id: InstanceId(10000 + i as u64),
+            blueprint_id: BlueprintId((i % 2) as u32),
+            blueprint_name: name.to_string(),
+            parameters: HashMap::new(),
+            position: pos,
+            rotation: 0.0,
+            geometry: EvaluatedGeometry {
+                width: 1.0,
+                depth: 1.0,
+                height: 2.0,
+                footprint: vec![],
+            },
+            current_hp: 100.0,
+            max_hp: 100.0,
+            damage_state: "intact".to_string(),
+            breaches: vec![],
+            construction_progress: 1.0,
+            construction_stage: None,
+            placed_by: PlacedBy::TerrainGen,
+            military: Default::default(),
+            civilian,
+            anchors: vec![],
+            owner: None,
+        };
+
+        world.world_objects.add(instance);
+    }
+
+    println!("Created {} world objects (50 statues, 50 shrines)\n", world.world_objects.len());
 
     // Track emergence
     let mut tracker = EmergenceTracker::new();
@@ -125,9 +190,10 @@ fn main() {
         // Log action events for evaluation (includes curiosity for E5, social for E6)
         for event in &events {
             match event {
-                SimulationEvent::TaskStarted { entity_name, action, curiosity, social_need, honor } => {
-                    // Include curiosity for IdleObserve (E5), social_need for TalkTo (E6), honor for Attack (E4)
-                    println!("[ACTION] {} (curiosity={:.2}, social={:.2}, honor={:.2}) started {:?}", entity_name, curiosity, social_need, honor, action);
+                SimulationEvent::TaskStarted { entity_name, entity_idx, action, tick, curiosity, social_need, honor, food_need, rest_need, safety_need } => {
+                    // Include tick, entity_idx for tracking, needs for satisfaction analysis
+                    println!("[ACTION] tick={} e{} {} (food={:.2}, rest={:.2}, safety={:.2}, social={:.2}, curiosity={:.2}, honor={:.2}) started {:?}",
+                        tick, entity_idx, entity_name, food_need, rest_need, safety_need, social_need, curiosity, honor, action);
                 }
                 SimulationEvent::TaskCompleted { entity_name, action } => {
                     println!("[COMPLETE] {} finished {:?}", entity_name, action);
@@ -137,6 +203,35 @@ fn main() {
                 }
                 SimulationEvent::ProductionComplete { building_idx, recipe } => {
                     println!("[PRODUCTION] Building {} produced {}", building_idx, recipe);
+                }
+                SimulationEvent::PerceptionUpdate {
+                    entity_name, entity_idx, tick, perceived_count, perceived_objects_count, max_threat_level,
+                    food_zone_nearby, effective_range, beauty_value, piety_value, fatigue
+                } => {
+                    println!("[PERCEPTION] tick={} e{} {} entities={} objects={} max_threat={:.2} food_nearby={} range={:.1} beauty={:.2} piety={:.2} fatigue={:.2}",
+                        tick, entity_idx, entity_name, perceived_count, perceived_objects_count, max_threat_level,
+                        food_zone_nearby, effective_range, beauty_value, piety_value, fatigue);
+                }
+                SimulationEvent::ThoughtGenerated {
+                    entity_name, entity_idx, tick, valence, intensity, category, cause, buffer_size
+                } => {
+                    println!("[THOUGHT] tick={} e{} {} valence={} intensity={:.2} category={} cause=\"{}\" buffer={}",
+                        tick, entity_idx, entity_name, valence, intensity, category, cause, buffer_size);
+                }
+                SimulationEvent::SocialMemoryUpdate {
+                    entity_name, entity_idx, tick, target_name, new_disposition, memory_count, total_slots_used
+                } => {
+                    println!("[SOCIAL_MEMORY] tick={} e{} {} -> {} disposition={} memories={} slots={}",
+                        tick, entity_idx, entity_name, target_name, new_disposition, memory_count, total_slots_used);
+                }
+                SimulationEvent::DispositionChange {
+                    entity_name, entity_idx, tick, target_name, old_disposition, new_disposition, trigger
+                } => {
+                    println!("[DISPOSITION_CHANGE] tick={} e{} {} -> {} changed from {} to {} (trigger: {})",
+                        tick, entity_idx, entity_name, target_name, old_disposition, new_disposition, trigger);
+                }
+                SimulationEvent::GameOver { tick, outcome } => {
+                    println!("[GAME_OVER] tick={} outcome={:?}", tick, outcome);
                 }
             }
         }

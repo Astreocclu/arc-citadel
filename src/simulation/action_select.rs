@@ -8,7 +8,9 @@ use crate::entity::needs::{NeedType, Needs};
 use crate::entity::social::Disposition;
 use crate::entity::species::abyssal_demons::AbyssalDemonsValues;
 use crate::entity::species::centaur::CentaurValues;
+use crate::entity::species::dwarf::DwarfValues;
 use crate::entity::species::dryad::DryadValues;
+use crate::entity::species::elf::ElfValues;
 use crate::entity::species::elemental::ElementalValues;
 use crate::entity::species::fey::FeyValues;
 use crate::entity::species::gnoll::GnollValues;
@@ -812,12 +814,12 @@ fn select_critical_response_orc(need: NeedType, ctx: &OrcSelectionContext) -> Op
 
 /// High rage triggers aggressive action toward nearby entities
 fn check_rage_response(ctx: &OrcSelectionContext) -> Option<Task> {
+    // High rage - attack anyone nearby
     if ctx.values.rage > 0.7 && ctx.entity_nearby {
-        // Find any target (orcs in rage attack anyone nearby)
         let target = ctx.perceived_dispositions.first().map(|(id, _)| *id);
 
         return Some(Task {
-            action: ActionId::Defend, // Attack/fight action
+            action: ActionId::Attack,
             target_position: None,
             target_entity: target,
             target_building: None,
@@ -827,6 +829,29 @@ fn check_rage_response(ctx: &OrcSelectionContext) -> Option<Task> {
             source: TaskSource::Reaction,
         });
     }
+
+    // Medium rage + hostile nearby - still attack
+    if ctx.values.rage > 0.4 {
+        let hostile_target = ctx
+            .perceived_dispositions
+            .iter()
+            .find(|(_, d)| matches!(d, Disposition::Hostile | Disposition::Suspicious))
+            .map(|(id, _)| *id);
+
+        if let Some(target_id) = hostile_target {
+            return Some(Task {
+                action: ActionId::Attack,
+                target_position: None,
+                target_entity: Some(target_id),
+                target_building: None,
+                priority: TaskPriority::Normal,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            });
+        }
+    }
+
     None
 }
 
@@ -842,7 +867,7 @@ fn check_blood_debt_response(ctx: &OrcSelectionContext) -> Option<Task> {
 
         if let Some(target_id) = hostile_target {
             return Some(Task {
-                action: ActionId::Defend, // Attack to settle blood debt
+                action: ActionId::Attack,
                 target_position: None,
                 target_entity: Some(target_id),
                 target_building: None,
@@ -889,9 +914,9 @@ fn check_clan_loyalty_response(ctx: &OrcSelectionContext) -> Option<Task> {
             .map(|(id, _)| *id);
 
         if has_friendly && hostile_target.is_some() {
-            // Clan member nearby with hostile threat - defend!
+            // Clan member nearby with hostile threat - attack the enemy!
             return Some(Task {
-                action: ActionId::Defend,
+                action: ActionId::Attack,
                 target_position: None,
                 target_entity: hostile_target,
                 target_building: None,
@@ -902,6 +927,29 @@ fn check_clan_loyalty_response(ctx: &OrcSelectionContext) -> Option<Task> {
             });
         }
     }
+
+    // Even without friendlies, attack hostile entities if clan-minded
+    if ctx.values.clan_loyalty > 0.5 {
+        let hostile_target = ctx
+            .perceived_dispositions
+            .iter()
+            .find(|(_, d)| matches!(d, Disposition::Hostile))
+            .map(|(id, _)| *id);
+
+        if let Some(target_id) = hostile_target {
+            return Some(Task {
+                action: ActionId::Attack,
+                target_position: None,
+                target_entity: Some(target_id),
+                target_building: None,
+                priority: TaskPriority::Normal,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            });
+        }
+    }
+
     None
 }
 
@@ -941,6 +989,363 @@ fn select_idle_action_orc(ctx: &OrcSelectionContext) -> Task {
         ActionId::Gather // Work on strength-building tasks
     } else {
         ActionId::IdleWander // Default: wander
+    };
+
+    Task::new(action, TaskPriority::Low, ctx.current_tick)
+}
+
+/// Context provided to dwarf action selection
+pub struct DwarfSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a DwarfValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for dwarves
+///
+/// Dwarves have different behavioral priorities than humans:
+/// 1. Critical needs still take priority (survival)
+/// 2. Tradition drives adherence to established behaviors
+/// 3. Craftsmanship leads to crafting and building activities
+/// 4. Clan honor triggers defense of allies
+/// 5. Grudge drives revenge-seeking behavior
+/// 6. Stubbornness makes them persist in current activities
+pub fn select_action_dwarf(ctx: &DwarfSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_dwarf(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks - dwarves are stubborn
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // Grudge triggers hostile action against threats
+    if ctx.values.grudge > 0.5 && ctx.threat_nearby {
+        return Some(Task::new(ActionId::Defend, TaskPriority::High, ctx.current_tick));
+    }
+
+    // Clan honor triggers defense of nearby allies
+    if ctx.values.clan_honor > 0.6 && ctx.entity_nearby {
+        // Check if ally is threatened - for now, just be vigilant
+        return Some(Task::new(ActionId::IdleObserve, TaskPriority::Normal, ctx.current_tick));
+    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_dwarf(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to dwarf idle behavior
+    Some(select_idle_action_dwarf(ctx))
+}
+
+/// Handle critical needs for dwarves
+fn select_critical_response_dwarf(need: NeedType, ctx: &DwarfSelectionContext) -> Option<Task> {
+    match need {
+        // Dwarves are stubborn - high stubbornness means they fight back
+        NeedType::Safety if ctx.threat_nearby && ctx.values.stubbornness > 0.6 => Some(Task {
+            action: ActionId::Defend,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Rest => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for dwarves
+fn address_moderate_need_dwarf(ctx: &DwarfSelectionContext) -> Option<Task> {
+    let needs_snapshot = ctx.needs;
+
+    // Food need - dwarves are practical about eating
+    if needs_snapshot.food > 0.5 {
+        if ctx.food_available {
+            return Some(Task::new(ActionId::Eat, TaskPriority::Normal, ctx.current_tick));
+        } else if let Some((_, food_pos, _)) = ctx.nearest_food_zone {
+            return Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Normal,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            });
+        }
+    }
+
+    // Rest need
+    if needs_snapshot.rest > 0.5 {
+        return Some(Task::new(ActionId::Rest, TaskPriority::Normal, ctx.current_tick));
+    }
+
+    None
+}
+
+/// Select idle action for dwarves
+fn select_idle_action_dwarf(ctx: &DwarfSelectionContext) -> Task {
+    let action = if ctx.values.craftsmanship > 0.7 {
+        ActionId::Gather // Work on materials for crafting
+    } else if ctx.values.fortification > 0.6 {
+        ActionId::Build // Build defensive structures
+    } else if ctx.values.greed > 0.5 {
+        ActionId::Gather // Gather valuables
+    } else {
+        ActionId::IdleObserve // Watch and wait
+    };
+
+    Task::new(action, TaskPriority::Low, ctx.current_tick)
+}
+
+/// Context provided to elf action selection
+pub struct ElfSelectionContext<'a> {
+    pub body: &'a BodyState,
+    pub needs: &'a Needs,
+    pub thoughts: &'a ThoughtBuffer,
+    pub values: &'a ElfValues,
+    pub has_current_task: bool,
+    pub threat_nearby: bool,
+    pub food_available: bool,
+    pub safe_location: bool,
+    pub entity_nearby: bool,
+    pub current_tick: Tick,
+    pub nearest_food_zone: Option<(u32, Vec2, f32)>,
+    pub perceived_dispositions: Vec<(EntityId, Disposition)>,
+}
+
+/// Main action selection function for elves
+///
+/// Elves have different behavioral priorities than humans:
+/// 1. Critical needs still take priority (survival)
+/// 2. Beauty appreciation drives aesthetic observation
+/// 3. Wisdom leads to contemplative behavior
+/// 4. Grace affects combat style - elves prefer ranged combat
+/// 5. Aloofness reduces social interaction
+/// 6. Nature connection drives outdoor activities
+pub fn select_action_elf(ctx: &ElfSelectionContext) -> Option<Task> {
+    // Critical needs always take priority
+    if let Some(critical) = ctx.needs.has_critical() {
+        return select_critical_response_elf(critical, ctx);
+    }
+
+    // Don't interrupt existing tasks
+    if ctx.has_current_task {
+        return None;
+    }
+
+    // High archery skill and threat = attack from range
+    if ctx.values.archery > 0.6 && ctx.threat_nearby {
+        return Some(Task::new(ActionId::Attack, TaskPriority::High, ctx.current_tick));
+    }
+
+    // Address moderate needs
+    if let Some(task) = address_moderate_need_elf(ctx) {
+        return Some(task);
+    }
+
+    // Fall back to elf idle behavior
+    Some(select_idle_action_elf(ctx))
+}
+
+/// Handle critical needs for elves
+fn select_critical_response_elf(need: NeedType, ctx: &ElfSelectionContext) -> Option<Task> {
+    match need {
+        // Elves prefer to flee and use ranged attacks - grace > strength
+        NeedType::Safety if ctx.threat_nearby && ctx.values.archery > 0.7 => Some(Task {
+            action: ActionId::Attack, // Ranged attack
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety if ctx.threat_nearby => Some(Task {
+            action: ActionId::Flee, // Graceful retreat
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Safety => Some(Task {
+            action: ActionId::SeekSafety,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.food_available => Some(Task {
+            action: ActionId::Eat,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Reaction,
+        }),
+        NeedType::Food if ctx.nearest_food_zone.is_some() => {
+            let (_, food_pos, _) = ctx.nearest_food_zone.unwrap();
+            Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Critical,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            })
+        }
+        NeedType::Rest => Some(Task {
+            action: ActionId::Rest,
+            target_position: None,
+            target_entity: None,
+            target_building: None,
+            priority: TaskPriority::Critical,
+            created_tick: ctx.current_tick,
+            progress: 0.0,
+            source: TaskSource::Autonomous,
+        }),
+        _ => None,
+    }
+}
+
+/// Address moderate needs for elves
+fn address_moderate_need_elf(ctx: &ElfSelectionContext) -> Option<Task> {
+    let needs_snapshot = ctx.needs;
+
+    // Food need
+    if needs_snapshot.food > 0.5 {
+        if ctx.food_available {
+            return Some(Task::new(ActionId::Eat, TaskPriority::Normal, ctx.current_tick));
+        } else if let Some((_, food_pos, _)) = ctx.nearest_food_zone {
+            return Some(Task {
+                action: ActionId::MoveTo,
+                target_position: Some(food_pos),
+                target_entity: None,
+                target_building: None,
+                priority: TaskPriority::Normal,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            });
+        }
+    }
+
+    // Rest need
+    if needs_snapshot.rest > 0.5 {
+        return Some(Task::new(ActionId::Rest, TaskPriority::Normal, ctx.current_tick));
+    }
+
+    // Social need - elves are aloof but still need some interaction
+    if needs_snapshot.social > 0.6 && ctx.entity_nearby && ctx.values.aloofness < 0.7 {
+        let target = pick_talk_target(&ctx.perceived_dispositions);
+        if target.is_some() {
+            return Some(Task {
+                action: ActionId::TalkTo,
+                target_position: None,
+                target_entity: target,
+                target_building: None,
+                priority: TaskPriority::Normal,
+                created_tick: ctx.current_tick,
+                progress: 0.0,
+                source: TaskSource::Autonomous,
+            });
+        }
+    }
+
+    None
+}
+
+/// Select idle action for elves
+fn select_idle_action_elf(ctx: &ElfSelectionContext) -> Task {
+    let action = if ctx.values.beauty > 0.7 {
+        ActionId::IdleObserve // Appreciate beauty around them
+    } else if ctx.values.wisdom > 0.6 {
+        ActionId::IdleObserve // Contemplate and learn
+    } else if ctx.values.nature > 0.6 {
+        ActionId::IdleWander // Commune with nature
+    } else if ctx.values.archery > 0.5 {
+        ActionId::IdleWander // Practice movement
+    } else {
+        ActionId::IdleObserve // Default: observe gracefully
     };
 
     Task::new(action, TaskPriority::Low, ctx.current_tick)

@@ -344,6 +344,9 @@ fn main() {
                                     | SimulationEvent::ThoughtGenerated { .. }
                                     | SimulationEvent::SocialMemoryUpdate { .. }
                                     | SimulationEvent::DispositionChange { .. } => continue,
+                                    SimulationEvent::GameOver { outcome, .. } => {
+                                        (format!("Game Over: {:?}", outcome), LogCategory::Combat)
+                                    }
                                 };
                                 game_ui.log(sim_ticks, msg, category);
                             }
