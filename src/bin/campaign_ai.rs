@@ -35,7 +35,6 @@ struct ArmyInfo {
     unit_count: u32,
     morale: f32,
     supplies_days: f32,
-    is_own: bool,
 }
 
 /// World model from a faction's perspective (fog of war)
@@ -44,16 +43,14 @@ struct FactionWorldModel {
     my_armies: Vec<ArmyInfo>,
     known_enemies: Vec<ArmyInfo>,
     explored_hexes: HashSet<HexCoord>,
-    my_depot: HexCoord,
     enemy_depot: Option<HexCoord>,
-    current_day: f32,
 }
 
 /// Orders the AI can issue
 #[derive(Debug, Clone)]
 enum AIOrder {
     MoveTo { army: ArmyId, target: HexCoord },
-    Attack { army: ArmyId, target: ArmyId },
+    Attack { army: ArmyId },
     Retreat { army: ArmyId },
     Hold { army: ArmyId },
     DeployScout { from_army: ArmyId, target: HexCoord },
@@ -99,12 +96,13 @@ impl FactionAI {
                     unit_count: a.unit_count,
                     morale: a.morale,
                     supplies_days,
-                    is_own: true,
                 }
             })
             .collect();
 
-        let known_enemies: Vec<ArmyInfo> = visibility
+        // Use visibility system + direct distance check for nearby enemies
+        // This ensures we detect enemies within tactical range even in low-visibility terrain
+        let mut known_enemies: Vec<ArmyInfo> = visibility
             .visible_enemies(self.faction, &state.armies)
             .into_iter()
             .map(|a| ArmyInfo {
@@ -113,9 +111,24 @@ impl FactionAI {
                 unit_count: a.unit_count,
                 morale: a.morale,
                 supplies_days: 10.0,
-                is_own: false,
             })
             .collect();
+
+        // Also detect enemies within 5 hexes of any of our armies (tactical proximity)
+        for my_army in &my_armies {
+            for enemy in state.armies.iter().filter(|a| a.faction != self.faction) {
+                let dist = my_army.position.distance(&enemy.position);
+                if dist <= 5 && !known_enemies.iter().any(|e| e.id == enemy.id) {
+                    known_enemies.push(ArmyInfo {
+                        id: enemy.id,
+                        position: enemy.position,
+                        unit_count: enemy.unit_count,
+                        morale: enemy.morale,
+                        supplies_days: 10.0,
+                    });
+                }
+            }
+        }
 
         let explored_hexes: HashSet<HexCoord> = fv
             .map(|f| f.intel.keys().copied().collect())
@@ -127,13 +140,11 @@ impl FactionAI {
             my_armies,
             known_enemies,
             explored_hexes,
-            my_depot: self.depot,
             enemy_depot: if enemy_depot_known { Some(enemy_depot) } else { None },
-            current_day: state.current_day,
         }
     }
 
-    fn decide(&self, world: &FactionWorldModel, map: &CampaignMap) -> Vec<AIOrder> {
+    fn decide(&self, world: &FactionWorldModel, map: &CampaignMap, enemy_depot: HexCoord) -> Vec<AIOrder> {
         let mut orders = Vec::new();
 
         for army in &world.my_armies {
@@ -150,29 +161,38 @@ impl FactionAI {
             if let Some(enemy) = nearest_enemy {
                 let distance = army.position.distance(&enemy.position);
 
-                if distance <= 3 && has_advantage(army, enemy) {
-                    orders.push(AIOrder::Attack {
+                // If enemy is close enough to engage (same hex or adjacent)
+                if distance <= 1 {
+                    // We're adjacent or on same hex - engage!
+                    orders.push(AIOrder::Attack { army: army.id });
+                    continue;
+                }
+
+                // If we have advantage OR enemy is very close, chase them
+                if has_advantage(army, enemy) || distance <= 3 {
+                    orders.push(AIOrder::MoveTo {
                         army: army.id,
-                        target: enemy.id,
+                        target: enemy.position,
                     });
                     continue;
                 }
 
-                if distance <= 3 && !has_advantage(army, enemy) {
-                    orders.push(AIOrder::Retreat { army: army.id });
-                    continue;
-                }
+                // No advantage and enemy visible but not too close - continue toward objective
+                // (Don't retreat just because we see an enemy)
             }
 
+            // Deploy scouts if we have spare capacity
             if army.unit_count > 100 && army.supplies_days > 7.0 {
-                if let Some(unexplored) = find_nearest_unexplored(army.position, &world.explored_hexes, map) {
+                if let Some(scout_target) = find_scout_target(army.position, &world.explored_hexes, map, enemy_depot) {
                     orders.push(AIOrder::DeployScout {
                         from_army: army.id,
-                        target: unexplored,
+                        target: scout_target,
                     });
+                    // Don't continue - army can still move while scouts deploy
                 }
             }
 
+            // Advance toward enemy depot if known
             if let Some(enemy_depot) = world.enemy_depot {
                 if army.supplies_days > 5.0 && army.position != enemy_depot {
                     orders.push(AIOrder::MoveTo {
@@ -183,6 +203,21 @@ impl FactionAI {
                 }
             }
 
+            // If depot not known, advance toward enemy side of map to explore
+            // Blue (PolityId 1) goes toward (27, 27), Red (PolityId 2) goes toward (2, 2)
+            if world.enemy_depot.is_none() && army.supplies_days > 5.0 {
+                // Keep advancing until we find the enemy depot
+                let target = enemy_depot;
+                if army.position.distance(&target) > 2 {
+                    orders.push(AIOrder::MoveTo {
+                        army: army.id,
+                        target,
+                    });
+                    continue;
+                }
+            }
+
+            // Even if at enemy depot (holding it), don't need to hold order
             orders.push(AIOrder::Hold { army: army.id });
         }
 
@@ -208,7 +243,7 @@ impl FactionAI {
                         }
                     }
                 }
-                AIOrder::Attack { army, target: _ } => {
+                AIOrder::Attack { army } => {
                     if let Some(a) = state.get_army_mut(army) {
                         a.stance = ArmyStance::Aggressive;
                         if verbose {
@@ -262,22 +297,34 @@ fn has_advantage(my_army: &ArmyInfo, enemy: &ArmyInfo) -> bool {
     my_strength > enemy_strength * 1.2
 }
 
-fn find_nearest_unexplored(
+fn find_scout_target(
     from: HexCoord,
     explored: &HashSet<HexCoord>,
     map: &CampaignMap,
+    enemy_depot: HexCoord,
 ) -> Option<HexCoord> {
-    for radius in 1..=20 {
+    // Prioritize unexplored hexes in the direction of enemy depot
+    let mut candidates = Vec::new();
+
+    for radius in 1..=15 {
         for q in (from.q - radius)..=(from.q + radius) {
             for r in (from.r - radius)..=(from.r + radius) {
                 let coord = HexCoord::new(q, r);
-                if from.distance(&coord) == radius
+                if from.distance(&coord) <= radius
                     && map.contains(&coord)
                     && !explored.contains(&coord)
                 {
-                    return Some(coord);
+                    // Score by proximity to enemy depot (lower is better)
+                    let depot_dist = coord.distance(&enemy_depot);
+                    candidates.push((coord, depot_dist));
                 }
             }
+        }
+
+        // Once we have candidates at this radius, pick best one
+        if !candidates.is_empty() {
+            candidates.sort_by_key(|(_, dist)| *dist);
+            return Some(candidates[0].0);
         }
     }
     None
@@ -417,12 +464,12 @@ fn main() {
     println!("╚═══════════════════════════════════════════════════════════════╝");
     println!();
 
-    let map = CampaignMap::generate_simple(30, 30, args.seed);
+    let map = CampaignMap::generate_simple(20, 20, args.seed);
     let blue_depot = HexCoord::new(2, 2);
-    let red_depot = HexCoord::new(27, 27);
+    let red_depot = HexCoord::new(17, 17);
 
     println!("[Setup]");
-    println!("Map: 30x30 hexes, seed {}", args.seed);
+    println!("Map: 20x20 hexes, seed {}", args.seed);
     println!("Faction 1 (Blue): 2 armies, depot at ({}, {})", blue_depot.q, blue_depot.r);
     println!("Faction 2 (Red): 2 armies, depot at ({}, {})", red_depot.q, red_depot.r);
     println!();
@@ -444,22 +491,30 @@ fn main() {
     state.get_army_mut(blue_army1).unwrap().stance = ArmyStance::Aggressive;
     supply.register_army(blue_army1);
     supply.get_army_supply_mut(blue_army1).unwrap().foraging = true;
+    supply.get_army_supply_mut(blue_army1).unwrap().supplies = 30.0; // Extra supplies for campaign
+    supply.get_army_supply_mut(blue_army1).unwrap().max_supplies = 40.0;
 
     let blue_army2 = state.spawn_army("Blue Guard".to_string(), PolityId(1), HexCoord::new(5, 5));
     state.get_army_mut(blue_army2).unwrap().unit_count = 200;
     supply.register_army(blue_army2);
     supply.get_army_supply_mut(blue_army2).unwrap().foraging = true;
+    supply.get_army_supply_mut(blue_army2).unwrap().supplies = 30.0;
+    supply.get_army_supply_mut(blue_army2).unwrap().max_supplies = 40.0;
 
     let red_army1 = state.spawn_army("Red Host".to_string(), PolityId(2), red_depot);
     state.get_army_mut(red_army1).unwrap().unit_count = 350;
     state.get_army_mut(red_army1).unwrap().stance = ArmyStance::Aggressive;
     supply.register_army(red_army1);
     supply.get_army_supply_mut(red_army1).unwrap().foraging = true;
+    supply.get_army_supply_mut(red_army1).unwrap().supplies = 30.0;
+    supply.get_army_supply_mut(red_army1).unwrap().max_supplies = 40.0;
 
-    let red_army2 = state.spawn_army("Red Vanguard".to_string(), PolityId(2), HexCoord::new(25, 25));
+    let red_army2 = state.spawn_army("Red Vanguard".to_string(), PolityId(2), HexCoord::new(15, 15));
     state.get_army_mut(red_army2).unwrap().unit_count = 150;
     supply.register_army(red_army2);
     supply.get_army_supply_mut(red_army2).unwrap().foraging = true;
+    supply.get_army_supply_mut(red_army2).unwrap().supplies = 30.0;
+    supply.get_army_supply_mut(red_army2).unwrap().max_supplies = 40.0;
 
     let mut blue_ai = FactionAI::new(PolityId(1), blue_depot);
     let mut red_ai = FactionAI::new(PolityId(2), red_depot);
@@ -482,14 +537,26 @@ fn main() {
         let red_world = red_ai.perceive(&state, &visibility, &supply, blue_depot);
 
         if args.verbose {
-            println!("Blue AI: sees {} enemies, knows {} hexes",
-                blue_world.known_enemies.len(), blue_world.explored_hexes.len());
-            println!("Red AI: sees {} enemies, knows {} hexes",
-                red_world.known_enemies.len(), red_world.explored_hexes.len());
+            // Print army positions
+            for army_info in &blue_world.my_armies {
+                println!("  Blue {}: at ({}, {}), {} units",
+                    state.get_army(army_info.id).map(|a| a.name.as_str()).unwrap_or("?"),
+                    army_info.position.q, army_info.position.r, army_info.unit_count);
+            }
+            for army_info in &red_world.my_armies {
+                println!("  Red {}: at ({}, {}), {} units",
+                    state.get_army(army_info.id).map(|a| a.name.as_str()).unwrap_or("?"),
+                    army_info.position.q, army_info.position.r, army_info.unit_count);
+            }
+
+            if !blue_world.known_enemies.is_empty() || !red_world.known_enemies.is_empty() {
+                println!("  Blue sees {} enemies, Red sees {} enemies",
+                    blue_world.known_enemies.len(), red_world.known_enemies.len());
+            }
         }
 
-        let blue_orders = blue_ai.decide(&blue_world, &map);
-        let red_orders = red_ai.decide(&red_world, &map);
+        let blue_orders = blue_ai.decide(&blue_world, &map, red_depot);
+        let red_orders = red_ai.decide(&red_world, &map, blue_depot);
 
         if args.verbose {
             println!("Blue AI orders:");
