@@ -324,45 +324,82 @@ impl BattleState {
     }
 
     fn phase_ai(&mut self, events: &mut BattleEventLog) {
-        // Skip if no AI controller
-        let ai = match &mut self.enemy_ai {
-            Some(ai) => ai,
-            None => return,
-        };
+        // Process enemy AI
+        if let Some(ref mut ai) = self.enemy_ai {
+            // Build decision context for enemy army (enemy sees enemy_army as "own")
+            let context = DecisionContext::new(
+                &self.enemy_army,
+                &self.friendly_army,
+                &self.enemy_visibility,
+                self.tick,
+                ai.ignores_fog_of_war(),
+            );
 
-        // Build decision context for enemy army
-        let context = DecisionContext::new(
-            &self.enemy_army,
-            &self.friendly_army,
-            &self.enemy_visibility,
-            self.tick,
-            ai.ignores_fog_of_war(),
-        );
+            // Get AI decisions
+            let orders = ai.process_tick(&context, self.tick, events);
 
-        // Get AI decisions
-        let orders = ai.process_tick(&context, self.tick, events);
+            // Dispatch orders via courier system
+            for order in orders {
+                // Get destination based on order target
+                let destination = match &order.target {
+                    crate::battle::courier::OrderTarget::Unit(unit_id) => {
+                        self.enemy_army.get_unit(*unit_id).map(|u| u.position)
+                    }
+                    crate::battle::courier::OrderTarget::Formation(formation_id) => self
+                        .enemy_army
+                        .formations
+                        .iter()
+                        .find(|f| f.id == *formation_id)
+                        .and_then(|f| f.commander_position()),
+                };
 
-        // Dispatch orders via courier system
-        for order in orders {
-            // Get destination based on order target
-            let destination = match &order.target {
-                crate::battle::courier::OrderTarget::Unit(unit_id) => {
-                    self.enemy_army.get_unit(*unit_id).map(|u| u.position)
+                if let Some(dest) = destination {
+                    // Get courier from pool
+                    if let Some(courier_entity) = self.enemy_army.courier_pool.pop() {
+                        let source = self.enemy_army.hq_position;
+                        self.courier_system
+                            .dispatch(courier_entity, order, source, dest);
+                    }
                 }
-                crate::battle::courier::OrderTarget::Formation(formation_id) => self
-                    .enemy_army
-                    .formations
-                    .iter()
-                    .find(|f| f.id == *formation_id)
-                    .and_then(|f| f.commander_position()),
-            };
+            }
+        }
 
-            if let Some(dest) = destination {
-                // Get courier from pool
-                if let Some(courier_entity) = self.enemy_army.courier_pool.pop() {
-                    let source = self.enemy_army.hq_position;
-                    self.courier_system
-                        .dispatch(courier_entity, order, source, dest);
+        // Process friendly AI
+        if let Some(ref mut ai) = self.friendly_ai {
+            // Build decision context for friendly army (friendly sees friendly_army as "own")
+            let context = DecisionContext::new(
+                &self.friendly_army,
+                &self.enemy_army,
+                &self.friendly_visibility,
+                self.tick,
+                ai.ignores_fog_of_war(),
+            );
+
+            // Get AI decisions
+            let orders = ai.process_tick(&context, self.tick, events);
+
+            // Dispatch orders via courier system
+            for order in orders {
+                // Get destination based on order target
+                let destination = match &order.target {
+                    crate::battle::courier::OrderTarget::Unit(unit_id) => {
+                        self.friendly_army.get_unit(*unit_id).map(|u| u.position)
+                    }
+                    crate::battle::courier::OrderTarget::Formation(formation_id) => self
+                        .friendly_army
+                        .formations
+                        .iter()
+                        .find(|f| f.id == *formation_id)
+                        .and_then(|f| f.commander_position()),
+                };
+
+                if let Some(dest) = destination {
+                    // Get courier from pool
+                    if let Some(courier_entity) = self.friendly_army.courier_pool.pop() {
+                        let source = self.friendly_army.hq_position;
+                        self.courier_system
+                            .dispatch(courier_entity, order, source, dest);
+                    }
                 }
             }
         }
