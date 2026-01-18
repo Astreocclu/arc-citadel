@@ -663,11 +663,25 @@ impl BattleState {
             }
         }
 
-        // Move units along waypoints
+        // Move friendly units along waypoints
         for formation in &mut self.friendly_army.formations {
             for unit in &mut formation.units {
                 if let Some(plan) = self
                     .friendly_plan
+                    .waypoint_plans
+                    .iter_mut()
+                    .find(|p| p.unit_id == unit.id)
+                {
+                    let _result = advance_unit_movement(&self.map, unit, plan);
+                }
+            }
+        }
+
+        // Move enemy units along waypoints
+        for formation in &mut self.enemy_army.formations {
+            for unit in &mut formation.units {
+                if let Some(plan) = self
+                    .enemy_plan
                     .waypoint_plans
                     .iter_mut()
                     .find(|p| p.unit_id == unit.id)
