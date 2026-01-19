@@ -14,6 +14,7 @@ pub enum UnitType {
     Levy,          // Cheap, unreliable
     Infantry,      // Standard foot soldiers
     HeavyInfantry, // Armored, slow, tough
+    MenAtArms,     // Anti-armor specialists with warhammers
     Spearmen,      // Anti-cavalry, defensive
     Archers,       // Ranged, vulnerable in melee
     Crossbowmen,   // Slower, more punch
@@ -81,6 +82,19 @@ impl UnitType {
                 movement_speed: 0.7,        // Slow
                 vision_range: 5,            // Helmet limits vision
                 base_stress_threshold: 1.6, // Harder to break (tripled)
+                can_charge: false,
+                can_skirmish: false,
+            },
+
+            UnitType::MenAtArms => UnitProperties {
+                // Anti-armor specialists: warhammers + mail armor
+                // Effective against heavy infantry and cavalry
+                // Massive mass = Stagger vs Heavy padding (Scratch wound)
+                avg_weapon: WeaponProperties::warhammer(),
+                avg_armor: ArmorProperties::mail(),
+                movement_speed: 0.9,        // Slower due to heavy weapon
+                vision_range: 6,
+                base_stress_threshold: 2.2, // Elite infantry
                 can_charge: false,
                 can_skirmish: false,
             },

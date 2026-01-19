@@ -3,6 +3,9 @@
 //! DEPRECATED: Use Role and LifeExperience from skills::history instead.
 //! This module is kept for backwards compatibility but will be removed.
 
+// Allow deprecated warnings within this deprecated module
+#![allow(deprecated)]
+
 use serde::{Deserialize, Serialize};
 
 /// High-level entity role determining spawn chunk loadout
@@ -87,6 +90,7 @@ impl Default for EntityArchetype {
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // Tests for deprecated types
 mod tests {
     use super::*;
 

@@ -42,10 +42,21 @@ pub const FATIGUE_RATE_COMBAT: f32 = 0.02;
 pub const FATIGUE_RATE_MARCH: f32 = 0.005;
 pub const FATIGUE_RECOVERY_RATE: f32 = 0.01;
 
-// Stress - ADDITIVE thresholds
+// Stress - ADDITIVE values
 pub const CONTAGION_STRESS: f32 = 0.10;
 pub const OFFICER_DEATH_STRESS: f32 = 0.30;
 pub const FLANK_STRESS: f32 = 0.20;
+
+// Combat stress generation (per wound/casualty)
+// Designed to cause morale breaks before total annihilation
+// With 30-wide frontage and mutual wounds per exchange:
+// - ~60 wounds/tick at full engagement
+// - Infantry threshold 2.0 should break after ~10+ ticks of heavy combat
+// Reduced from original values to account for entity-level combat granularity
+pub const STRESS_PER_WOUND: f32 = 0.003;          // Taking a wound (cumulative, ~0.18/tick at full frontage)
+pub const STRESS_PER_CLOSING_WOUND: f32 = 0.01;   // Charging through reach (scary)
+pub const STRESS_PER_RANGED_HIT: f32 = 0.005;     // Being shot at
+pub const STRESS_PER_ALLY_DEATH: f32 = 0.05;      // Watching a comrade die (most impactful)
 
 // Rally - ticks required to transition from Rallying to Formed
 pub const RALLY_TICKS_REQUIRED: u64 = 30;

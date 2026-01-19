@@ -4,6 +4,9 @@
 
 use std::collections::HashMap;
 
+use crate::battle::constants::{
+    STRESS_PER_ALLY_DEATH, STRESS_PER_CLOSING_WOUND, STRESS_PER_RANGED_HIT, STRESS_PER_WOUND,
+};
 use crate::battle::units::BattleUnit;
 use crate::battle::unit_type::UnitType;
 use crate::combat::resolution::{resolve_exchange, resolve_hit, select_hit_zone, Combatant};
@@ -76,6 +79,55 @@ fn get_active_entities(
     active
 }
 
+/// Calculate effective frontage based on formation shape
+fn formation_frontage(shape: &crate::battle::units::FormationShape, unit_size: usize) -> usize {
+    use crate::battle::units::FormationShape;
+    match shape {
+        FormationShape::Line { depth } => {
+            // Line: wide frontage, limited by depth
+            let depth = (*depth as usize).max(1);
+            (unit_size / depth).max(1)
+        }
+        FormationShape::Column { width } => {
+            // Column: narrow frontage
+            (*width as usize).min(unit_size).max(1)
+        }
+        FormationShape::Wedge { angle: _ } => {
+            // Wedge: moderate frontage, grows with depth
+            // Tip is narrow, base is wide - average it out
+            ((unit_size as f32).sqrt() as usize).max(1)
+        }
+        FormationShape::Square => {
+            // Square: equal width and depth
+            ((unit_size as f32).sqrt() as usize).max(1)
+        }
+        FormationShape::Skirmish { dispersion } => {
+            // Skirmish: very wide but thin - everyone in front
+            // High dispersion = fewer can engage simultaneously
+            let effective = (unit_size as f32 * (1.0 - dispersion * 0.5)) as usize;
+            effective.max(1)
+        }
+    }
+}
+
+/// Calculate formation depth (how many ranks can support)
+fn formation_depth(shape: &crate::battle::units::FormationShape, unit_size: usize) -> usize {
+    use crate::battle::units::FormationShape;
+    match shape {
+        FormationShape::Line { depth } => (*depth as usize).min(unit_size).max(1),
+        FormationShape::Column { width } => {
+            let width = (*width as usize).max(1);
+            (unit_size / width).max(1)
+        }
+        FormationShape::Wedge { angle: _ } => {
+            // Wedge has good depth at the point
+            ((unit_size as f32).sqrt() as usize * 2).min(unit_size).max(1)
+        }
+        FormationShape::Square => ((unit_size as f32).sqrt() as usize).max(1),
+        FormationShape::Skirmish { dispersion: _ } => 1, // No depth, all skirmishing
+    }
+}
+
 /// Resolve unit-level combat using entity simulation
 pub fn resolve_unit_combat(
     attacker: &BattleUnit,
@@ -86,10 +138,17 @@ pub fn resolve_unit_combat(
     let attacker_ids = get_active_entities(attacker, entity_states);
     let defender_ids = get_active_entities(defender, entity_states);
 
-    // 2. Determine frontage
-    // Max entities that can fight in the front rank per tick (representing hex width)
+    // 2. Determine frontage based on formation shapes
+    let att_frontage = formation_frontage(&attacker.formation_shape, attacker_ids.len());
+    let def_frontage = formation_frontage(&defender.formation_shape, defender_ids.len());
+
+    // Combat width is limited by the smaller frontage and absolute max
     let max_width = 30; // ~15m frontage
-    let combat_width = attacker_ids.len().min(defender_ids.len()).min(max_width);
+    let combat_width = att_frontage.min(def_frontage).min(max_width).min(attacker_ids.len()).min(defender_ids.len());
+
+    // Formation depth affects how many ranks can support with reach weapons
+    let att_depth = formation_depth(&attacker.formation_shape, attacker_ids.len());
+    let def_depth = formation_depth(&defender.formation_shape, defender_ids.len());
 
     // Track results
     let mut attacker_casualties = 0;
@@ -121,18 +180,23 @@ pub fn resolve_unit_combat(
         );
     }
 
-    // 4. Reach Weapons (Rank 2)
-    // Check if attackers have reach weapons and enough men
-    if attacker_ids.len() > combat_width {
+    // 4. Reach Weapons (Ranks 2+)
+    // Formation depth determines how many ranks can support with reach weapons
+    // Pike formations can have 2-3 ranks engaging simultaneously
+    let att_support_ranks = (att_depth - 1).min(2); // Up to 2 support ranks (rank 2 and 3)
+    let def_support_ranks = (def_depth - 1).min(2);
+
+    // Attacker reach weapon support
+    for rank in 1..=att_support_ranks {
         for i in 0..combat_width {
-            let second_rank_idx = i + combat_width;
-            if second_rank_idx >= attacker_ids.len() {
+            let support_idx = i + combat_width * rank;
+            if support_idx >= attacker_ids.len() {
                 break;
             }
 
-            let att_id = attacker_ids[second_rank_idx];
-            
-            // Check reach
+            let att_id = attacker_ids[support_idx];
+
+            // Check reach - need Long or Pike to fight from rear ranks
             let has_reach = {
                 if let Some(state) = entity_states.get(&att_id) {
                     matches!(state.weapon.reach, Reach::Long | Reach::Pike)
@@ -142,14 +206,13 @@ pub fn resolve_unit_combat(
             };
 
             if has_reach {
-                let def_id = defender_ids[i]; // Attack same defender
+                let def_id = defender_ids[i % defender_ids.len()];
                 engaged_attackers.insert(att_id);
-                // Defender already engaged, so this is 2v1 effectively
-                
+
                 resolve_entity_exchange(
-                    att_id, 
-                    def_id, 
-                    entity_states, 
+                    att_id,
+                    def_id,
+                    entity_states,
                     true, // Support attack - safer for attacker
                     &mut attacker_casualties,
                     &mut defender_casualties,
@@ -159,17 +222,17 @@ pub fn resolve_unit_combat(
             }
         }
     }
-    
-    // Also check defenders for reach
-    if defender_ids.len() > combat_width {
+
+    // Defender reach weapon support
+    for rank in 1..=def_support_ranks {
         for i in 0..combat_width {
-            let second_rank_idx = i + combat_width;
-            if second_rank_idx >= defender_ids.len() {
+            let support_idx = i + combat_width * rank;
+            if support_idx >= defender_ids.len() {
                 break;
             }
 
-            let def_id = defender_ids[second_rank_idx];
-            
+            let def_id = defender_ids[support_idx];
+
             let has_reach = {
                 if let Some(state) = entity_states.get(&def_id) {
                     matches!(state.weapon.reach, Reach::Long | Reach::Pike)
@@ -179,7 +242,7 @@ pub fn resolve_unit_combat(
             };
 
             if has_reach {
-                let att_id = attacker_ids[i];
+                let att_id = attacker_ids[i % attacker_ids.len()];
                 engaged_defenders.insert(def_id);
                 
                 resolve_entity_exchange(
@@ -299,7 +362,7 @@ fn resolve_entity_exchange(
             stance: CombatStance::Pressing, // Attacker presses
             skill: att_state.skill.clone(),
         };
-        
+
         // If support attack, assume defensive stance for attacker to minimize return hits
         if is_support {
             att_c.stance = CombatStance::Defensive;
@@ -318,15 +381,32 @@ fn resolve_entity_exchange(
     // Resolve
     let result = resolve_exchange(&att_combatant, &def_combatant);
 
-    // Apply results
+    // Apply closing wound first (cost of charging through reach advantage)
+    if let Some(wound) = result.closing_wound {
+        if let Some(state) = states.get_mut(&att_id) {
+            let was_dead = state.is_dead() || state.is_incapacitated();
+            state.wounds.push(wound);
+            let died = !was_dead && (state.is_dead() || state.is_incapacitated());
+            if died {
+                *att_casualties += 1;
+                // Stress from watching ally die (spreads to unit)
+                *att_stress += STRESS_PER_ALLY_DEATH;
+            }
+            *att_stress += STRESS_PER_CLOSING_WOUND; // Extra stress from closing under fire
+        }
+    }
+
+    // Apply attacker wound (from riposte)
     if let Some(wound) = result.attacker_wound {
         if let Some(state) = states.get_mut(&att_id) {
             let was_dead = state.is_dead() || state.is_incapacitated();
             state.wounds.push(wound);
-            if !was_dead && (state.is_dead() || state.is_incapacitated()) {
+            let died = !was_dead && (state.is_dead() || state.is_incapacitated());
+            if died {
                 *att_casualties += 1;
+                *att_stress += STRESS_PER_ALLY_DEATH;
             }
-            *att_stress += 0.01;
+            *att_stress += STRESS_PER_WOUND;
         }
     }
 
@@ -334,10 +414,12 @@ fn resolve_entity_exchange(
         if let Some(state) = states.get_mut(&def_id) {
             let was_dead = state.is_dead() || state.is_incapacitated();
             state.wounds.push(wound);
-            if !was_dead && (state.is_dead() || state.is_incapacitated()) {
+            let died = !was_dead && (state.is_dead() || state.is_incapacitated());
+            if died {
                 *def_casualties += 1;
+                *def_stress += STRESS_PER_ALLY_DEATH;
             }
-            *def_stress += 0.01;
+            *def_stress += STRESS_PER_WOUND;
         }
     }
 }
@@ -429,10 +511,12 @@ fn resolve_ranged_attacks(
         if let Some(state) = states.get_mut(&target_id) {
             let was_dead = state.is_dead() || state.is_incapacitated();
             state.wounds.push(wound);
-            if !was_dead && (state.is_dead() || state.is_incapacitated()) {
+            let died = !was_dead && (state.is_dead() || state.is_incapacitated());
+            if died {
                 *casualties += 1;
+                *stress += STRESS_PER_ALLY_DEATH;
             }
-            *stress += 0.005;
+            *stress += STRESS_PER_RANGED_HIT;
         }
     }
 }

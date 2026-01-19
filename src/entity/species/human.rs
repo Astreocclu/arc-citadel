@@ -105,13 +105,17 @@ impl HumanArchetype {
         self.ids.len()
     }
 
-    /// Spawn a new entity with default (Peasant) archetype
-    /// Use spawn_with_archetype() for specific archetypes
+    /// Spawn a new entity with default role (Farmer, age 25)
+    /// Use spawn_with_role() for specific roles and ages
     pub fn spawn(&mut self, id: EntityId, name: String, tick: Tick) {
-        self.spawn_with_archetype(id, name, tick, EntityArchetype::Peasant, 25);
+        self.spawn_with_role(id, name, tick, Role::Farmer, 25);
     }
 
     /// Spawn a new entity with chunks based on archetype and age
+    ///
+    /// DEPRECATED: Use spawn_with_role() instead
+    #[deprecated(since = "0.2.0", note = "Use spawn_with_role() instead")]
+    #[allow(deprecated)] // Uses deprecated EntityArchetype parameter
     pub fn spawn_with_archetype(
         &mut self,
         id: EntityId,
@@ -247,6 +251,7 @@ impl Default for HumanArchetype {
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // Tests for deprecated spawn_with_archetype
 mod tests {
     use super::*;
 

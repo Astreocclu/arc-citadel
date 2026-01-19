@@ -27,6 +27,12 @@ impl CombatStance {
         matches!(self, CombatStance::Pressing | CombatStance::Neutral)
     }
 
+    /// Can this stance counter-attack (riposte) when attacked?
+    /// Defensive stance can riposte but not initiate
+    pub fn can_riposte(&self) -> bool {
+        matches!(self, CombatStance::Pressing | CombatStance::Neutral | CombatStance::Defensive)
+    }
+
     /// Can this stance perform active defense?
     pub fn can_defend(&self) -> bool {
         matches!(self, CombatStance::Neutral | CombatStance::Defensive)
@@ -132,8 +138,17 @@ mod tests {
     fn test_pressing_can_attack() {
         assert!(CombatStance::Pressing.can_attack());
         assert!(CombatStance::Neutral.can_attack());
-        assert!(!CombatStance::Defensive.can_attack());
+        assert!(!CombatStance::Defensive.can_attack()); // Can't initiate
         assert!(!CombatStance::Recovering.can_attack());
+    }
+
+    #[test]
+    fn test_defensive_can_riposte() {
+        assert!(CombatStance::Pressing.can_riposte());
+        assert!(CombatStance::Neutral.can_riposte());
+        assert!(CombatStance::Defensive.can_riposte()); // Can riposte!
+        assert!(!CombatStance::Recovering.can_riposte());
+        assert!(!CombatStance::Broken.can_riposte());
     }
 
     #[test]

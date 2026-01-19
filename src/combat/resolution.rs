@@ -2,10 +2,18 @@
 //!
 //! An exchange occurs when PRESSING meets any other stance.
 //! NO PERCENTAGE MODIFIERS. Property comparisons only.
+//!
+//! ## Closing Mechanic
+//! When a shorter-reach attacker engages a longer-reach defender, the attacker
+//! must "close" the distance. This costs them one free hit from the defender
+//! (the "closing casualty"), but then both fight at equal reach.
+//!
+//! This models charging through a pike hedge - you take losses on the way in,
+//! but once you're inside their guard, pikes become unwieldy.
 
 use crate::combat::{
     combine_results, resolve_penetration, resolve_trauma, ArmorProperties, BodyZone, CombatSkill,
-    CombatStance, SkillLevel, WeaponProperties, WeaponSpecial, Wound,
+    CombatStance, Reach, SkillLevel, WeaponProperties, WeaponSpecial, Wound,
 };
 
 /// A combatant in an exchange
@@ -72,6 +80,8 @@ pub struct ExchangeResult {
     pub defender_wound: Option<Wound>,
     /// Wound to attacker (if any)
     pub attacker_wound: Option<Wound>,
+    /// Wound from closing (attacker charging through reach disadvantage)
+    pub closing_wound: Option<Wound>,
 }
 
 /// Select a hit zone (deterministic based on skill)
@@ -94,6 +104,31 @@ pub fn resolve_hit(weapon: &WeaponProperties, armor: &ArmorProperties, zone: Bod
     combine_results(pen, trauma, zone)
 }
 
+/// Calculate the reach difference for closing
+/// Returns how many "reach levels" the attacker must close
+fn reach_difference(attacker_reach: Reach, defender_reach: Reach) -> u8 {
+    let att_level = match attacker_reach {
+        Reach::Grapple => 0,
+        Reach::Short => 1,
+        Reach::Medium => 2,
+        Reach::Long => 3,
+        Reach::Pike => 4,
+    };
+    let def_level = match defender_reach {
+        Reach::Grapple => 0,
+        Reach::Short => 1,
+        Reach::Medium => 2,
+        Reach::Long => 3,
+        Reach::Pike => 4,
+    };
+
+    if def_level > att_level {
+        def_level - att_level
+    } else {
+        0
+    }
+}
+
 /// Resolve an exchange between attacker and defender
 ///
 /// # Arguments
@@ -102,6 +137,11 @@ pub fn resolve_hit(weapon: &WeaponProperties, armor: &ArmorProperties, zone: Bod
 ///
 /// # Returns
 /// Exchange result with hits and wounds
+///
+/// # Closing Mechanic
+/// If attacker has shorter reach than defender, attacker takes a "closing wound"
+/// representing the cost of charging through the reach advantage. After closing,
+/// both fight at equal footing.
 pub fn resolve_exchange(attacker: &Combatant, defender: &Combatant) -> ExchangeResult {
     // Step 1: Check if defender can respond
     let defender_can_respond = !defender.stance.vulnerable();
@@ -117,25 +157,39 @@ pub fn resolve_exchange(attacker: &Combatant, defender: &Combatant) -> ExchangeR
             attacker_struck_first: true,
             defender_wound: Some(wound),
             attacker_wound: None,
+            closing_wound: None,
         };
     }
 
-    // Step 2: Both can fight - reach determines strike order
+    // Step 2: Check for reach disadvantage and apply closing mechanic
     let attacker_reach = attacker.weapon.reach;
     let defender_reach = defender.weapon.reach;
+    let reach_gap = reach_difference(attacker_reach, defender_reach);
 
-    let (attacker_struck_first, both_hit) = match attacker_reach.cmp(&defender_reach) {
-        std::cmp::Ordering::Greater => (true, true),
-        std::cmp::Ordering::Less => (false, true),
-        std::cmp::Ordering::Equal => (true, true), // Simultaneous
+    let closing_wound = if reach_gap > 0 && defender.stance.can_riposte() {
+        // Attacker must close - they take a free hit from the defender
+        // The hit quality is based on reach difference (bigger gap = worse hit)
+        let zone = match reach_gap {
+            1 => BodyZone::ArmLeft,  // Small gap - glancing hit to arm
+            2 => BodyZone::Torso,    // Medium gap - solid hit
+            _ => BodyZone::Torso,    // Large gap - solid hit (pike vs grapple)
+        };
+        Some(resolve_hit(&defender.weapon, &attacker.armor, zone))
+    } else {
+        None
     };
 
-    // Step 3: Resolve attacker's hit
+    // Step 3: After closing, both fight at equal reach
+    // Attacker struck first because they initiated (pressing stance)
+    // This is the "inside the guard" phase where reach no longer matters
+
+    // Step 4: Resolve attacker's hit
     let attacker_zone = select_hit_zone(attacker.skill.level);
     let defender_wound = resolve_hit(&attacker.weapon, &defender.armor, attacker_zone);
 
-    // Step 4: Resolve defender's counter (if they can attack)
-    let (attacker_hit, attacker_wound) = if defender.stance.can_attack() && both_hit {
+    // Step 5: Resolve defender's counter (if they can riposte)
+    // After closing, defender can counter-attack normally
+    let (attacker_hit, attacker_wound) = if defender.stance.can_riposte() {
         let defender_zone = select_hit_zone(defender.skill.level);
         let wound = resolve_hit(&defender.weapon, &attacker.armor, defender_zone);
         (true, Some(wound))
@@ -146,9 +200,10 @@ pub fn resolve_exchange(attacker: &Combatant, defender: &Combatant) -> ExchangeR
     ExchangeResult {
         defender_hit: true,
         attacker_hit,
-        attacker_struck_first,
+        attacker_struck_first: true, // Attacker always strikes first after closing
         defender_wound: Some(defender_wound),
         attacker_wound,
+        closing_wound,
     }
 }
 
@@ -169,16 +224,64 @@ mod tests {
 
         assert!(result.defender_hit);
         assert!(!result.attacker_hit);
+        assert!(result.closing_wound.is_none()); // No closing vs vulnerable
     }
 
     #[test]
-    fn test_reach_determines_strike_order() {
-        let spearman = Combatant::test_spearman();
-        let swordsman = Combatant::test_swordsman();
+    fn test_closing_mechanic_sword_vs_spear() {
+        // Swordsman (Short reach) attacks Spearman (Long reach)
+        let mut attacker = Combatant::test_swordsman();
+        attacker.stance = CombatStance::Pressing;
 
-        let result = resolve_exchange(&spearman, &swordsman);
+        let mut defender = Combatant::test_spearman();
+        defender.stance = CombatStance::Defensive; // Can riposte
 
-        assert!(result.attacker_struck_first);
+        let result = resolve_exchange(&attacker, &defender);
+
+        // Attacker should take a closing wound
+        assert!(
+            result.closing_wound.is_some(),
+            "Shorter reach attacker should take closing wound"
+        );
+
+        // Both should still exchange hits after closing
+        assert!(result.defender_hit, "Attacker should hit defender after closing");
+        assert!(result.attacker_hit, "Defender should riposte after closing");
+    }
+
+    #[test]
+    fn test_no_closing_wound_when_attacker_has_reach() {
+        // Spearman (Long reach) attacks Swordsman (Short reach)
+        let mut attacker = Combatant::test_spearman();
+        attacker.stance = CombatStance::Pressing;
+
+        let mut defender = Combatant::test_swordsman();
+        defender.stance = CombatStance::Defensive;
+
+        let result = resolve_exchange(&attacker, &defender);
+
+        // No closing wound - attacker has reach advantage
+        assert!(
+            result.closing_wound.is_none(),
+            "Longer reach attacker should NOT take closing wound"
+        );
+    }
+
+    #[test]
+    fn test_equal_reach_no_closing() {
+        // Two swordsmen - equal reach
+        let mut attacker = Combatant::test_swordsman();
+        attacker.stance = CombatStance::Pressing;
+
+        let mut defender = Combatant::test_swordsman();
+        defender.stance = CombatStance::Defensive;
+
+        let result = resolve_exchange(&attacker, &defender);
+
+        assert!(
+            result.closing_wound.is_none(),
+            "Equal reach should have no closing wound"
+        );
     }
 
     #[test]

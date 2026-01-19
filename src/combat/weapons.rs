@@ -143,6 +143,28 @@ impl WeaponProperties {
             special: vec![],
         }
     }
+
+    /// Common weapon: Warhammer (anti-armor specialist)
+    /// Massive mass penetrates heavy padding through sheer trauma
+    pub fn warhammer() -> Self {
+        Self {
+            edge: Edge::Blunt,
+            mass: Mass::Massive,
+            reach: Reach::Short,
+            special: vec![WeaponSpecial::TwoHanded],
+        }
+    }
+
+    /// Common weapon: Poleaxe (reach + anti-armor)
+    /// Combines reach advantage with armor-piercing capability
+    pub fn poleaxe() -> Self {
+        Self {
+            edge: Edge::Blunt,
+            mass: Mass::Heavy,
+            reach: Reach::Medium,
+            special: vec![WeaponSpecial::Piercing, WeaponSpecial::TwoHanded],
+        }
+    }
 }
 
 impl Default for WeaponProperties {

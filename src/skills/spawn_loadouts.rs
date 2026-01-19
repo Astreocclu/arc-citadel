@@ -5,7 +5,9 @@
 //!
 //! DEPRECATED: Use generate_history_for_role() + generate_chunks_from_history() instead.
 
-#[allow(deprecated)]
+// Allow deprecated types throughout this backwards-compatibility module
+#![allow(deprecated)]
+
 use crate::entity::{CraftSpecialty, EntityArchetype, TrainingLevel};
 use crate::skills::{ChunkId, ChunkLibrary, PersonalChunkState};
 use rand::Rng;
