@@ -1039,7 +1039,7 @@ mod tests {
 
     #[test]
     fn test_founding_context_affects_decisions() {
-        let mut conquest_polity = Polity {
+        let conquest_polity = Polity {
             id: PolityId(1),
             name: "Conquest Empire".to_string(),
             species: Species::Human,

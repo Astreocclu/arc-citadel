@@ -433,7 +433,6 @@ pub enum ScoutEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::campaign::route::ArmyStance;
 
     fn test_army(id: u32, pos: HexCoord) -> Army {
         Army::new(ArmyId(id), format!("Army {}", id), PolityId(id), pos)

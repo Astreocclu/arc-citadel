@@ -375,7 +375,7 @@ mod tests {
         let mut system = SupplySystem::new();
 
         // Create a depot
-        let depot_id = system.create_depot(HexCoord::new(5, 5), PolityId(1));
+        let _depot_id = system.create_depot(HexCoord::new(5, 5), PolityId(1));
 
         // Create an army at depot location
         let mut army = Army::new(

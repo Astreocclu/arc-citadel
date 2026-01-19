@@ -104,7 +104,6 @@ impl SpeciesRules {
 mod tests {
     use super::*;
     use crate::entity::species::gnoll::GnollValues;
-    use crate::entity::species::value_access::ValueAccessor;
 
     #[test]
     fn test_species_rules_empty_by_default() {
