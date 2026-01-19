@@ -1,26 +1,26 @@
-# data/ai_personalities/default.toml
-# Balanced AI personality - neither aggressive nor defensive
+# Default balanced AI personality
+# All values at moderate levels for a fair, competent opponent
 
 [behavior]
-aggression = 0.5
-caution = 0.5
-initiative = 0.5
-cunning = 0.3
+aggression = 0.5      # Balanced attack/defense
+caution = 0.5         # Moderate risk tolerance
+initiative = 0.5      # Reactive but not passive
+cunning = 0.3         # Occasional feints
 
 [weights]
-attack_value = 1.0
-defense_value = 1.0
-flanking_value = 1.2
-reserve_value = 0.8
-retreat_threshold = 0.3
-casualty_threshold = 0.5
+attack_value = 1.0        # Normal attack priority
+defense_value = 1.0       # Normal defense priority
+flanking_value = 1.2      # Slight preference for flanking
+reserve_value = 0.8       # Willing to commit reserves
+retreat_threshold = 0.3   # Retreat when outnumbered 3:1
+casualty_threshold = 0.5  # Consider withdrawal at 50% casualties
 
 [preferences]
-preferred_range = "medium"
-reserve_usage = "conservative"
-re_evaluation_interval = 10
+preferred_range = "medium"        # Balanced engagement
+reserve_usage = "conservative"    # Hold reserves until needed
+re_evaluation_interval = 10       # Re-evaluate every 10 ticks
 
 [difficulty]
-ignores_fog_of_war = false
-reaction_delay = 2
-mistake_chance = 0.1
+ignores_fog_of_war = false   # Respects fog of war
+reaction_delay = 2           # Slight delay in reactions
+mistake_chance = 0.1         # 10% chance of suboptimal decisions
