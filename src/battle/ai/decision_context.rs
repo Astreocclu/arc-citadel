@@ -151,7 +151,7 @@ mod tests {
     fn create_test_unit(pos: BattleHexCoord) -> BattleUnit {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         unit.position = pos;
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit
     }
 
@@ -278,13 +278,13 @@ mod tests {
         strong.position = BattleHexCoord::new(6, 5);
         strong
             .elements
-            .push(Element::new(vec![EntityId::new(); 100]));
+            .push(Element::new((0..100).map(|_| EntityId::new()).collect()));
         enemy_formation.units.push(strong);
 
         // Weak unit
         let mut weak = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         weak.position = BattleHexCoord::new(7, 5);
-        weak.elements.push(Element::new(vec![EntityId::new(); 20]));
+        weak.elements.push(Element::new((0..20).map(|_| EntityId::new()).collect()));
         enemy_formation.units.push(weak);
 
         enemy_army.formations.push(enemy_formation);
@@ -360,7 +360,7 @@ mod tests {
 
         // Unit with 100 strength and 30 casualties = 30% casualties
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 100]));
+        unit.elements.push(Element::new((0..100).map(|_| EntityId::new()).collect()));
         unit.casualties = 30;
         own_formation.units.push(unit);
 
@@ -400,7 +400,7 @@ mod tests {
     #[test]
     fn test_available_couriers() {
         let mut own_army = Army::new(ArmyId::new(), EntityId::new());
-        own_army.courier_pool = vec![EntityId::new(); 5];
+        own_army.courier_pool = (0..5).map(|_| EntityId::new()).collect();
 
         let enemy_army = Army::new(ArmyId::new(), EntityId::new());
         let visibility = ArmyVisibility::new();
@@ -463,7 +463,7 @@ mod tests {
         let unit_id = UnitId::new();
         let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
         unit.position = BattleHexCoord::new(5, 5);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         formation.units.push(unit);

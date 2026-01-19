@@ -190,12 +190,12 @@ mod tests {
         // Create archer unit
         let mut archer = BattleUnit::new(UnitId::new(), UnitType::Archers);
         archer.position = BattleHexCoord::new(0, 0);
-        archer.elements.push(Element::new(vec![EntityId::new(); 20]));
+        archer.elements.push(Element::new((0..20).map(|_| EntityId::new()).collect()));
 
         // Create target infantry
         let mut target = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         target.position = BattleHexCoord::new(8, 0);
-        target.elements.push(Element::new(vec![EntityId::new(); 50]));
+        target.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = resolve_unit_ranged_attack(&archer, &target, 0, true);
 
@@ -213,12 +213,12 @@ mod tests {
         // Create archer unit
         let mut archer = BattleUnit::new(UnitId::new(), UnitType::Archers);
         archer.position = BattleHexCoord::new(0, 0);
-        archer.elements.push(Element::new(vec![EntityId::new(); 20]));
+        archer.elements.push(Element::new((0..20).map(|_| EntityId::new()).collect()));
 
         // Create target WAY out of range
         let mut target = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         target.position = BattleHexCoord::new(50, 0);
-        target.elements.push(Element::new(vec![EntityId::new(); 50]));
+        target.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = resolve_unit_ranged_attack(&archer, &target, 0, true);
 
@@ -234,11 +234,11 @@ mod tests {
         // Infantry is not a ranged unit
         let mut infantry = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         infantry.position = BattleHexCoord::new(0, 0);
-        infantry.elements.push(Element::new(vec![EntityId::new(); 20]));
+        infantry.elements.push(Element::new((0..20).map(|_| EntityId::new()).collect()));
 
         let mut target = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         target.position = BattleHexCoord::new(5, 0);
-        target.elements.push(Element::new(vec![EntityId::new(); 50]));
+        target.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = resolve_unit_ranged_attack(&infantry, &target, 0, true);
 

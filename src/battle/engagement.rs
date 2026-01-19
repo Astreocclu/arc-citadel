@@ -104,13 +104,13 @@ mod tests {
         attacker.position = BattleHexCoord::new(5, 5);
         attacker
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let mut defender = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         defender.position = BattleHexCoord::new(6, 5); // Adjacent
         defender
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = detect_engagement(&attacker, &defender);
 
@@ -123,13 +123,13 @@ mod tests {
         attacker.position = BattleHexCoord::new(0, 0);
         attacker
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let mut defender = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         defender.position = BattleHexCoord::new(10, 10); // Far away
         defender
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = detect_engagement(&attacker, &defender);
 
@@ -142,14 +142,14 @@ mod tests {
         attacker.position = BattleHexCoord::new(5, 5);
         attacker
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         attacker.stance = UnitStance::Routing;
 
         let mut defender = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         defender.position = BattleHexCoord::new(6, 5);
         defender
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = detect_engagement(&attacker, &defender);
 
@@ -221,19 +221,19 @@ mod tests {
         friendly1.position = BattleHexCoord::new(5, 5);
         friendly1
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let mut friendly2 = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         friendly2.position = BattleHexCoord::new(0, 0);
         friendly2
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let mut enemy1 = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         enemy1.position = BattleHexCoord::new(6, 5); // Adjacent to friendly1
         enemy1
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let friendly_units: Vec<&BattleUnit> = vec![&friendly1, &friendly2];
         let enemy_units: Vec<&BattleUnit> = vec![&enemy1];
@@ -256,7 +256,7 @@ mod tests {
         defender.position = BattleHexCoord::new(6, 5);
         defender
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = detect_engagement(&attacker, &defender);
 
@@ -269,14 +269,14 @@ mod tests {
         attacker.position = BattleHexCoord::new(5, 5);
         attacker
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         attacker.stance = UnitStance::Rallying;
 
         let mut defender = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         defender.position = BattleHexCoord::new(6, 5);
         defender
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = detect_engagement(&attacker, &defender);
 
@@ -289,13 +289,13 @@ mod tests {
         attacker.position = BattleHexCoord::new(5, 5);
         attacker
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let mut defender = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         defender.position = BattleHexCoord::new(6, 5);
         defender
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
         let result = detect_engagement(&attacker, &defender).unwrap();
 

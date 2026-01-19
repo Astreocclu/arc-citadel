@@ -115,7 +115,7 @@ mod tests {
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         unit.position = BattleHexCoord::new(10, 10);
-        unit.elements.push(Element::new(vec![EntityId::new(); 10]));
+        unit.elements.push(Element::new((0..10).map(|_| EntityId::new()).collect()));
         formation.units.push(unit);
         army.formations.push(formation);
 
@@ -215,13 +215,13 @@ mod tests {
         // Unit 1 at (5, 5)
         let mut unit1 = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         unit1.position = BattleHexCoord::new(5, 5);
-        unit1.elements.push(Element::new(vec![EntityId::new(); 10]));
+        unit1.elements.push(Element::new((0..10).map(|_| EntityId::new()).collect()));
         formation.units.push(unit1);
 
         // Unit 2 at (25, 25)
         let mut unit2 = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         unit2.position = BattleHexCoord::new(25, 25);
-        unit2.elements.push(Element::new(vec![EntityId::new(); 10]));
+        unit2.elements.push(Element::new((0..10).map(|_| EntityId::new()).collect()));
         formation.units.push(unit2);
 
         army.formations.push(formation);
@@ -245,7 +245,7 @@ mod tests {
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         unit.position = BattleHexCoord::new(5, 5);
-        unit.elements.push(Element::new(vec![EntityId::new(); 10]));
+        unit.elements.push(Element::new((0..10).map(|_| EntityId::new()).collect()));
         formation.units.push(unit);
         army.formations.push(formation);
 
@@ -279,7 +279,7 @@ mod tests {
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         unit.position = BattleHexCoord::new(5, 5);
-        unit.elements.push(Element::new(vec![EntityId::new(); 10]));
+        unit.elements.push(Element::new((0..10).map(|_| EntityId::new()).collect()));
         formation.units.push(unit);
         army.formations.push(formation);
 

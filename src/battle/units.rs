@@ -64,11 +64,18 @@ impl Default for UnitId {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Element {
     pub entities: Vec<EntityId>,
+    /// Optional equipment override - if None, uses parent UnitType's default
+    pub equipment_type: Option<UnitType>,
 }
 
 impl Element {
     pub fn new(entities: Vec<EntityId>) -> Self {
-        Self { entities }
+        Self { entities, equipment_type: None }
+    }
+
+    /// Create element with specific equipment type
+    pub fn with_equipment(entities: Vec<EntityId>, equipment_type: UnitType) -> Self {
+        Self { entities, equipment_type: Some(equipment_type) }
     }
 
     pub fn strength(&self) -> usize {
@@ -328,14 +335,14 @@ mod tests {
 
     #[test]
     fn test_element_creation() {
-        let element = Element::new(vec![EntityId::new(); 5]);
+        let element = Element::new((0..5).map(|_| EntityId::new()).collect());
         assert_eq!(element.entities.len(), 5);
     }
 
     #[test]
     fn test_unit_strength() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 10]));
+        unit.elements.push(Element::new((0..10).map(|_| EntityId::new()).collect()));
         assert_eq!(unit.strength(), 10);
     }
 
@@ -343,7 +350,7 @@ mod tests {
     fn test_formation_total_strength() {
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 20]));
+        unit.elements.push(Element::new((0..20).map(|_| EntityId::new()).collect()));
         formation.units.push(unit);
         assert_eq!(formation.total_strength(), 20);
     }
@@ -357,7 +364,7 @@ mod tests {
     #[test]
     fn test_unit_effective_strength_with_casualties() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 100]));
+        unit.elements.push(Element::new((0..100).map(|_| EntityId::new()).collect()));
         unit.casualties = 30;
         assert_eq!(unit.effective_strength(), 70);
     }

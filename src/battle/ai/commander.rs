@@ -277,7 +277,7 @@ mod tests {
     fn create_test_unit_at(pos: BattleHexCoord, stance: UnitStance) -> BattleUnit {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         unit.position = pos;
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.stance = stance;
         unit
     }
@@ -367,7 +367,7 @@ mod tests {
         small_unit.position = BattleHexCoord::new(10, 10);
         small_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 20]));
+            .push(Element::new((0..20).map(|_| EntityId::new()).collect()));
         small_unit.stance = UnitStance::Formed;
         own_formation.units.push(small_unit);
         own_army.formations.push(own_formation);
@@ -379,7 +379,7 @@ mod tests {
         large_unit.position = BattleHexCoord::new(12, 10);
         large_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 200]));
+            .push(Element::new((0..200).map(|_| EntityId::new()).collect()));
         large_unit.stance = UnitStance::Formed;
         enemy_formation.units.push(large_unit);
         enemy_army.formations.push(enemy_formation);

@@ -165,6 +165,36 @@ pub enum GoCodeTrigger {
 }
 ```
 
+## Unit Structure
+
+Units are composed of Elements, which group entities:
+
+```rust
+pub struct BattleUnit {
+    pub id: UnitId,
+    pub unit_type: UnitType,
+    pub elements: Vec<Element>,
+    // ...
+}
+
+pub struct Element {
+    pub entities: Vec<EntityId>,
+    /// Optional equipment override - if None, uses parent UnitType's default
+    pub equipment_type: Option<UnitType>,
+}
+```
+
+Elements can override the parent unit's equipment type, allowing mixed units:
+- Infantry with attached archers
+- Cavalry with lance and bow elements
+- Crossbowmen screening pike formations
+
+```rust
+// Create element with specific equipment
+let archers = Element::with_equipment(archer_ids, UnitType::Archers);
+let infantry = Element::new(infantry_ids); // Uses unit's default
+```
+
 ## Formation System
 
 Units deploy in formations:

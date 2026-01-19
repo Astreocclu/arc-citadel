@@ -429,7 +429,7 @@ mod tests {
         let unit_id = UnitId::new();
         let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
         unit.position = BattleHexCoord::new(0, 0);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         formation.units.push(unit);
         army.formations.push(formation);
         (army, unit_id)
@@ -780,7 +780,7 @@ mod tests {
             let unit_id = UnitId::new();
             let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
             unit.position = BattleHexCoord::new(i, 0);
-            unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+            unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
             formation.units.push(unit);
             unit_ids.push(unit_id);
         }

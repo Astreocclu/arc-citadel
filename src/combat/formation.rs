@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_formation_break_threshold() {
-        let mut formation = FormationState::new(vec![EntityId::new(); 10]);
+        let mut formation = FormationState::new((0..10).map(|_| EntityId::new()).collect());
         formation.broken_count = 4;
 
         assert!(formation.is_broken());

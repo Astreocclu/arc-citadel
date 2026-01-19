@@ -46,9 +46,14 @@ fn get_active_entities(
     states: &mut HashMap<EntityId, CombatState>,
 ) -> Vec<EntityId> {
     let mut active = Vec::new();
-    let props = unit.unit_type.default_properties();
+    let default_props = unit.unit_type.default_properties();
 
     for element in &unit.elements {
+        // Use element's equipment type if specified, otherwise use unit's default
+        let props = element.equipment_type
+            .map(|et| et.default_properties())
+            .unwrap_or_else(|| default_props.clone());
+
         for &entity_id in &element.entities {
             // Ensure state exists
             let state = states.entry(entity_id).or_insert_with(|| {
@@ -221,25 +226,31 @@ pub fn resolve_unit_combat(
     }
 
     // 6. Ranged Combat (Rear Ranks)
-    if attacker.unit_type.is_ranged() {
+    // Check if any element has ranged equipment
+    let attacker_has_ranged = attacker.unit_type.is_ranged()
+        || attacker.elements.iter().any(|e| e.equipment_type.map_or(false, |et| et.is_ranged()));
+    let defender_has_ranged = defender.unit_type.is_ranged()
+        || defender.elements.iter().any(|e| e.equipment_type.map_or(false, |et| et.is_ranged()));
+
+    if attacker_has_ranged {
         resolve_ranged_attacks(
-            &attacker_ids, 
-            &defender_ids, 
-            &engaged_attackers, 
+            attacker,
+            &attacker_ids,
+            &defender_ids,
+            &engaged_attackers,
             entity_states,
-            &attacker.unit_type,
             &mut defender_casualties,
             &mut defender_stress
         );
     }
 
-    if defender.unit_type.is_ranged() {
+    if defender_has_ranged {
         resolve_ranged_attacks(
-            &defender_ids, 
-            &attacker_ids, 
-            &engaged_defenders, 
+            defender,
+            &defender_ids,
+            &attacker_ids,
+            &engaged_defenders,
             entity_states,
-            &defender.unit_type,
             &mut attacker_casualties,
             &mut attacker_stress
         );
@@ -333,11 +344,11 @@ fn resolve_entity_exchange(
 
 /// Resolve ranged attacks from unengaged entities
 fn resolve_ranged_attacks(
+    unit: &BattleUnit,
     attackers: &[EntityId],
     defenders: &[EntityId],
     engaged: &std::collections::HashSet<EntityId>,
     states: &mut HashMap<EntityId, CombatState>,
-    unit_type: &UnitType,
     casualties: &mut u32,
     stress: &mut f32,
 ) {
@@ -345,48 +356,70 @@ fn resolve_ranged_attacks(
         return;
     }
 
-    // Determine projectile properties based on unit type
-    let projectile = match unit_type {
-        UnitType::Archers | UnitType::HorseArchers => WeaponProperties {
-            edge: Edge::Sharp,
-            mass: Mass::Light,
-            reach: Reach::Short, // Doesn't matter for ranged
-            special: vec![],
-        },
-        UnitType::Crossbowmen => WeaponProperties {
-            edge: Edge::Sharp,
-            mass: Mass::Medium,
-            reach: Reach::Short,
-            special: vec![WeaponSpecial::Piercing],
-        },
-        _ => return, // Not a shooter
-    };
+    // Build a set of ranged entity IDs from ranged elements
+    let ranged_entities: std::collections::HashSet<EntityId> = unit.elements.iter()
+        .filter(|e| {
+            let equip_type = e.equipment_type.unwrap_or(unit.unit_type);
+            equip_type.is_ranged()
+        })
+        .flat_map(|e| e.entities.iter().copied())
+        .collect();
 
     for &att_id in attackers {
         if engaged.contains(&att_id) {
             continue;
         }
 
-        // Fire!
+        // Only fire if this entity is from a ranged element
+        if !ranged_entities.contains(&att_id) {
+            continue;
+        }
+
+        // Determine projectile based on entity's weapon
+        let projectile = {
+            if let Some(state) = states.get(&att_id) {
+                // Check if weapon is ranged-style (grapple reach = melee backup)
+                // For archers/crossbowmen, their melee weapon is weak
+                // Projectile is separate - use default ranged properties
+                if matches!(state.weapon.reach, Reach::Grapple) {
+                    // This is a ranged unit's melee weapon, use projectile
+                    match state.weapon.mass {
+                        Mass::Medium | Mass::Heavy => WeaponProperties {
+                            edge: Edge::Sharp,
+                            mass: Mass::Medium,
+                            reach: Reach::Short,
+                            special: vec![WeaponSpecial::Piercing],
+                        },
+                        _ => WeaponProperties {
+                            edge: Edge::Sharp,
+                            mass: Mass::Light,
+                            reach: Reach::Short,
+                            special: vec![],
+                        },
+                    }
+                } else {
+                    continue; // Not a ranged unit's weapon profile
+                }
+            } else {
+                continue;
+            }
+        };
+
         // Pick random target
         let target_idx = rand::random::<usize>() % defenders.len();
         let target_id = defenders[target_idx];
 
         // Resolve hit
-        // Need target armor and skill (for zone selection)
-        // We use attacker skill for zone selection
         let (att_skill, target_armor) = {
             let att_state = states.get(&att_id).unwrap();
             let def_state = states.get(&target_id).unwrap();
             (att_state.skill.level, def_state.armor.clone())
         };
 
-        // Determine hit chance?
-        // `resolve_hit` assumes a hit. We need a miss chance.
-        // Simple accuracy check: 50% base +/- skill
-        let hit_chance = 0.5; // Placeholder
+        // Hit chance: 50% base
+        let hit_chance = 0.5;
         if rand::random::<f32>() > hit_chance {
-            continue; 
+            continue;
         }
 
         let zone = select_hit_zone(att_skill);
@@ -470,7 +503,7 @@ pub fn determine_combat_lod(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::battle::units::Element;
+    use crate::battle::units::{Element, UnitId};
     use crate::core::types::EntityId;
 
     #[test]
@@ -504,5 +537,68 @@ mod tests {
         // Check wounds - Swords (Sharp) vs Cloth should produce Cut = Serious wounds
         let total_wounds: usize = entity_states.values().map(|s| s.wounds.len()).sum();
         assert!(total_wounds > 0, "Expected some wounds to be inflicted");
+    }
+
+    #[test]
+    fn test_mixed_unit_pike_archers() {
+        let mut entity_states = HashMap::new();
+
+        // Create mixed unit: 70 pikemen + 30 archers
+        let mut mixed_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+
+        // Pikemen element (use Spearmen equipment for pikes/reach)
+        let pike_entities: Vec<EntityId> = (0..70).map(|_| EntityId::new()).collect();
+        mixed_unit.elements.push(Element::with_equipment(pike_entities, UnitType::Spearmen));
+
+        // Archer element
+        let archer_entities: Vec<EntityId> = (0..30).map(|_| EntityId::new()).collect();
+        mixed_unit.elements.push(Element::with_equipment(archer_entities, UnitType::Archers));
+
+        // Opponent: pure infantry
+        let mut defender = BattleUnit::new(UnitId::new(), UnitType::Infantry);
+        let def_entities: Vec<EntityId> = (0..100).map(|_| EntityId::new()).collect();
+        defender.elements.push(Element::new(def_entities));
+
+        eprintln!("=== Mixed Unit Test ===");
+        eprintln!("Mixed unit: {} pikemen + {} archers",
+            mixed_unit.elements[0].entities.len(),
+            mixed_unit.elements[1].entities.len());
+        eprintln!("Defender: {} infantry", defender.effective_strength());
+
+        // Run several rounds of combat
+        let mut total_attacker_casualties = 0;
+        let mut total_defender_casualties = 0;
+        for round in 0..5 {
+            let result = resolve_unit_combat(&mixed_unit, &defender, &mut entity_states);
+            total_attacker_casualties += result.attacker_casualties;
+            total_defender_casualties += result.defender_casualties;
+            eprintln!("Round {}: att_cas={}, def_cas={}",
+                round + 1, result.attacker_casualties, result.defender_casualties);
+        }
+
+        eprintln!("Total: attacker_casualties={}, defender_casualties={}",
+            total_attacker_casualties, total_defender_casualties);
+
+        // All 200 entities should be tracked
+        assert_eq!(entity_states.len(), 200);
+
+        // Check that pikemen have reach weapons
+        let pike_entity = mixed_unit.elements[0].entities[0];
+        let pike_state = entity_states.get(&pike_entity).unwrap();
+        assert!(
+            matches!(pike_state.weapon.reach, Reach::Long | Reach::Pike),
+            "Pikemen should have Long or Pike reach, got {:?}", pike_state.weapon.reach
+        );
+
+        // Check that archers have weak melee (Grapple reach)
+        let archer_entity = mixed_unit.elements[1].entities[0];
+        let archer_state = entity_states.get(&archer_entity).unwrap();
+        assert!(
+            matches!(archer_state.weapon.reach, Reach::Grapple),
+            "Archers should have Grapple reach (weak melee), got {:?}", archer_state.weapon.reach
+        );
+
+        // Defender took some casualties (from both melee and ranged)
+        assert!(total_defender_casualties > 0, "Defender should have taken casualties");
     }
 }

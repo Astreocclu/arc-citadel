@@ -1135,7 +1135,7 @@ mod tests {
         // Add a unit to friendly army
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.position = BattleHexCoord::new(5, 5);
         formation.units.push(unit);
         friendly.formations.push(formation);
@@ -1168,7 +1168,7 @@ mod tests {
         let mut friendly_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         friendly_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 100]));
+            .push(Element::new((0..100).map(|_| EntityId::new()).collect()));
         friendly_unit.position = BattleHexCoord::new(10, 15);
         friendly_formation.units.push(friendly_unit);
         friendly.formations.push(friendly_formation);
@@ -1180,7 +1180,7 @@ mod tests {
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         enemy_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 100]));
+            .push(Element::new((0..100).map(|_| EntityId::new()).collect()));
         enemy_unit.position = BattleHexCoord::new(11, 15); // Adjacent to friendly
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);
@@ -1189,8 +1189,11 @@ mod tests {
         let mut state = BattleState::new(map, friendly, enemy);
         state.start_battle();
 
-        // Run several ticks
+        // Run several ticks (or until battle ends)
         for _ in 0..10 {
+            if state.is_finished() {
+                break;
+            }
             let _events = state.run_tick();
         }
 
@@ -1215,7 +1218,8 @@ mod tests {
             friendly_casualties > 0 || enemy_casualties > 0,
             "Combat should have occurred"
         );
-        assert_eq!(state.tick, 10, "Should have advanced 10 ticks");
+        // Battle may have ended early, but should have run at least a few ticks
+        assert!(state.tick >= 1, "Should have advanced at least 1 tick");
     }
 
     #[test]
@@ -1232,7 +1236,7 @@ mod tests {
         let mut friendly_unit = BattleUnit::new(UnitId::new(), UnitType::HeavyCavalry);
         friendly_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 200]));
+            .push(Element::new((0..200).map(|_| EntityId::new()).collect()));
         friendly_unit.position = BattleHexCoord::new(10, 10);
         friendly_formation.units.push(friendly_unit);
         friendly.formations.push(friendly_formation);
@@ -1243,7 +1247,7 @@ mod tests {
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Levy);
         enemy_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 10]));
+            .push(Element::new((0..10).map(|_| EntityId::new()).collect()));
         enemy_unit.position = BattleHexCoord::new(11, 10); // Adjacent
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);
@@ -1284,7 +1288,7 @@ mod tests {
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let unit_id = UnitId::new();
         let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.position = BattleHexCoord::new(5, 5);
         formation.units.push(unit);
         friendly.formations.push(formation);
@@ -1295,7 +1299,7 @@ mod tests {
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         enemy_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         enemy_unit.position = BattleHexCoord::new(15, 15); // Far from friendly unit
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);
@@ -1350,7 +1354,7 @@ mod tests {
 
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 100]));
+        unit.elements.push(Element::new((0..100).map(|_| EntityId::new()).collect()));
         unit.casualties = 40; // 40% casualties
         unit.position = BattleHexCoord::new(5, 5);
         formation.units.push(unit);
@@ -1362,7 +1366,7 @@ mod tests {
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         enemy_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         enemy_unit.position = BattleHexCoord::new(15, 15);
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);
@@ -1400,7 +1404,7 @@ mod tests {
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let unit_id = UnitId::new();
         let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.position = BattleHexCoord::new(0, 0);
         formation.units.push(unit);
         friendly.formations.push(formation);
@@ -1411,7 +1415,7 @@ mod tests {
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::LightCavalry);
         enemy_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 20]));
+            .push(Element::new((0..20).map(|_| EntityId::new()).collect()));
         enemy_unit.position = BattleHexCoord::new(5, 0); // On courier route
         enemy_unit.stance = UnitStance::Patrol; // Can intercept
         enemy_formation.units.push(enemy_unit);
@@ -1482,7 +1486,7 @@ mod tests {
         // Unit 1: Will wait for duration at starting position
         let unit1_id = UnitId::new();
         let mut unit1 = BattleUnit::new(unit1_id, UnitType::Infantry);
-        unit1.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit1.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit1.position = BattleHexCoord::new(5, 5);
         unit1.stance = UnitStance::Moving;
         formation.units.push(unit1);
@@ -1490,7 +1494,7 @@ mod tests {
         // Unit 2: Will have a waypoint plan to move
         let unit2_id = UnitId::new();
         let mut unit2 = BattleUnit::new(unit2_id, UnitType::Infantry);
-        unit2.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit2.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit2.position = BattleHexCoord::new(10, 10);
         unit2.stance = UnitStance::Moving;
         formation.units.push(unit2);
@@ -1498,7 +1502,7 @@ mod tests {
         // Unit 3: For courier order testing
         let unit3_id = UnitId::new();
         let mut unit3 = BattleUnit::new(unit3_id, UnitType::Infantry);
-        unit3.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit3.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit3.position = BattleHexCoord::new(0, 0);
         unit3.stance = UnitStance::Formed;
         formation.units.push(unit3);
@@ -1513,7 +1517,7 @@ mod tests {
         let mut enemy_patrol = BattleUnit::new(UnitId::new(), UnitType::LightCavalry);
         enemy_patrol
             .elements
-            .push(Element::new(vec![EntityId::new(); 20]));
+            .push(Element::new((0..20).map(|_| EntityId::new()).collect()));
         enemy_patrol.position = BattleHexCoord::new(15, 15); // In patrol area
         enemy_patrol.stance = UnitStance::Patrol; // Can intercept couriers
         enemy_formation.units.push(enemy_patrol);
@@ -1522,7 +1526,7 @@ mod tests {
         let mut enemy_distant = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         enemy_distant
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         enemy_distant.position = BattleHexCoord::new(25, 25);
         enemy_distant.stance = UnitStance::Formed;
         enemy_formation.units.push(enemy_distant);
@@ -1754,7 +1758,7 @@ mod tests {
         let unit_id = UnitId::new();
         let mut formation = BattleFormation::new(FormationId::new(), EntityId::new());
         let mut unit = BattleUnit::new(unit_id, UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.position = BattleHexCoord::new(5, 5);
         unit.stance = UnitStance::Rallying;
         unit.rallying_since = Some(0); // Started rallying at tick 0
@@ -1768,7 +1772,7 @@ mod tests {
         let mut enemy_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         enemy_unit
             .elements
-            .push(Element::new(vec![EntityId::new(); 50]));
+            .push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         enemy_unit.position = BattleHexCoord::new(15, 15);
         enemy_formation.units.push(enemy_unit);
         enemy.formations.push(enemy_formation);

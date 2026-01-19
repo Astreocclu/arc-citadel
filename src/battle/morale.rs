@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn test_unit_breaks_when_stress_exceeds_threshold() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         // Infantry base_stress_threshold is 2.0, plus 0.1 for high cohesion = 2.1
         // So use stress >= 2.1 to break
         unit.stress = 2.2;
@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn test_unit_holds_with_low_stress() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.stress = 0.1; // Low stress
 
         let result = check_morale_break(&unit);
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn test_routing_unit_can_rally_when_safe() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.stance = UnitStance::Routing;
         unit.stress = 0.3; // Low enough to rally
 
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn test_routing_unit_cant_rally_near_enemy() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.stance = UnitStance::Routing;
         unit.stress = 0.3;
 
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_leader_helps_rally() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.stance = UnitStance::Routing;
         unit.stress = 0.6; // Too high for normal rally
 
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn test_routing_unit_cannot_break_again() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.stance = UnitStance::Routing;
         unit.stress = 2.0; // Maximum stress
 
@@ -277,7 +277,7 @@ mod tests {
     #[test]
     fn test_non_routing_unit_cannot_rally() {
         let mut unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
-        unit.elements.push(Element::new(vec![EntityId::new(); 50]));
+        unit.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
         unit.stance = UnitStance::Formed; // Not routing
         unit.stress = 0.1;
 
