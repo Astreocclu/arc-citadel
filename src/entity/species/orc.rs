@@ -148,13 +148,14 @@ mod tests {
     #[test]
     fn test_orc_default_values() {
         let values = OrcValues::default();
-        assert_eq!(values.rage, 0.0);
-        assert_eq!(values.strength, 0.0);
-        assert_eq!(values.dominance, 0.0);
-        assert_eq!(values.clan_loyalty, 0.0);
-        assert_eq!(values.blood_debt, 0.0);
-        assert_eq!(values.territory, 0.0);
-        assert_eq!(values.combat_prowess, 0.0);
+        // Orcs have aggressive default values for gameplay
+        assert_eq!(values.rage, 0.6);
+        assert_eq!(values.strength, 0.7);
+        assert_eq!(values.dominance, 0.5);
+        assert_eq!(values.clan_loyalty, 0.5);
+        assert_eq!(values.blood_debt, 0.0); // Starts at 0, increases when allies hurt
+        assert_eq!(values.territory, 0.4);
+        assert_eq!(values.combat_prowess, 0.6);
     }
 
     #[test]

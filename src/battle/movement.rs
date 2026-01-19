@@ -283,7 +283,9 @@ mod tests {
                 .with_pace(MovementPace::Quick),
         );
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
+        // With realistic speeds (0.07-0.14 hexes/sec), need multiple ticks or high time_scale
+        // Use time_scale=10.0 to simulate 10 seconds of movement in one call
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 10.0);
 
         assert!(result.moved);
         // Unit should have moved closer to waypoint
@@ -469,7 +471,8 @@ mod tests {
                 .with_pace(MovementPace::Run),
         );
 
-        let result = advance_unit_movement(&map, &mut unit, &mut plan, 1.0);
+        // With realistic speeds, need higher time_scale to trigger movement
+        let result = advance_unit_movement(&map, &mut unit, &mut plan, 10.0);
 
         assert!(result.moved);
         assert!(result.fatigue_delta > 0.0);
@@ -499,8 +502,9 @@ mod tests {
                 .with_pace(MovementPace::Charge),
         );
 
-        let result_walk = advance_unit_movement(&map, &mut unit_walk, &mut plan_walk, 1.0);
-        let result_charge = advance_unit_movement(&map, &mut unit_charge, &mut plan_charge, 1.0);
+        // With realistic speeds, need higher time_scale to trigger movement
+        let result_walk = advance_unit_movement(&map, &mut unit_walk, &mut plan_walk, 10.0);
+        let result_charge = advance_unit_movement(&map, &mut unit_charge, &mut plan_charge, 10.0);
 
         assert!(result_charge.fatigue_delta > result_walk.fatigue_delta);
     }

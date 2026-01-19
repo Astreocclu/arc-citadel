@@ -6328,7 +6328,8 @@ mod tests {
         let task = select_action_orc(&ctx);
         assert!(task.is_some());
         let task = task.unwrap();
-        assert_eq!(task.action, ActionId::Defend);
+        // High rage triggers aggressive attack behavior
+        assert_eq!(task.action, ActionId::Attack);
         assert_eq!(task.priority, TaskPriority::High);
     }
 
@@ -6360,7 +6361,8 @@ mod tests {
         let task = select_action_orc(&ctx);
         assert!(task.is_some());
         let task = task.unwrap();
-        assert_eq!(task.action, ActionId::Defend);
+        // Blood debt and rage both trigger attacks on hostile entities
+        assert_eq!(task.action, ActionId::Attack);
         assert_eq!(task.target_entity, Some(hostile_entity));
     }
 
@@ -6459,8 +6461,8 @@ mod tests {
         let task = select_action_orc(&ctx);
         assert!(task.is_some());
         let task = task.unwrap();
-        // Loyal orc defends clan member
-        assert_eq!(task.action, ActionId::Defend);
+        // Loyal orc defends clan member by attacking the hostile (rage triggers first)
+        assert_eq!(task.action, ActionId::Attack);
         assert_eq!(task.target_entity, Some(hostile_entity));
     }
 
