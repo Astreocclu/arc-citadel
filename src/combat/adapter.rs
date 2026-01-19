@@ -62,6 +62,7 @@ impl<'a> CombatAdapter<'a> {
             armor: combat_state.armor.clone(),
             stance,
             skill,
+            is_mounted: false, // Humans in simulation are not mounted (yet)
         }
     }
 }

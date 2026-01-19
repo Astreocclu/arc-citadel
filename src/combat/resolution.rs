@@ -23,6 +23,8 @@ pub struct Combatant {
     pub armor: ArmorProperties,
     pub stance: CombatStance,
     pub skill: CombatSkill,
+    /// Whether this combatant is mounted (affects anti-cavalry weapons)
+    pub is_mounted: bool,
 }
 
 impl Combatant {
@@ -33,6 +35,7 @@ impl Combatant {
             armor: ArmorProperties::none(),
             stance: CombatStance::Pressing,
             skill: CombatSkill::trained(),
+            is_mounted: false,
         }
     }
 
@@ -43,6 +46,7 @@ impl Combatant {
             armor: ArmorProperties::none(),
             stance: CombatStance::Pressing,
             skill: CombatSkill::trained(),
+            is_mounted: false,
         }
     }
 
@@ -53,6 +57,7 @@ impl Combatant {
             armor: ArmorProperties::plate(),
             stance: CombatStance::Neutral,
             skill: CombatSkill::veteran(),
+            is_mounted: false,
         }
     }
 
@@ -63,6 +68,23 @@ impl Combatant {
             armor: ArmorProperties::none(),
             stance: CombatStance::Neutral,
             skill: CombatSkill::novice(),
+            is_mounted: false,
+        }
+    }
+
+    /// Test combatant: mounted heavy cavalry
+    pub fn test_heavy_cavalry() -> Self {
+        Self {
+            weapon: WeaponProperties {
+                edge: crate::combat::Edge::Sharp,
+                mass: crate::combat::Mass::Heavy,
+                reach: Reach::Medium,
+                special: vec![],
+            },
+            armor: ArmorProperties::plate(),
+            stance: CombatStance::Pressing,
+            skill: CombatSkill::veteran(),
+            is_mounted: true,
         }
     }
 }
@@ -98,8 +120,19 @@ pub fn select_hit_zone(skill: SkillLevel) -> BodyZone {
 
 /// Resolve a single hit
 pub fn resolve_hit(weapon: &WeaponProperties, armor: &ArmorProperties, zone: BodyZone) -> Wound {
+    resolve_hit_with_mounted(weapon, armor, zone, false)
+}
+
+/// Resolve a single hit with mounted flag
+pub fn resolve_hit_with_mounted(
+    weapon: &WeaponProperties,
+    armor: &ArmorProperties,
+    zone: BodyZone,
+    target_is_mounted: bool,
+) -> Wound {
     let has_piercing = weapon.has_special(WeaponSpecial::Piercing);
-    let pen = resolve_penetration(weapon.edge, armor.rigidity, has_piercing);
+    let has_anti_cavalry = weapon.has_special(WeaponSpecial::AntiCavalry);
+    let pen = resolve_penetration(weapon.edge, armor.rigidity, has_piercing, has_anti_cavalry, target_is_mounted);
     let trauma = resolve_trauma(weapon.mass, armor.padding);
     combine_results(pen, trauma, zone)
 }
@@ -149,7 +182,7 @@ pub fn resolve_exchange(attacker: &Combatant, defender: &Combatant) -> ExchangeR
     if !defender_can_respond {
         // Free hit - defender is recovering or broken
         let zone = select_hit_zone(attacker.skill.level);
-        let wound = resolve_hit(&attacker.weapon, &defender.armor, zone);
+        let wound = resolve_hit_with_mounted(&attacker.weapon, &defender.armor, zone, defender.is_mounted);
 
         return ExchangeResult {
             defender_hit: true,
@@ -174,7 +207,7 @@ pub fn resolve_exchange(attacker: &Combatant, defender: &Combatant) -> ExchangeR
             2 => BodyZone::Torso,    // Medium gap - solid hit
             _ => BodyZone::Torso,    // Large gap - solid hit (pike vs grapple)
         };
-        Some(resolve_hit(&defender.weapon, &attacker.armor, zone))
+        Some(resolve_hit_with_mounted(&defender.weapon, &attacker.armor, zone, attacker.is_mounted))
     } else {
         None
     };
@@ -183,15 +216,15 @@ pub fn resolve_exchange(attacker: &Combatant, defender: &Combatant) -> ExchangeR
     // Attacker struck first because they initiated (pressing stance)
     // This is the "inside the guard" phase where reach no longer matters
 
-    // Step 4: Resolve attacker's hit
+    // Step 4: Resolve attacker's hit on defender (check if defender is mounted)
     let attacker_zone = select_hit_zone(attacker.skill.level);
-    let defender_wound = resolve_hit(&attacker.weapon, &defender.armor, attacker_zone);
+    let defender_wound = resolve_hit_with_mounted(&attacker.weapon, &defender.armor, attacker_zone, defender.is_mounted);
 
     // Step 5: Resolve defender's counter (if they can riposte)
     // After closing, defender can counter-attack normally
     let (attacker_hit, attacker_wound) = if defender.stance.can_riposte() {
         let defender_zone = select_hit_zone(defender.skill.level);
-        let wound = resolve_hit(&defender.weapon, &attacker.armor, defender_zone);
+        let wound = resolve_hit_with_mounted(&defender.weapon, &attacker.armor, defender_zone, attacker.is_mounted);
         (true, Some(wound))
     } else {
         (false, None)

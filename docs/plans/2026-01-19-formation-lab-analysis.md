@@ -226,3 +226,105 @@ Ran 150+ combat configurations testing formation shapes, unit composition, equip
 **Remaining issues:**
 - Heavy vs Heavy stalemate still exists (need crossbows with Piercing or cavalry charge)
 - Morale breaks need live testing in full battles (not just isolated combat)
+
+---
+
+## Multi-Formation Battle Analysis
+
+**Test Harness:** `multi_formation_lab` binary
+**Max Ticks:** 200
+
+### Scenario Results
+
+| Scenario | Setup | Outcome | Exchange Ratio | Key Finding |
+|----------|-------|---------|----------------|-------------|
+| Basic 3v3 Infantry | 150 vs 150 | Draw | 1.00:1 | Baseline - symmetric |
+| Flanking Attack | 200 vs 150 (2 formations) | Minor Victory | 1.03:1 | Flanking advantage minimal |
+| Mixed Arms | 100 Pike+Archer vs 100 Infantry | Minor Victory | inf:1 | Pike reach dominates |
+| Hammer and Anvil | 80 HvyInf + 60 Cavalry vs 180 Infantry | Minor Victory | inf:1 | Heavy armor untouchable |
+| Counter-Pick | 100 MenAtArms vs 100 HeavyInfantry | Minor Victory | inf:1 | Anti-armor works |
+| Numerical Superiority | 400 vs 200 | Minor Victory | inf:1 | 2:1 advantage decisive |
+| Cavalry Charge | 80 HeavyCavalry vs 120 Infantry | Minor Victory | inf:1 | Cavalry dominates |
+| **Spearmen vs Cavalry** | 100 Spearmen vs 100 HeavyCavalry | **Minor Victory** | **inf:1** | **AntiCavalry works!** |
+| Double Envelopment | 90 (3 formations) vs 150 | Minor Victory | 3.38:1 | Pincer highly effective |
+| Quality vs Quantity | 30 MenAtArms vs 150 Levy | Minor Victory | inf:1 | Elite crushes militia |
+
+### Critical Bug: Spearmen vs Cavalry ✅ FIXED
+
+**Expected:** Spearmen should counter cavalry (historical rock-paper-scissors)
+**Before Fix:** Cavalry 100, Spearmen 0 (0.00:1 exchange ratio) - cavalry invincible
+**After Fix:** Spearmen 100, Cavalry 2 (inf:1 exchange ratio) - proper counter
+
+**Root Cause (was):**
+1. Heavy Cavalry has Plate armor (Rigidity::Plate, Padding::Heavy)
+2. Spear has Sharp edge + Piercing special
+3. Sharp+Piercing vs Plate = Snag (no wound)
+4. Medium mass vs Heavy padding = Negligible trauma
+5. Spear could not wound Heavy Cavalry at all
+
+**Solution Implemented:**
+Added `AntiCavalry` weapon special to the penetration system:
+- New variant: `WeaponSpecial::AntiCavalry`
+- Spear now has `[Piercing, AntiCavalry]` specials
+- Pike has `[Piercing, AntiCavalry, TwoHanded]` specials
+- `Combatant` struct now includes `is_mounted: bool` field
+- `resolve_penetration()` takes `has_anti_cavalry` and `target_is_mounted` params
+- When both true: +2 category shift (Deflect→Cut, Snag→DeepCut)
+- This represents striking the horse or finding gaps in barding
+
+**Files Changed:**
+- `src/combat/weapons.rs` - Added `AntiCavalry` special, `pike()` and `lance()` presets
+- `src/combat/penetration.rs` - Added anti-cavalry bonus logic (+2 categories vs mounted)
+- `src/combat/resolution.rs` - Added `is_mounted` to `Combatant`, updated `resolve_hit_with_mounted()`
+- `src/battle/resolution.rs` - Pass `is_mounted` from `UnitType::is_mounted()` to combat
+- `src/combat/adapter.rs`, `src/simulation/tick.rs` - Set `is_mounted: false` for non-cavalry
+
+### Findings: Tactical Coordination
+
+**Flanking Effects:**
+- Current implementation provides marginal (1.03:1) advantage
+- Expected: flanking should be more decisive (1.5:1 or better)
+- Root cause: no "flanked" stance penalties or morale shock
+
+**Numerical Advantage:**
+- 2:1 ratio produces decisive victory with 0 friendly casualties
+- Validates that overwhelming numbers work as expected
+
+**Double Envelopment:**
+- Best tactical scenario (3.38:1 exchange ratio)
+- Three formations attacking one produces morale collapse
+- This is the intended "Cannae" scenario
+
+**Quality vs Quantity:**
+- 30 MenAtArms defeat 150 Levy (5:1 odds against)
+- Validates elite unit power fantasy
+- But may be too extreme (historically rare)
+
+### Balance Recommendations
+
+**Spearmen/Cavalry Fix (Priority: CRITICAL)**
+```rust
+// Option 1: AntiCavalry special
+WeaponSpecial::AntiCavalry // +1 category vs mounted
+
+// Option 2: Brace mechanic
+UnitStance::Braced // Doubles reach, can't move
+
+// Option 3: Nerf Heavy Cavalry armor
+UnitType::HeavyCavalry => UnitProperties {
+    avg_armor: ArmorProperties::mail(), // Was: plate()
+    ...
+}
+```
+
+**Flanking Fix (Priority: HIGH)**
+- Add `is_flanked` check in combat resolution
+- Flanked units should have:
+  - Reduced riposte capability
+  - Increased stress gain
+  - Possible morale check
+
+**Multi-Formation Coordination (Priority: MEDIUM)**
+- Add formation-level orders (Hold, Advance, Flank)
+- Enable timing coordination (sequential vs simultaneous engagement)
+- Track "reserve" formations that haven't engaged yet

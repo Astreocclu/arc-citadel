@@ -57,6 +57,8 @@ pub enum WeaponSpecial {
     TwoHanded,
     /// Effective vs shields (axes)
     Shieldbreaker,
+    /// Effective vs cavalry (spears, pikes) - +2 category shift vs mounted
+    AntiCavalry,
 }
 
 /// Complete weapon properties
@@ -95,12 +97,13 @@ impl WeaponProperties {
     }
 
     /// Common weapon: Spear
+    /// Has both Piercing (vs armor) and AntiCavalry (vs mounted)
     pub fn spear() -> Self {
         Self {
             edge: Edge::Sharp,
             mass: Mass::Medium,
             reach: Reach::Long,
-            special: vec![WeaponSpecial::Piercing],
+            special: vec![WeaponSpecial::Piercing, WeaponSpecial::AntiCavalry],
         }
     }
 
@@ -163,6 +166,28 @@ impl WeaponProperties {
             mass: Mass::Heavy,
             reach: Reach::Medium,
             special: vec![WeaponSpecial::Piercing, WeaponSpecial::TwoHanded],
+        }
+    }
+
+    /// Common weapon: Pike (formation anti-cavalry)
+    /// Long reach + devastating vs horses
+    pub fn pike() -> Self {
+        Self {
+            edge: Edge::Sharp,
+            mass: Mass::Heavy,
+            reach: Reach::Pike,
+            special: vec![WeaponSpecial::Piercing, WeaponSpecial::AntiCavalry, WeaponSpecial::TwoHanded],
+        }
+    }
+
+    /// Common weapon: Lance (cavalry charge weapon)
+    /// One-shot charge weapon, then switch to sidearm
+    pub fn lance() -> Self {
+        Self {
+            edge: Edge::Sharp,
+            mass: Mass::Massive, // Horse + rider momentum
+            reach: Reach::Pike,
+            special: vec![WeaponSpecial::Piercing],
         }
     }
 }

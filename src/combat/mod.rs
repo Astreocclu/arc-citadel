@@ -30,7 +30,7 @@ pub use body_zone::{BodyZone, WoundSeverity};
 pub use formation::{FormationState, PressureCategory, ShockType};
 pub use morale::{BreakResult, MoraleState, StressSource};
 pub use penetration::{resolve_penetration, PenetrationResult};
-pub use resolution::{resolve_exchange, Combatant, ExchangeResult};
+pub use resolution::{resolve_exchange, resolve_hit_with_mounted, Combatant, ExchangeResult};
 pub use skill::{CombatSkill, SkillLevel};
 pub use stance::{CombatStance, StanceTransitions, TransitionTrigger};
 pub use state::CombatState;

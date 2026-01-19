@@ -2507,6 +2507,7 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                                         armor: attacker_combat_state.armor.clone(),
                                         stance: CombatStance::Pressing,
                                         skill: attacker_skill,
+                                        is_mounted: false,
                                     };
 
                                     // Build defender based on target type
@@ -2521,6 +2522,7 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                                                 armor: defender_combat_state.armor.clone(),
                                                 stance: CombatStance::Neutral,
                                                 skill: defender_skill,
+                                                is_mounted: false,
                                             };
 
                                             let exchange = resolve_exchange(&attacker, &defender);
@@ -2572,6 +2574,7 @@ fn execute_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                                                 armor: ArmorProperties::default(),   // no armor
                                                 stance: CombatStance::Neutral,
                                                 skill: defender_skill,
+                                                is_mounted: false,
                                             };
 
                                             let exchange = resolve_exchange(&attacker, &defender);
@@ -2998,6 +3001,7 @@ fn execute_orc_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                 armor: ArmorProperties::none(),
                 skill: CombatSkill::novice(),
                 stance: CombatStance::Pressing,
+                is_mounted: false,
             };
 
             // Get defender stats based on target type
@@ -3007,12 +3011,14 @@ fn execute_orc_tasks(world: &mut World, events: &mut Vec<SimulationEvent>) {
                     armor: world.humans.combat_states[idx].armor.clone(),
                     skill: CombatSkill::novice(),
                     stance: CombatStance::Neutral,
+                    is_mounted: false,
                 },
                 CombatTarget::Orc(_idx) => Combatant {
                     weapon: WeaponProperties::axe(),
                     armor: ArmorProperties::none(),
                     skill: CombatSkill::novice(),
                     stance: CombatStance::Neutral,
+                    is_mounted: false,
                 },
             };
 

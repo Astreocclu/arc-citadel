@@ -150,12 +150,16 @@ pub fn resolve_unit_combat(
     let att_depth = formation_depth(&attacker.formation_shape, attacker_ids.len());
     let def_depth = formation_depth(&defender.formation_shape, defender_ids.len());
 
+    // Track mounted status based on unit types
+    let attacker_is_mounted = attacker.unit_type.is_mounted();
+    let defender_is_mounted = defender.unit_type.is_mounted();
+
     // Track results
     let mut attacker_casualties = 0;
     let mut defender_casualties = 0;
     let mut attacker_stress = 0.0;
     let mut defender_stress = 0.0;
-    
+
     // Track engaged entities to prevent them from firing ranged
     let mut engaged_attackers = std::collections::HashSet::new();
     let mut engaged_defenders = std::collections::HashSet::new();
@@ -164,15 +168,17 @@ pub fn resolve_unit_combat(
     for i in 0..combat_width {
         let att_id = attacker_ids[i];
         let def_id = defender_ids[i];
-        
+
         engaged_attackers.insert(att_id);
         engaged_defenders.insert(def_id);
 
         resolve_entity_exchange(
-            att_id, 
-            def_id, 
-            entity_states, 
+            att_id,
+            def_id,
+            entity_states,
             false, // Not flanking
+            attacker_is_mounted,
+            defender_is_mounted,
             &mut attacker_casualties,
             &mut defender_casualties,
             &mut attacker_stress,
@@ -214,6 +220,8 @@ pub fn resolve_unit_combat(
                     def_id,
                     entity_states,
                     true, // Support attack - safer for attacker
+                    attacker_is_mounted,
+                    defender_is_mounted,
                     &mut attacker_casualties,
                     &mut defender_casualties,
                     &mut attacker_stress,
@@ -244,13 +252,15 @@ pub fn resolve_unit_combat(
             if has_reach {
                 let att_id = attacker_ids[i % attacker_ids.len()];
                 engaged_defenders.insert(def_id);
-                
+
                 resolve_entity_exchange(
                     def_id, // Defender is attacker in this exchange
-                    att_id, 
-                    entity_states, 
+                    att_id,
+                    entity_states,
                     true,
-                    &mut defender_casualties, // Swapped because func assumes arg1 is attacker
+                    defender_is_mounted, // Swapped because func assumes arg1 is attacker
+                    attacker_is_mounted,
+                    &mut defender_casualties,
                     &mut attacker_casualties,
                     &mut defender_stress,
                     &mut attacker_stress
@@ -274,12 +284,14 @@ pub fn resolve_unit_combat(
             
             let def_id = defender_ids[i % combat_width]; // Loop around targets
             engaged_attackers.insert(att_id);
-            
+
             resolve_entity_exchange(
                 att_id,
                 def_id,
                 entity_states,
                 true, // Flanking/Ganging up
+                attacker_is_mounted,
+                defender_is_mounted,
                 &mut attacker_casualties,
                 &mut defender_casualties,
                 &mut attacker_stress,
@@ -345,6 +357,8 @@ fn resolve_entity_exchange(
     def_id: EntityId,
     states: &mut HashMap<EntityId, CombatState>,
     is_support: bool, // If true, attacker is safer (reach or flank)
+    attacker_is_mounted: bool,
+    defender_is_mounted: bool,
     att_casualties: &mut u32,
     def_casualties: &mut u32,
     att_stress: &mut f32,
@@ -361,6 +375,7 @@ fn resolve_entity_exchange(
             armor: att_state.armor.clone(),
             stance: CombatStance::Pressing, // Attacker presses
             skill: att_state.skill.clone(),
+            is_mounted: attacker_is_mounted,
         };
 
         // If support attack, assume defensive stance for attacker to minimize return hits
@@ -373,6 +388,7 @@ fn resolve_entity_exchange(
             armor: def_state.armor.clone(),
             stance: CombatStance::Defensive, // Defender defends
             skill: def_state.skill.clone(),
+            is_mounted: defender_is_mounted,
         };
 
         (att_c, def_c)
