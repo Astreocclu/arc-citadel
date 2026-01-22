@@ -97,6 +97,53 @@ impl BattleHexCoord {
         }
         results
     }
+
+    /// Get the primary direction from this hex to another.
+    /// For hexes that aren't direct neighbors, returns the direction
+    /// of the dominant component of the delta.
+    pub fn direction_to(&self, other: BattleHexCoord) -> HexDirection {
+        let dq = other.q - self.q;
+        let dr = other.r - self.r;
+
+        // Handle same position - default to East
+        if dq == 0 && dr == 0 {
+            return HexDirection::East;
+        }
+
+        // Hex coordinate direction mapping based on offset() definitions:
+        // East:      (1, 0)  -> dq > 0, dr == 0
+        // NorthEast: (1, -1) -> dq > 0, dr < 0
+        // NorthWest: (0, -1) -> dq <= 0, dr < 0
+        // West:      (-1, 0) -> dq < 0, dr == 0
+        // SouthWest: (-1, 1) -> dq < 0, dr > 0
+        // SouthEast: (0, 1)  -> dq >= 0, dr > 0
+        match (dq.signum(), dr.signum()) {
+            (1, 0) => HexDirection::East,
+            (1, -1) => HexDirection::NorthEast,
+            (0, -1) => HexDirection::NorthWest,
+            (-1, 0) => HexDirection::West,
+            (-1, 1) => HexDirection::SouthWest,
+            (0, 1) => HexDirection::SouthEast,
+            // Mixed cases: determine dominant direction
+            (1, 1) => {
+                // Between East and SouthEast - use magnitude to decide
+                if dq >= dr {
+                    HexDirection::East
+                } else {
+                    HexDirection::SouthEast
+                }
+            }
+            (-1, -1) => {
+                // Between West and NorthWest - use magnitude to decide
+                if dq.abs() >= dr.abs() {
+                    HexDirection::West
+                } else {
+                    HexDirection::NorthWest
+                }
+            }
+            _ => HexDirection::East, // Fallback (shouldn't happen with valid signum)
+        }
+    }
 }
 
 /// Direction enum for hex facing
@@ -247,5 +294,46 @@ mod tests {
     fn test_angle_difference_two_steps() {
         assert_eq!(HexDirection::East.angle_difference(HexDirection::NorthWest), 2);
         assert_eq!(HexDirection::East.angle_difference(HexDirection::SouthWest), 2);
+    }
+
+    #[test]
+    fn test_direction_to() {
+        let from = BattleHexCoord::new(5, 5);
+
+        // Test all 6 cardinal directions based on offset() definitions
+        let to_east = BattleHexCoord::new(6, 5);
+        let to_northeast = BattleHexCoord::new(6, 4);
+        let to_northwest = BattleHexCoord::new(5, 4);
+        let to_west = BattleHexCoord::new(4, 5);
+        let to_southwest = BattleHexCoord::new(4, 6);
+        let to_southeast = BattleHexCoord::new(5, 6);
+
+        assert_eq!(from.direction_to(to_east), HexDirection::East);
+        assert_eq!(from.direction_to(to_northeast), HexDirection::NorthEast);
+        assert_eq!(from.direction_to(to_northwest), HexDirection::NorthWest);
+        assert_eq!(from.direction_to(to_west), HexDirection::West);
+        assert_eq!(from.direction_to(to_southwest), HexDirection::SouthWest);
+        assert_eq!(from.direction_to(to_southeast), HexDirection::SouthEast);
+    }
+
+    #[test]
+    fn test_direction_to_same_position() {
+        let coord = BattleHexCoord::new(5, 5);
+        // Same position defaults to East
+        assert_eq!(coord.direction_to(coord), HexDirection::East);
+    }
+
+    #[test]
+    fn test_direction_to_distant() {
+        let from = BattleHexCoord::new(0, 0);
+
+        // Test direction to distant hexes (should use dominant direction)
+        let far_east = BattleHexCoord::new(10, 0);
+        let far_northeast = BattleHexCoord::new(5, -5);
+        let far_west = BattleHexCoord::new(-10, 0);
+
+        assert_eq!(from.direction_to(far_east), HexDirection::East);
+        assert_eq!(from.direction_to(far_northeast), HexDirection::NorthEast);
+        assert_eq!(from.direction_to(far_west), HexDirection::West);
     }
 }
