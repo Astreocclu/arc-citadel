@@ -147,6 +147,32 @@ impl HexDirection {
             HexDirection::SouthEast,
         ]
     }
+
+    /// Convert direction to index (0-5)
+    pub fn to_index(&self) -> usize {
+        match self {
+            HexDirection::East => 0,
+            HexDirection::NorthEast => 1,
+            HexDirection::NorthWest => 2,
+            HexDirection::West => 3,
+            HexDirection::SouthWest => 4,
+            HexDirection::SouthEast => 5,
+        }
+    }
+
+    /// Compute the angular difference between two directions (0-3)
+    /// Returns the minimum number of 60-degree steps between directions:
+    /// 0 = same direction
+    /// 1 = adjacent (60 degrees)
+    /// 2 = two steps (120 degrees)
+    /// 3 = opposite (180 degrees)
+    pub fn angle_difference(&self, other: HexDirection) -> u8 {
+        let a = self.to_index() as i8;
+        let b = other.to_index() as i8;
+        let diff = (a - b).abs();
+        // Return minimum of clockwise or counter-clockwise distance
+        diff.min(6 - diff) as u8
+    }
 }
 
 #[cfg(test)]
@@ -198,5 +224,28 @@ mod tests {
     fn test_direction_opposite() {
         assert_eq!(HexDirection::East.opposite(), HexDirection::West);
         assert_eq!(HexDirection::NorthEast.opposite(), HexDirection::SouthWest);
+    }
+
+    #[test]
+    fn test_angle_difference_same() {
+        assert_eq!(HexDirection::East.angle_difference(HexDirection::East), 0);
+    }
+
+    #[test]
+    fn test_angle_difference_adjacent() {
+        assert_eq!(HexDirection::East.angle_difference(HexDirection::NorthEast), 1);
+        assert_eq!(HexDirection::East.angle_difference(HexDirection::SouthEast), 1);
+    }
+
+    #[test]
+    fn test_angle_difference_opposite() {
+        assert_eq!(HexDirection::East.angle_difference(HexDirection::West), 3);
+        assert_eq!(HexDirection::NorthEast.angle_difference(HexDirection::SouthWest), 3);
+    }
+
+    #[test]
+    fn test_angle_difference_two_steps() {
+        assert_eq!(HexDirection::East.angle_difference(HexDirection::NorthWest), 2);
+        assert_eq!(HexDirection::East.angle_difference(HexDirection::SouthWest), 2);
     }
 }
