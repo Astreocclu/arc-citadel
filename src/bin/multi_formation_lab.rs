@@ -235,7 +235,7 @@ fn run_scenario(
             if let (Some(fu), Some(eu)) = (friendly_unit, enemy_unit) {
                 // Resolve combat
                 let result = arc_citadel::battle::resolution::resolve_unit_combat(
-                    fu, eu, &mut entity_states
+                    fu, eu, &mut entity_states, &state.map
                 );
 
                 // Apply results

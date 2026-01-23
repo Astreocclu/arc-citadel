@@ -10,6 +10,7 @@
 use std::collections::HashMap;
 
 use arc_citadel::battle::{
+    battle_map::BattleMap,
     units::{BattleUnit, Element, FormationShape, UnitId},
     unit_type::UnitType,
     resolution::resolve_unit_combat,
@@ -146,6 +147,8 @@ fn run_trial(
     let mut entity_states: HashMap<EntityId, CombatState> = HashMap::new();
     let attacker = attacker_config.build();
     let defender = defender_config.build();
+    // Create minimal battle map for combat resolution (open terrain)
+    let map = BattleMap::new(10, 10);
 
     let mut total_att_cas = 0u32;
     let mut total_def_cas = 0u32;
@@ -154,7 +157,7 @@ fn run_trial(
     let mut rounds_to_rout = None;
 
     for round in 0..rounds {
-        let result = resolve_unit_combat(&attacker, &defender, &mut entity_states);
+        let result = resolve_unit_combat(&attacker, &defender, &mut entity_states, &map);
 
         total_att_cas += result.attacker_casualties;
         total_def_cas += result.defender_casualties;

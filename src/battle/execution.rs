@@ -805,7 +805,7 @@ impl BattleState {
             
                         if let (Some(attacker), Some(defender)) = (friendly_unit, enemy_unit) {
                             // Resolve combat with entity states
-                            let result = resolve_unit_combat(attacker, defender, &mut self.entity_states);
+                            let result = resolve_unit_combat(attacker, defender, &mut self.entity_states, &self.map);
             
                             // Apply results
                             if let Some(unit) = self.friendly_army.get_unit_mut(engagement.attacker_id) {                    unit.casualties += result.attacker_casualties;
