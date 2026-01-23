@@ -12,12 +12,14 @@ pub mod llm_gateway;
 mod personality;
 mod phase_plans;
 pub mod scoring;
+pub mod tactical_map;
 
 // Re-exports
 pub use commander::AiCommander;
 pub use decision_context::DecisionContext;
 pub use personality::{load_personality, AiPersonality};
 pub use phase_plans::{PhasePlan, PhasePlanManager, PhaseTransition};
+pub use tactical_map::TacticalMap;
 
 use crate::battle::courier::Order;
 use crate::battle::execution::BattleEventLog;
