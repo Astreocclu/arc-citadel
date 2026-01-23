@@ -24,6 +24,18 @@ pub enum SkillLevel {
 }
 
 impl SkillLevel {
+    /// Upgrade skill by one tier (capped at Master)
+    ///
+    /// Used for tactical advantages like flanking that make attacks more effective.
+    pub fn upgrade(self) -> Self {
+        match self {
+            SkillLevel::Novice => SkillLevel::Trained,
+            SkillLevel::Trained => SkillLevel::Veteran,
+            SkillLevel::Veteran => SkillLevel::Master,
+            SkillLevel::Master => SkillLevel::Master, // Already at max
+        }
+    }
+
     /// Can attempt a riposte (counterattack after successful defense)?
     pub fn can_attempt_riposte(&self) -> bool {
         matches!(self, SkillLevel::Veteran | SkillLevel::Master)

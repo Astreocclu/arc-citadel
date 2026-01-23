@@ -4,9 +4,11 @@
 
 use std::collections::HashMap;
 
+use crate::battle::battle_map::BattleMap;
 use crate::battle::constants::{
     STRESS_PER_ALLY_DEATH, STRESS_PER_CLOSING_WOUND, STRESS_PER_RANGED_HIT, STRESS_PER_WOUND,
 };
+use crate::battle::tactics::calculate_engagement_geometry;
 use crate::battle::units::BattleUnit;
 use crate::battle::unit_type::UnitType;
 use crate::combat::resolution::{resolve_exchange, resolve_hit, select_hit_zone, Combatant};
@@ -133,12 +135,19 @@ pub fn resolve_unit_combat(
     attacker: &BattleUnit,
     defender: &BattleUnit,
     entity_states: &mut HashMap<EntityId, CombatState>,
+    map: &BattleMap,
 ) -> UnitCombatResult {
     // 1. Gather active entities
     let attacker_ids = get_active_entities(attacker, entity_states);
     let defender_ids = get_active_entities(defender, entity_states);
 
-    // 2. Determine frontage based on formation shapes
+    // 2. Calculate engagement geometry for terrain/flanking modifiers
+    let geometry = calculate_engagement_geometry(attacker, defender, map);
+    let flank_bonus = geometry.attack_angle.hit_modifier();
+    let stress_mult = geometry.attack_angle.stress_multiplier();
+    let damage_mult = geometry.damage_multiplier();
+
+    // 3. Determine frontage based on formation shapes
     let att_frontage = formation_frontage(&attacker.formation_shape, attacker_ids.len());
     let def_frontage = formation_frontage(&defender.formation_shape, defender_ids.len());
 
@@ -182,7 +191,10 @@ pub fn resolve_unit_combat(
             &mut attacker_casualties,
             &mut defender_casualties,
             &mut attacker_stress,
-            &mut defender_stress
+            &mut defender_stress,
+            flank_bonus,
+            stress_mult,
+            damage_mult,
         );
     }
 
@@ -225,7 +237,10 @@ pub fn resolve_unit_combat(
                     &mut attacker_casualties,
                     &mut defender_casualties,
                     &mut attacker_stress,
-                    &mut defender_stress
+                    &mut defender_stress,
+                    flank_bonus,
+                    stress_mult,
+                    damage_mult,
                 );
             }
         }
@@ -253,6 +268,8 @@ pub fn resolve_unit_combat(
                 let att_id = attacker_ids[i % attacker_ids.len()];
                 engaged_defenders.insert(def_id);
 
+                // Note: When defender counter-attacks, roles are swapped
+                // The defender gets no flank bonus against the attacker
                 resolve_entity_exchange(
                     def_id, // Defender is attacker in this exchange
                     att_id,
@@ -263,7 +280,10 @@ pub fn resolve_unit_combat(
                     &mut defender_casualties,
                     &mut attacker_casualties,
                     &mut defender_stress,
-                    &mut attacker_stress
+                    &mut attacker_stress,
+                    0.0,  // No flank bonus for defender's counter-attack
+                    1.0,  // Normal stress for attacker
+                    1.0,  // Normal damage
                 );
             }
         }
@@ -295,7 +315,10 @@ pub fn resolve_unit_combat(
                 &mut attacker_casualties,
                 &mut defender_casualties,
                 &mut attacker_stress,
-                &mut defender_stress
+                &mut defender_stress,
+                flank_bonus,
+                stress_mult,
+                damage_mult,
             );
         }
     }
@@ -363,6 +386,10 @@ fn resolve_entity_exchange(
     def_casualties: &mut u32,
     att_stress: &mut f32,
     def_stress: &mut f32,
+    // Terrain/flanking modifiers from engagement geometry
+    flank_bonus: f32,   // Additive hit bonus from attack angle
+    stress_mult: f32,   // Stress multiplier for defender
+    damage_mult: f32,   // Damage multiplier from enfilade/elevation
 ) {
     // Need to extract properties to avoid double mutable borrow
     // We clone the needed parts of state to create Combatants
@@ -370,11 +397,22 @@ fn resolve_entity_exchange(
         let att_state = states.get(&att_id).unwrap();
         let def_state = states.get(&def_id).unwrap();
 
+        // Apply flank bonus to attacker's skill level
+        // Higher bonus = higher effective skill tier
+        let mut att_skill = att_state.skill.clone();
+        if flank_bonus >= 0.30 {
+            // Rear attack: boost skill by 2 tiers
+            att_skill.level = att_skill.level.upgrade().upgrade();
+        } else if flank_bonus >= 0.15 {
+            // Flank attack: boost skill by 1 tier
+            att_skill.level = att_skill.level.upgrade();
+        }
+
         let mut att_c = Combatant {
             weapon: att_state.weapon.clone(),
             armor: att_state.armor.clone(),
             stance: CombatStance::Pressing, // Attacker presses
-            skill: att_state.skill.clone(),
+            skill: att_skill,
             is_mounted: attacker_is_mounted,
         };
 
@@ -396,6 +434,10 @@ fn resolve_entity_exchange(
 
     // Resolve
     let result = resolve_exchange(&att_combatant, &def_combatant);
+
+    // Apply damage multiplier for enfilade/elevation advantage
+    // Higher multiplier = chance of extra casualties
+    let bonus_casualty_chance = (damage_mult - 1.0).max(0.0);
 
     // Apply closing wound first (cost of charging through reach advantage)
     if let Some(wound) = result.closing_wound {
@@ -426,6 +468,7 @@ fn resolve_entity_exchange(
         }
     }
 
+    // Apply defender wound - with terrain/flanking modifiers
     if let Some(wound) = result.defender_wound {
         if let Some(state) = states.get_mut(&def_id) {
             let was_dead = state.is_dead() || state.is_incapacitated();
@@ -433,9 +476,22 @@ fn resolve_entity_exchange(
             let died = !was_dead && (state.is_dead() || state.is_incapacitated());
             if died {
                 *def_casualties += 1;
-                *def_stress += STRESS_PER_ALLY_DEATH;
+                // Apply stress multiplier for flanking (getting hit from unexpected angle)
+                *def_stress += STRESS_PER_ALLY_DEATH * stress_mult;
             }
-            *def_stress += STRESS_PER_WOUND;
+            // Apply stress multiplier for being wounded from flank/rear
+            *def_stress += STRESS_PER_WOUND * stress_mult;
+
+            // Bonus casualty chance from enfilade/elevation
+            // If damage multiplier is high, there's a chance of extra lethality
+            if bonus_casualty_chance > 0.0 && !died {
+                if rand::random::<f32>() < bonus_casualty_chance {
+                    // Extra damage from enfilade/plunging fire can be devastating
+                    // Treat as additional wound making existing injury worse
+                    *def_casualties += 1;
+                    *def_stress += STRESS_PER_ALLY_DEATH * stress_mult;
+                }
+            }
         }
     }
 }
@@ -609,6 +665,7 @@ mod tests {
     #[test]
     fn test_resolve_combat_casualties() {
         let mut entity_states = HashMap::new();
+        let map = BattleMap::new(10, 10);
 
         // Setup Attacker (Swords)
         let mut attacker = BattleUnit::new(UnitId::new(), UnitType::Infantry);
@@ -627,7 +684,7 @@ mod tests {
         eprintln!("Defender element 0 entities: {:?}", defender.elements[0].entities.len());
 
         // Run combat
-        let _result = resolve_unit_combat(&attacker, &defender, &mut entity_states);
+        let _result = resolve_unit_combat(&attacker, &defender, &mut entity_states, &map);
 
         eprintln!("Entity states after combat: {}", entity_states.len());
 
@@ -642,6 +699,7 @@ mod tests {
     #[test]
     fn test_mixed_unit_pike_archers() {
         let mut entity_states = HashMap::new();
+        let map = BattleMap::new(20, 20);
 
         // Create mixed unit: 70 pikemen + 30 archers
         let mut mixed_unit = BattleUnit::new(UnitId::new(), UnitType::Infantry);
@@ -669,7 +727,7 @@ mod tests {
         let mut total_attacker_casualties = 0;
         let mut total_defender_casualties = 0;
         for round in 0..5 {
-            let result = resolve_unit_combat(&mixed_unit, &defender, &mut entity_states);
+            let result = resolve_unit_combat(&mixed_unit, &defender, &mut entity_states, &map);
             total_attacker_casualties += result.attacker_casualties;
             total_defender_casualties += result.defender_casualties;
             eprintln!("Round {}: att_cas={}, def_cas={}",
