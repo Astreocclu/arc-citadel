@@ -2,6 +2,7 @@
 //!
 //! Respects fog of war unless ignores_fog_of_war is true.
 
+use crate::battle::battle_map::BattleMap;
 use crate::battle::hex::BattleHexCoord;
 use crate::battle::units::{Army, BattleUnit, UnitId};
 use crate::battle::visibility::ArmyVisibility;
@@ -16,6 +17,8 @@ pub struct DecisionContext<'a> {
     pub own_visibility: &'a ArmyVisibility,
     pub current_tick: Tick,
     ignores_fog: bool,
+    /// Optional reference to battle map for tactical analysis
+    battle_map: Option<&'a BattleMap>,
 }
 
 impl<'a> DecisionContext<'a> {
@@ -32,7 +35,32 @@ impl<'a> DecisionContext<'a> {
             own_visibility,
             current_tick,
             ignores_fog,
+            battle_map: None,
         }
+    }
+
+    /// Create a context with battle map reference for tactical analysis
+    pub fn with_battle_map(
+        own_army: &'a Army,
+        enemy_army: &'a Army,
+        own_visibility: &'a ArmyVisibility,
+        current_tick: Tick,
+        ignores_fog: bool,
+        battle_map: &'a BattleMap,
+    ) -> Self {
+        Self {
+            own_army,
+            enemy_army,
+            own_visibility,
+            current_tick,
+            ignores_fog,
+            battle_map: Some(battle_map),
+        }
+    }
+
+    /// Get reference to battle map if available
+    pub fn battle_map(&self) -> Option<&BattleMap> {
+        self.battle_map
     }
 
     /// Get all own units
