@@ -23,6 +23,7 @@ pub mod pathfinding;
 pub mod planning;
 // ranged.rs - orphaned, depends on unimplemented combat::weapons
 pub mod resolution;
+pub mod tactics;
 pub mod terrain;
 pub mod triggers;
 pub mod unit_type;
@@ -63,6 +64,7 @@ pub use resolution::{
     determine_combat_lod, resolve_shock_attack, resolve_unit_combat, CombatLOD, ShockResult,
     UnitCombatResult,
 };
+pub use tactics::{calculate_engagement_geometry, AttackAngle, EngagementGeometry, LosQuality};
 pub use terrain::{BattleTerrain, TerrainFeature};
 pub use triggers::{
     evaluate_all_contingencies, evaluate_all_gocodes, evaluate_contingency_trigger,
