@@ -2,7 +2,9 @@
 //!
 //! Handles bow, crossbow, and thrown weapon attacks using the chunking skill system.
 
+use crate::battle::battle_map::BattleMap;
 use crate::battle::hex::BattleHexCoord;
+use crate::battle::tactics::calculate_engagement_geometry;
 use crate::battle::unit_type::UnitType;
 use crate::battle::units::BattleUnit;
 use crate::combat::weapons::{Mass, RangeCategory, RangedWeaponProperties};
@@ -74,8 +76,7 @@ pub fn unit_ranged_weapon(unit_type: UnitType) -> Option<RangedWeaponProperties>
 pub fn resolve_unit_ranged_attack(
     attacker: &BattleUnit,
     defender: &BattleUnit,
-    _tick: u64,
-    has_los: bool,
+    map: &BattleMap,
 ) -> RangedAttackResult {
     let mut result = RangedAttackResult::default();
 
@@ -102,14 +103,24 @@ pub fn resolve_unit_ranged_attack(
     let max_range = max_range_hexes(weapon.range);
     let distance_penalty = (distance as f32 / max_range as f32) * 0.3;
 
-    // Cover bonus for defender (would come from terrain)
-    let cover_bonus = 0.0; // TODO: terrain lookup
+    // Calculate engagement geometry from terrain
+    let geometry = calculate_engagement_geometry(attacker, defender, map);
 
-    // LOS penalty
-    let los_penalty = if has_los { 0.0 } else { 0.5 };
+    // Cover reduces hit chance
+    let cover_penalty = geometry.cover_value * 0.4;
 
-    // Final hit chance
-    let hit_chance = (base_hit_chance - distance_penalty - cover_bonus - los_penalty).max(0.05);
+    // Elevation bonus for ranged
+    let elevation_bonus = if geometry.elevation_diff > 0 {
+        0.05 * geometry.elevation_diff as f32
+    } else {
+        0.0
+    };
+
+    // LOS penalty from geometry
+    let los_multiplier = geometry.los_quality.hit_multiplier();
+
+    // Final hit chance (apply LOS as multiplier)
+    let hit_chance = ((base_hit_chance - distance_penalty - cover_penalty + elevation_bonus) * los_multiplier).max(0.05);
 
     // Roll for hit (simplified - use RNG properly in real impl)
     let roll: f32 = rand::random();
@@ -120,7 +131,10 @@ pub fn resolve_unit_ranged_attack(
         // Base casualties from ranged fire
         let effective_strength = attacker.effective_strength();
         let base_casualties = (effective_strength as f32 * 0.02).ceil() as u32;
-        result.casualties = base_casualties.max(1);
+
+        // Enfilade increases casualties (shooting along formation length)
+        let enfilade_mult = if geometry.is_enfilade { 1.5 } else { 1.0 };
+        result.casualties = ((base_casualties as f32 * enfilade_mult).ceil() as u32).max(1);
     }
 
     // Stress inflicted (even misses cause suppression)
@@ -187,6 +201,9 @@ mod tests {
         use crate::battle::units::{Element, UnitId};
         use crate::core::types::EntityId;
 
+        // Create battle map large enough for the engagement
+        let map = BattleMap::new(20, 20);
+
         // Create archer unit
         let mut archer = BattleUnit::new(UnitId::new(), UnitType::Archers);
         archer.position = BattleHexCoord::new(0, 0);
@@ -197,7 +214,7 @@ mod tests {
         target.position = BattleHexCoord::new(8, 0);
         target.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
-        let result = resolve_unit_ranged_attack(&archer, &target, 0, true);
+        let result = resolve_unit_ranged_attack(&archer, &target, &map);
 
         // Should have attempted attack
         assert!(result.ammo_consumed > 0);
@@ -210,6 +227,9 @@ mod tests {
         use crate::battle::units::{Element, UnitId};
         use crate::core::types::EntityId;
 
+        // Create battle map large enough
+        let map = BattleMap::new(60, 60);
+
         // Create archer unit
         let mut archer = BattleUnit::new(UnitId::new(), UnitType::Archers);
         archer.position = BattleHexCoord::new(0, 0);
@@ -220,7 +240,7 @@ mod tests {
         target.position = BattleHexCoord::new(50, 0);
         target.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
-        let result = resolve_unit_ranged_attack(&archer, &target, 0, true);
+        let result = resolve_unit_ranged_attack(&archer, &target, &map);
 
         // No ammo consumed if out of range
         assert_eq!(result.ammo_consumed, 0);
@@ -231,6 +251,9 @@ mod tests {
         use crate::battle::units::{Element, UnitId};
         use crate::core::types::EntityId;
 
+        // Create battle map
+        let map = BattleMap::new(20, 20);
+
         // Infantry is not a ranged unit
         let mut infantry = BattleUnit::new(UnitId::new(), UnitType::Infantry);
         infantry.position = BattleHexCoord::new(0, 0);
@@ -240,7 +263,7 @@ mod tests {
         target.position = BattleHexCoord::new(5, 0);
         target.elements.push(Element::new((0..50).map(|_| EntityId::new()).collect()));
 
-        let result = resolve_unit_ranged_attack(&infantry, &target, 0, true);
+        let result = resolve_unit_ranged_attack(&infantry, &target, &map);
 
         // Infantry can't do ranged attacks
         assert_eq!(result.ammo_consumed, 0);

@@ -21,7 +21,7 @@ pub mod movement;
 pub mod orders;
 pub mod pathfinding;
 pub mod planning;
-// ranged.rs - orphaned, depends on unimplemented combat::weapons
+pub mod ranged;
 pub mod resolution;
 pub mod tactics;
 pub mod terrain;

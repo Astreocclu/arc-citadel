@@ -44,6 +44,17 @@ pub enum Reach {
     Pike,
 }
 
+/// Range category for ranged weapons
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum RangeCategory {
+    /// Short range (thrown weapons, pistol crossbows)
+    Close,
+    /// Medium range (shortbows, light crossbows)
+    Medium,
+    /// Long range (longbows, heavy crossbows)
+    Long,
+}
+
 /// Special weapon properties (optional capabilities)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum WeaponSpecial {
@@ -195,6 +206,73 @@ impl WeaponProperties {
 impl Default for WeaponProperties {
     fn default() -> Self {
         Self::fists()
+    }
+}
+
+/// Properties for ranged weapons (bows, crossbows, thrown weapons)
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RangedWeaponProperties {
+    /// Effective range category
+    pub range: RangeCategory,
+    /// Draw strength (affects fatigue and damage)
+    pub draw_strength: Mass,
+    /// Projectile properties (edge determines penetration)
+    pub projectile_edge: Edge,
+}
+
+impl RangedWeaponProperties {
+    /// Shortbow - fast firing, medium range
+    pub fn shortbow() -> Self {
+        Self {
+            range: RangeCategory::Medium,
+            draw_strength: Mass::Light,
+            projectile_edge: Edge::Sharp,
+        }
+    }
+
+    /// Longbow - slow firing, long range, high power
+    pub fn longbow() -> Self {
+        Self {
+            range: RangeCategory::Long,
+            draw_strength: Mass::Heavy,
+            projectile_edge: Edge::Sharp,
+        }
+    }
+
+    /// Light crossbow - medium range, easy to use
+    pub fn light_crossbow() -> Self {
+        Self {
+            range: RangeCategory::Medium,
+            draw_strength: Mass::Medium,
+            projectile_edge: Edge::Sharp,
+        }
+    }
+
+    /// Heavy crossbow - long range, high penetration, slow reload
+    pub fn heavy_crossbow() -> Self {
+        Self {
+            range: RangeCategory::Long,
+            draw_strength: Mass::Heavy,
+            projectile_edge: Edge::Sharp,
+        }
+    }
+
+    /// Javelin - thrown, close range
+    pub fn javelin() -> Self {
+        Self {
+            range: RangeCategory::Close,
+            draw_strength: Mass::Medium,
+            projectile_edge: Edge::Sharp,
+        }
+    }
+
+    /// Sling - simple ranged weapon
+    pub fn sling() -> Self {
+        Self {
+            range: RangeCategory::Medium,
+            draw_strength: Mass::Light,
+            projectile_edge: Edge::Blunt,
+        }
     }
 }
 
