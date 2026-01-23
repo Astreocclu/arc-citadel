@@ -62,7 +62,7 @@ fn test_spec_example_sword_vs_plate() {
     assert_eq!(plate.coverage, Coverage::Full);
 
     // 1. Penetration: Sharp vs Plate → DEFLECT
-    let pen = resolve_penetration(sword.edge, plate.rigidity, false);
+    let pen = resolve_penetration(sword.edge, plate.rigidity, false, false, false);
     assert_eq!(pen, PenetrationResult::Deflect);
 
     // 2. Trauma: Medium vs Heavy → Negligible (Heavy padding absorbs medium mass)
@@ -90,7 +90,7 @@ fn test_spec_example_mace_vs_plate() {
     assert_eq!(mace.mass, Mass::Heavy);
 
     // Mace doesn't try to penetrate (blunt weapon)
-    let pen = resolve_penetration(mace.edge, plate.rigidity, false);
+    let pen = resolve_penetration(mace.edge, plate.rigidity, false, false, false);
     assert_eq!(pen, PenetrationResult::NoPenetrationAttempt);
 
     // Heavy mass vs Heavy padding = Fatigue
@@ -120,7 +120,7 @@ fn test_two_victory_paths() {
     let unarmored = ArmorProperties::none();
 
     // Razor vs Cloth = DeepCut
-    let pen = resolve_penetration(razor.edge, unarmored.rigidity, false);
+    let pen = resolve_penetration(razor.edge, unarmored.rigidity, false, false, false);
     assert_eq!(pen, PenetrationResult::DeepCut);
 
     // DeepCut to Neck = Critical wound (exceeds fatality threshold)
@@ -183,7 +183,7 @@ fn test_no_percentage_api() {
     assert_eq!(plate.rigidity, Rigidity::Plate); // Categorical, not "-40% damage"
 
     // Penetration results are categorical
-    let pen = resolve_penetration(Edge::Sharp, Rigidity::Plate, false);
+    let pen = resolve_penetration(Edge::Sharp, Rigidity::Plate, false, false, false);
     assert!(matches!(pen, PenetrationResult::Deflect));
 
     // Trauma results are categorical
@@ -282,7 +282,7 @@ fn test_agincourt_longbow_vs_plate() {
     let plate = ArmorProperties::plate();
 
     // Arrows CANNOT penetrate plate
-    let pen = resolve_penetration(longbow.edge, plate.rigidity, false);
+    let pen = resolve_penetration(longbow.edge, plate.rigidity, false, false, false);
     assert_eq!(pen, PenetrationResult::Deflect);
 
     // Light mass = negligible trauma
@@ -327,7 +327,7 @@ fn test_zweihander_vs_pike_formation() {
     let pikeman_armor = ArmorProperties::none(); // Cloth only
 
     // Once inside pike range, the zweihänder is devastating
-    let pen = resolve_penetration(zweihander.edge, pikeman_armor.rigidity, false);
+    let pen = resolve_penetration(zweihander.edge, pikeman_armor.rigidity, false, false, false);
     assert_eq!(pen, PenetrationResult::Cut); // Sharp vs Cloth = Cut
 
     let trauma = resolve_trauma(zweihander.mass, pikeman_armor.padding);
@@ -359,7 +359,7 @@ fn test_mordhau_murder_stroke() {
     let plate = ArmorProperties::plate();
 
     // Blunt doesn't try to cut
-    let pen = resolve_penetration(mordhau.edge, plate.rigidity, false);
+    let pen = resolve_penetration(mordhau.edge, plate.rigidity, false, false, false);
     assert_eq!(pen, PenetrationResult::NoPenetrationAttempt);
 
     // BUT: Trauma still transfers through plate
@@ -386,7 +386,7 @@ fn test_stiletto_vs_mail() {
     let mail = ArmorProperties::mail();
 
     // WITHOUT piercing: razor vs mail = snag (gets caught in rings)
-    let pen_no_pierce = resolve_penetration(Edge::Razor, Rigidity::Mail, false);
+    let pen_no_pierce = resolve_penetration(Edge::Razor, Rigidity::Mail, false, false, false);
     assert_eq!(pen_no_pierce, PenetrationResult::Snag);
 
     // WITH piercing: finds the gaps between rings
@@ -395,6 +395,8 @@ fn test_stiletto_vs_mail() {
         stiletto.edge,
         mail.rigidity,
         stiletto.has_special(arc_citadel::combat::WeaponSpecial::Piercing),
+        false,
+        false,
     );
     assert_eq!(pen_pierce, PenetrationResult::ShallowCut);
 
@@ -420,7 +422,7 @@ fn test_cavalry_charge_impact() {
     let plate = ArmorProperties::plate();
 
     // Penetration: Sharp vs Plate still deflects
-    let pen = resolve_penetration(lance_charge.edge, plate.rigidity, false);
+    let pen = resolve_penetration(lance_charge.edge, plate.rigidity, false, false, false);
     assert_eq!(pen, PenetrationResult::Deflect);
 
     // BUT: Massive trauma overwhelms even heavy padding
@@ -468,6 +470,7 @@ fn test_reach_advantage_cascade() {
         armor: ArmorProperties::none(),
         stance: CombatStance::Pressing,
         skill: arc_citadel::combat::CombatSkill::veteran(),
+        is_mounted: false,
     };
 
     // At grapple range, the dagger fighter has the advantage

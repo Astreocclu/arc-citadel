@@ -122,6 +122,7 @@ fn main() {
     state.set_friendly_ai(Some(Box::new(friendly_ai)));
     state.set_enemy_ai(Some(Box::new(enemy_ai)));
     state.start_battle();
+    let _ = state.run_tick();
 
     // Log initial state if verbose
     if args.verbose {
